@@ -29,7 +29,10 @@
       "Bash(then)",
       "Bash(go run:*)",
       "Bash(else)",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(ls:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git stash:*)"
     ],
     "deny": []
   }
