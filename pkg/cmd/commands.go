@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/carlosarraes/bt/pkg/cmd/auth"
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
@@ -26,31 +27,43 @@ type AuthCmd struct {
 }
 
 // AuthLoginCmd handles auth login
-type AuthLoginCmd struct{}
+type AuthLoginCmd struct {
+	WithToken string `help:"Authenticate with a token instead of interactive flow"`
+}
 
 func (a *AuthLoginCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("auth login not yet implemented")
+	cmd := &auth.LoginCmd{
+		WithToken: a.WithToken,
+	}
+	return cmd.Run(ctx)
 }
 
 // AuthLogoutCmd handles auth logout
-type AuthLogoutCmd struct{}
+type AuthLogoutCmd struct {
+	Force bool `short:"f" help:"Force logout without confirmation"`
+}
 
 func (a *AuthLogoutCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("auth logout not yet implemented")
+	cmd := &auth.LogoutCmd{
+		Force: a.Force,
+	}
+	return cmd.Run(ctx)
 }
 
 // AuthStatusCmd handles auth status
 type AuthStatusCmd struct{}
 
 func (a *AuthStatusCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("auth status not yet implemented")
+	cmd := &auth.StatusCmd{}
+	return cmd.Run(ctx)
 }
 
 // AuthRefreshCmd handles auth refresh
 type AuthRefreshCmd struct{}
 
 func (a *AuthRefreshCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("auth refresh not yet implemented")
+	cmd := &auth.RefreshCmd{}
+	return cmd.Run(ctx)
 }
 
 // RunCmd represents the run command group
