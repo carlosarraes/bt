@@ -1,0 +1,4 @@
+bitbucket:
+  auth_method: app_password
+  username: test-user
+  app_password: test-password

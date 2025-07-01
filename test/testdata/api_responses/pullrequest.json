@@ -1,0 +1,93 @@
+{
+  "type": "pullrequest",
+  "id": 1,
+  "title": "Add new feature",
+  "description": "This pull request adds a new feature to the application.\n\n## Changes\n- Added new API endpoint\n- Updated documentation\n- Added tests\n\n## Testing\n- All tests pass\n- Manual testing completed",
+  "state": "OPEN",
+  "reason": "",
+  "comment_count": 3,
+  "task_count": 2,
+  "created_on": "2023-01-01T00:00:00.000000+00:00",
+  "updated_on": "2023-01-01T12:00:00.000000+00:00",
+  "close_source_branch": true,
+  "author": {
+    "type": "user",
+    "username": "test-user",
+    "display_name": "Test User",
+    "account_id": "{12345678-1234-1234-1234-123456789012}",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "source": {
+    "branch": {
+      "name": "feature/new-feature"
+    },
+    "commit": {
+      "hash": "abc123def456",
+      "type": "commit"
+    },
+    "repository": {
+      "type": "repository",
+      "full_name": "test-workspace/test-repo",
+      "name": "test-repo"
+    }
+  },
+  "destination": {
+    "branch": {
+      "name": "main"
+    },
+    "commit": {
+      "hash": "def456abc123",
+      "type": "commit"
+    },
+    "repository": {
+      "type": "repository",
+      "full_name": "test-workspace/test-repo",
+      "name": "test-repo"
+    }
+  },
+  "reviewers": [
+    {
+      "type": "user",
+      "username": "reviewer-1",
+      "display_name": "Reviewer One",
+      "account_id": "{12345678-1234-1234-1234-123456789013}",
+      "uuid": "{12345678-1234-1234-1234-123456789013}"
+    }
+  ],
+  "participants": [
+    {
+      "type": "participant",
+      "user": {
+        "type": "user",
+        "username": "test-user",
+        "display_name": "Test User",
+        "account_id": "{12345678-1234-1234-1234-123456789012}",
+        "uuid": "{12345678-1234-1234-1234-123456789012}"
+      },
+      "role": "PARTICIPANT",
+      "approved": false,
+      "state": null,
+      "participated_on": "2023-01-01T00:00:00.000000+00:00"
+    }
+  ],
+  "links": {
+    "self": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests/1"
+    },
+    "html": {
+      "href": "https://bitbucket.org/test-workspace/test-repo/pull-requests/1"
+    },
+    "commits": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests/1/commits"
+    },
+    "comments": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests/1/comments"
+    },
+    "merge": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests/1/merge"
+    },
+    "decline": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests/1/decline"
+    }
+  }
+}

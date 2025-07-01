@@ -1,0 +1,336 @@
+# golangci-lint configuration for bt (Bitbucket CLI)
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+    - .github
+    - build
+    - tmp
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*\\.gen\\.go$"
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters-settings:
+  # Cyclomatic complexity
+  cyclop:
+    max-complexity: 15
+    package-average: 0.0
+    skip-tests: false
+
+  # Duplicate code detection
+  dupl:
+    threshold: 100
+
+  # Error handling
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.Copy(*bytes.Buffer)
+      - io.Copy(os.Stdout)
+
+  # Error wrapping
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+
+  # Exhaustive switch statements
+  exhaustive:
+    check-generated: false
+    default-signifies-exhaustive: false
+    package-scope-only: false
+
+  # Function length
+  funlen:
+    lines: 60
+    statements: 40
+
+  # Cognitive complexity
+  gocognit:
+    min-complexity: 15
+
+  # Cyclomatic complexity (alternative)
+  gocyclo:
+    min-complexity: 15
+
+  # Dot imports
+  goimports:
+    local-prefixes: github.com/carlosarraes/bt
+
+  # Line length
+  lll:
+    line-length: 120
+
+  # Misspelling
+  misspell:
+    locale: US
+    ignore-words:
+      - Bitbucket
+      - bitbucket
+
+  # Naked returns
+  nakedret:
+    max-func-lines: 30
+
+  # Nesting depth
+  nestif:
+    min-complexity: 4
+
+  # Nil checks
+  nilnil:
+    checked-types:
+      - ptr
+      - func
+      - iface
+      - map
+      - chan
+
+  # Preallocation
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+
+  # Revive linter
+  revive:
+    min-confidence: 0.8
+    rules:
+      - name: atomic
+      - name: blank-imports
+      - name: bool-literal-in-expr
+      - name: call-to-gc
+      - name: confusing-naming
+      - name: constant-logical-expr
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: deep-exit
+      - name: defer
+      - name: dot-imports
+      - name: duplicated-imports
+      - name: early-return
+      - name: empty-block
+      - name: empty-lines
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+      - name: flag-parameter
+      - name: function-result-limit
+        arguments: [2]
+      - name: get-return
+      - name: identical-branches
+      - name: if-return
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: imports-blacklist
+      - name: import-shadowing
+      - name: line-length-limit
+        arguments: [120]
+      - name: modifies-parameter
+      - name: modifies-value-receiver
+      - name: nested-structs
+      - name: package-comments
+      - name: range
+      - name: range-val-in-closure
+      - name: range-val-address
+      - name: receiver-naming
+      - name: redefines-builtin-id
+      - name: string-of-int
+      - name: struct-tag
+      - name: superfluous-else
+      - name: time-equal
+      - name: time-naming
+      - name: var-declaration
+      - name: var-naming
+      - name: unconditional-recursion
+      - name: unexported-naming
+      - name: unexported-return
+      - name: unhandled-error
+      - name: unnecessary-stmt
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: unused-receiver
+      - name: useless-break
+      - name: waitgroup-by-value
+
+  # Staticcheck
+  staticcheck:
+    go: "1.24"
+    checks: ["all"]
+
+  # String formatting
+  testpackage:
+    skip-regexp: (export|internal)_test\.go
+
+  # Unused code
+  unused:
+    go: "1.24"
+
+  # Whitespace
+  wsl:
+    strict-append: true
+    allow-assign-and-call: true
+    allow-multiline-assign: true
+    allow-case-trailing-whitespace: true
+    allow-cuddle-declarations: false
+    allow-trailing-comment: false
+    force-case-trailing-whitespace: 0
+
+linters:
+  disable-all: true
+  enable:
+    # Enabled by default
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+
+    # Additional linters
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - cyclop
+    - dupl
+    - durationcheck
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - forbidigo
+    - funlen
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - goimports
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - wastedassign
+    - whitespace
+    - wsl
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - lll
+        - wsl
+        - goconst
+
+    # Exclude some linters from running on generated files
+    - path: \.gen\.go
+      linters:
+        - lll
+        - dupl
+        - errcheck
+
+    # Exclude some linters from running on main.go
+    - path: main\.go
+      linters:
+        - funlen
+
+    # Exclude some linters from running on CLI command files
+    - path: cmd/
+      linters:
+        - lll
+        - funlen
+
+    # Exclude some linters from running on version files
+    - path: version\.go
+      linters:
+        - gochecknoglobals
+
+    # Exclude some gosec rules
+    - linters:
+        - gosec
+      text: "G404:" # Use of weak random number generator
+
+    # Exclude some govet rules
+    - linters:
+        - govet
+      text: "fieldalignment:"
+
+    # Allow long lines in some cases
+    - linters:
+        - lll
+      source: "^//go:generate "
+
+    # Allow deep nesting in switch statements
+    - linters:
+        - nestif
+      source: "switch"
+
+  exclude-use-default: false
+  exclude:
+    # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
+    - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
+
+    # govet: Common false positives, but can be enabled if needed
+    - (possible misuse of unsafe.Pointer|should have signature)
+
+    # staticcheck: Common false positives
+    - ineffective break statement. Did you mean to break out of the outer loop
+
+  max-issues-per-linter: 50
+  max-same-issues: 3
+  new: false
+  fix: false
+
+severity:
+  default-severity: error
+  case-sensitive: false
+  rules:
+    - linters:
+        - dupl
+      severity: info
+    - linters:
+        - goconst
+      severity: info

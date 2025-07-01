@@ -1,0 +1,69 @@
+{
+  "type": "repository",
+  "full_name": "test-workspace/test-repo",
+  "name": "test-repo",
+  "slug": "test-repo",
+  "description": "Test repository for bt CLI",
+  "is_private": false,
+  "scm": "git",
+  "language": "Go",
+  "size": 1024,
+  "has_issues": true,
+  "has_wiki": false,
+  "fork_policy": "allow_forks",
+  "project": {
+    "type": "project",
+    "key": "TEST",
+    "name": "Test Project",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "owner": {
+    "type": "workspace",
+    "username": "test-workspace",
+    "display_name": "Test Workspace",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "workspace": {
+    "type": "workspace",
+    "slug": "test-workspace",
+    "name": "Test Workspace",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "created_on": "2023-01-01T00:00:00.000000+00:00",
+  "updated_on": "2023-01-01T00:00:00.000000+00:00",
+  "uuid": "{12345678-1234-1234-1234-123456789012}",
+  "mainbranch": {
+    "type": "branch",
+    "name": "main"
+  },
+  "links": {
+    "self": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo"
+    },
+    "html": {
+      "href": "https://bitbucket.org/test-workspace/test-repo"
+    },
+    "avatar": {
+      "href": "https://bytebucket.org/ravatar/%7B12345678-1234-1234-1234-123456789012%7D?ts=go"
+    },
+    "clone": [
+      {
+        "name": "https",
+        "href": "https://bitbucket.org/test-workspace/test-repo.git"
+      },
+      {
+        "name": "ssh",
+        "href": "git@bitbucket.org:test-workspace/test-repo.git"
+      }
+    ],
+    "pullrequests": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pullrequests"
+    },
+    "commits": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/commits"
+    },
+    "pipelines": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pipelines/"
+    }
+  }
+}

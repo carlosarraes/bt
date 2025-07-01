@@ -1,0 +1,21 @@
+Work seamlessly with Bitbucket from the command line.
+
+Usage: bt <command>
+
+Commands:
+  version    Show version information
+  auth       Authenticate bt and git with Bitbucket
+  run        View and manage pipeline runs
+  repo       Manage repositories
+  pr         Manage pull requests
+  api        Make authenticated API requests
+  browse     Open repository in browser
+  config     Manage configuration
+  status     Show status of relevant issues, pull requests, and notifications
+
+Flags:
+  -h, --help            Show context-sensitive help.
+  -v, --verbose         Enable verbose output
+      --config=STRING   Config file path ($BT_CONFIG)
+  -o, --output="table"  Output format
+      --no-color        Disable colored output

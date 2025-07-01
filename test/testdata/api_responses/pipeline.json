@@ -1,0 +1,57 @@
+{
+  "type": "pipeline",
+  "uuid": "{12345678-1234-1234-1234-123456789012}",
+  "build_number": 1,
+  "state": {
+    "name": "SUCCESSFUL",
+    "type": "pipeline_state",
+    "result": {
+      "name": "SUCCESSFUL",
+      "type": "pipeline_state_result"
+    }
+  },
+  "creator": {
+    "type": "user",
+    "username": "test-user",
+    "display_name": "Test User",
+    "account_id": "{12345678-1234-1234-1234-123456789012}",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "repository": {
+    "type": "repository",
+    "full_name": "test-workspace/test-repo",
+    "name": "test-repo",
+    "uuid": "{12345678-1234-1234-1234-123456789012}"
+  },
+  "target": {
+    "type": "pipeline_ref_target",
+    "ref_type": "branch",
+    "ref_name": "main",
+    "selector": {
+      "type": "branches",
+      "pattern": "main"
+    },
+    "commit": {
+      "type": "commit",
+      "hash": "abc123def456"
+    }
+  },
+  "trigger": {
+    "type": "pipeline_trigger_push",
+    "name": "PUSH"
+  },
+  "created_on": "2023-01-01T00:00:00.000000+00:00",
+  "completed_on": "2023-01-01T00:05:00.000000+00:00",
+  "run_number": 1,
+  "duration": 300,
+  "build_seconds_used": 300,
+  "has_variables": true,
+  "links": {
+    "self": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pipelines/%7B12345678-1234-1234-1234-123456789012%7D"
+    },
+    "steps": {
+      "href": "https://api.bitbucket.org/2.0/repositories/test-workspace/test-repo/pipelines/%7B12345678-1234-1234-1234-123456789012%7D/steps/"
+    }
+  }
+}

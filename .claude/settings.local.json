@@ -2,7 +2,34 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:developer.atlassian.com)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(go mod edit:*)",
+      "Bash(go mod:*)",
+      "Bash(go build:*)",
+      "Bash(./bt:*)",
+      "Bash(make:*)",
+      "Bash(./build/bt version)",
+      "Bash(./build/bt:*)",
+      "Bash(cat:*)",
+      "Bash(go get:*)",
+      "Bash(go get:*)",
+      "Bash(go get:*)",
+      "Bash(cp:*)",
+      "Bash(chmod:*)",
+      "Bash(go test:*)",
+      "Bash(git add:*)",
+      "Bash(git add:*)",
+      "Bash(git add:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(if [ -n \"$BITBUCKET_TOKEN\" ])",
+      "Bash(then)",
+      "Bash(go run:*)",
+      "Bash(else)",
+      "Bash(fi)"
     ],
     "deny": []
   }

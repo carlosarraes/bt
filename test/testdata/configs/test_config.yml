@@ -1,0 +1,32 @@
+bitbucket:
+  base_url: https://api.bitbucket.org/2.0
+  auth_method: app_password
+  username: test-user
+  app_password: test-password
+  
+output:
+  format: table
+  no_color: false
+  
+repository:
+  default_workspace: test-workspace
+  default_repo: test-repo
+
+# Additional configuration options for testing
+auth:
+  cache_tokens: true
+  token_cache_duration: 3600
+
+api:
+  timeout: 30
+  max_retries: 3
+  retry_delay: 1
+
+ui:
+  pager: less
+  editor: vim
+  browser: ""
+
+performance:
+  cache_responses: true
+  cache_duration: 300
