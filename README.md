@@ -413,18 +413,45 @@ We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) 
 git clone https://github.com/carraes/bt.git
 cd bt
 
-# Install dependencies
-go mod download
+# Automated development environment setup
+make setup-dev
+# This will:
+# - Install all required development tools (golangci-lint, gosec, etc.)
+# - Download dependencies and verify them
+# - Set up Git hooks for code quality
+# - Configure IDE settings (VS Code)
 
-# Run tests
-go test ./...
+# Alternative manual setup
+go mod download          # Install dependencies
+make deps-verify         # Verify dependencies
+make test               # Run tests
+make lint               # Run linter
+make build              # Build binary
 
-# Build
-go build -o bt cmd/bt/main.go
+# Development workflow commands
+make help               # Show all available commands
+make dev                # Build and run in development mode
+make watch              # Watch for changes and rebuild
+make test-cover         # Run tests with coverage
+make security           # Run security scans
 
-# Install locally
-go install ./cmd/bt
+# Code quality checks
+make fmt                # Format code
+make check              # Run all quality checks (fmt, vet, lint, test)
+make clean              # Clean build artifacts
 ```
+
+### Build System Features
+
+The enhanced build system provides comprehensive development support:
+
+- **50+ Make targets** for build, test, security, and performance
+- **Multi-platform builds** (Linux, macOS, Windows on AMD64/ARM64)
+- **Security scanning** with gosec and vulnerability checking
+- **Performance profiling** and benchmark comparison
+- **Automated CI/CD** with GitHub Actions
+- **Code quality** with golangci-lint (40+ enabled linters)
+- **Development tools** installation and Git hooks setup
 
 ### Architecture
 
