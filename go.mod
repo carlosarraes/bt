@@ -12,6 +12,7 @@ require (
 	github.com/knadh/koanf/v2 v2.1.2
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/crypto v0.24.0
+	golang.org/x/term v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
