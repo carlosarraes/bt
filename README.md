@@ -69,50 +69,60 @@ bt run watch 1234567890abcdef
 
 ## Authentication
 
-### App Password (Recommended for personal use)
+### API Token (Recommended - New Method)
 
-1. Go to Bitbucket Settings → Personal Settings → App Passwords
-2. Create a new app password with required permissions:
-   - **Repositories**: Read, Write
-   - **Pull requests**: Read, Write
-   - **Pipelines**: Read
-3. Run `bt auth login` and choose "App Password"
+**⚠️ App passwords are being deprecated by Bitbucket. Use API tokens instead.**
 
-```bash
-bt auth login
-? How would you like to authenticate? App Password
-? Bitbucket username: yourusername
-? App password: [hidden]
-✓ Authentication successful
-```
-
-### OAuth 2.0 (Recommended for team use)
-
-1. Create an OAuth consumer in your Bitbucket workspace
-2. Run `bt auth login` and choose "OAuth 2.0"
-3. Complete the browser authentication flow
+1. Go to [Atlassian Account Security](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Create a new API token with a descriptive label
+3. Run `bt auth login` - it will guide you through the API token setup
 
 ```bash
 bt auth login
-? How would you like to authenticate? OAuth 2.0
-✓ Opening browser for authentication...
-✓ Authentication successful
+🚀 Welcome to Bitbucket CLI Authentication
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 Authentication uses API tokens (email + token)
+📋 Create an API token at: https://id.atlassian.com/manage-profile/security/api-tokens
+
+📧 Atlassian account email: your.email@company.com
+🔑 API token (hidden): [paste token]
+✅ Authentication successful!
+👤 Logged in as: Your Name (your.username)
 ```
 
-### Access Token
-
-For repository, project, or workspace-scoped access tokens:
+### Environment Variables (Recommended for automation)
 
 ```bash
-# Set via environment variable
+# Set these environment variables for seamless authentication
+export BITBUCKET_EMAIL="your.email@company.com"
+export BITBUCKET_API_TOKEN="your_api_token_here"
+
+# Now commands work without additional setup
+bt run list
+bt run view 1234 --log-failed
+```
+
+### Legacy Methods (Still Supported)
+
+<details>
+<summary>App Password (Being deprecated by Bitbucket)</summary>
+
+```bash
+export BITBUCKET_USERNAME=your_username
+export BITBUCKET_PASSWORD=your_app_password
+```
+
+</details>
+
+<details>
+<summary>Access Token (For specific scopes)</summary>
+
+```bash
 export BITBUCKET_TOKEN=your_access_token_here
-
-# Or authenticate interactively
-bt auth login
-? How would you like to authenticate? Access Token
-? Access token: [paste token]
-✓ Authentication successful
 ```
+
+</details>
 
 ## Usage
 
@@ -171,29 +181,43 @@ bt pr edit 42 --title "New title"
 
 ### Pipeline Commands (The Killer Feature 🚀)
 
+**✨ New: Smart log viewing with instant failed step detection**
+
 ```bash
 # List pipeline runs
 bt run list                         # Recent runs
 bt run list --status failed        # Filter by status
 bt run list --branch main          # Filter by branch
 
-# View pipeline details
-bt run view abc123def456           # Pipeline overview
-bt run view abc123def456 --steps   # Include step details
+# View pipeline details and logs
+bt run view 1234                   # Pipeline overview with step details
+bt run view 1234 --log-failed      # Show last 100 lines of failed steps (⚡ FAST)
+bt run view 1234 --log-failed --full-output  # Show complete failed step logs
+bt run view 1234 --log             # Show logs for all steps
+bt run view 1234 --tests           # Show test results and failures
+bt run view 1234 --step "Run Tests" # Show logs for specific step
 
 # Real-time monitoring
-bt run watch abc123def456          # Watch live execution
-bt run logs abc123def456           # View logs
-bt run logs abc123def456 --step "Deploy to staging"
+bt run watch 1234                  # Watch live execution (coming soon)
 
 # Pipeline management
-bt run cancel abc123def456         # Cancel running pipeline
-bt run rerun abc123def456          # Restart pipeline
-bt run download abc123def456       # Download artifacts
+bt run cancel 1234                 # Cancel running pipeline (coming soon)
+```
 
-# Trigger pipelines
-bt workflow run --branch feature-branch
-bt workflow run --branch main --variable "ENV=production"
+**🎯 Smart Log Analysis - Get to the error instantly:**
+```bash
+# Quick debugging workflow
+bt run list --status failed        # Find failed pipelines
+bt run view 3808 --log-failed      # See failure immediately (last 100 lines)
+bt run view 3808 --log-failed --full-output  # Get full context if needed
+
+# Example output:
+# ✅ Successfully retrieved logs for step: Run Tests
+# Showing last 100 lines (use --full-output for complete logs)
+# ================================================================================
+# FAILED (failures=4, skipped=138)
+# AssertionError: None != '001'
+# ================================================================================
 ```
 
 ### API Access
@@ -250,9 +274,14 @@ bt browse /projects/PROJ/repos/myrepo/pull-requests
 ## Environment Variables
 
 ```bash
-# Authentication
-export BITBUCKET_TOKEN=your_token_here
-export BITBUCKET_USERNAME=your_username  # For app passwords
+# Authentication (Recommended)
+export BITBUCKET_EMAIL="your.email@company.com"      # Your Atlassian account email
+export BITBUCKET_API_TOKEN="your_api_token_here"     # API token from Atlassian
+
+# Legacy authentication (still supported)
+export BITBUCKET_USERNAME=your_username               # For app passwords
+export BITBUCKET_PASSWORD=your_app_password          # App password
+export BITBUCKET_TOKEN=your_access_token             # Access tokens
 
 # Configuration
 export BITBUCKET_HOST=https://bitbucket.org
@@ -308,13 +337,17 @@ bt pr list --template "{{range .}}{{.id}}: {{.title}} ({{.state}}){{end}}"
 
 ```bash
 # Get structured error output for AI analysis
-bt run logs failed-pipeline-id --format json --errors-only > errors.json
+bt run view failed-pipeline-id --log-failed --output json > errors.json
 
-# Stream logs with error highlighting
-bt run logs running-pipeline-id --follow --highlight-errors
+# Quick debugging workflow
+bt run view 3808 --log-failed           # Last 100 lines (instant debugging)
+bt run view 3808 --log-failed --full-output  # Complete logs when needed
 
-# Get failed steps with context
-bt run view failed-pipeline-id --failed-steps-only --include-logs
+# Test-specific analysis
+bt run view 3808 --tests                # Show test results and failures
+
+# Step-specific debugging
+bt run view 3808 --step "Run Tests" --log  # Logs for specific step
 ```
 
 ### Workspace Management
