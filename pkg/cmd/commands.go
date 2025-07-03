@@ -145,10 +145,28 @@ func (r *RunViewCmd) Run(ctx context.Context) error {
 }
 
 // RunWatchCmd handles run watch
-type RunWatchCmd struct{}
+type RunWatchCmd struct {
+	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Output     string `short:"o" help:"Output format (table, json)" enum:"table,json" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
 
 func (r *RunWatchCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("run watch not yet implemented")
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.WatchCmd{
+		PipelineID: r.PipelineID,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // RunLogsCmd handles run logs
