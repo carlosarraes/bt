@@ -64,18 +64,16 @@ func (a *AccessTokenAuth) Authenticate(ctx context.Context) error {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 	
-	// Store token if it came from environment variable
-	if os.Getenv("BITBUCKET_TOKEN") != "" {
-		a.credentials = &StoredCredentials{
-			Method:      AuthMethodAccessToken,
-			AccessToken: token,
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-		}
-		
-		if err := a.storage.Store("auth", a.credentials); err != nil {
-			return fmt.Errorf("failed to store token: %w", err)
-		}
+	// Store token after successful authentication
+	a.credentials = &StoredCredentials{
+		Method:      AuthMethodAccessToken,
+		AccessToken: token,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	
+	if err := a.storage.Store("auth", a.credentials); err != nil {
+		return fmt.Errorf("failed to store token: %w", err)
 	}
 	
 	return nil

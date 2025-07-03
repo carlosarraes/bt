@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/carlosarraes/bt/pkg/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -479,4 +481,20 @@ func GenerateTestData() map[string]interface{} {
 // CleanupTestData provides cleanup for test data
 func CleanupTestData(t *testing.T, cleanup func()) {
 	t.Cleanup(cleanup)
+}
+
+// CreateTestAuthManager creates an auth manager for testing
+func CreateTestAuthManager() (auth.AuthManager, error) {
+	username := GetTestUsername()
+	password := GetTestAppPassword()
+	
+	// Create app password auth manager
+	authManager := auth.NewAppPasswordAuth(username, password)
+	
+	return authManager, nil
+}
+
+// GetTestLogger returns a logger for testing
+func GetTestLogger() *log.Logger {
+	return log.New(os.Stdout, "[TEST] ", log.LstdFlags)
 }

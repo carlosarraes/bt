@@ -32,6 +32,13 @@ func (cmd *LoginCmd) Run(ctx context.Context) error {
 	if token := os.Getenv("BITBUCKET_TOKEN"); token != "" {
 		return cmd.authenticateWithToken(ctx, token, "environment variable")
 	}
+	
+	// Check for API token format (email + token)
+	if email := os.Getenv("BITBUCKET_EMAIL"); email != "" {
+		if token := os.Getenv("BITBUCKET_API_TOKEN"); token != "" {
+			return cmd.authenticateWithAPIToken(ctx, email, token, "environment variables")
+		}
+	}
 
 	// Check for --with-token flag
 	if cmd.WithToken != "" {
@@ -74,63 +81,55 @@ func (cmd *LoginCmd) authenticateWithToken(ctx context.Context, token, source st
 	return nil
 }
 
+// authenticateWithAPIToken handles API token authentication (email + token)
+func (cmd *LoginCmd) authenticateWithAPIToken(ctx context.Context, email, token, source string) error {
+	fmt.Printf("🔑 Authenticating with API token from %s...\n", source)
+
+	// Set environment variables for authentication (using the same format as app passwords)
+	os.Setenv("BITBUCKET_USERNAME", email) // Use email as username for API tokens
+	os.Setenv("BITBUCKET_PASSWORD", token) // Use token as password
+
+	// Create app password authenticator (API tokens use the same basic auth format)
+	manager, err := createAuthManager(auth.AuthMethodAppPassword)
+	if err != nil {
+		return fmt.Errorf("failed to create auth manager: %w", err)
+	}
+
+	// Authenticate
+	if err := manager.Authenticate(ctx); err != nil {
+		return fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Get user information to confirm authentication
+	user, err := manager.GetAuthenticatedUser(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get user information: %w", err)
+	}
+
+	fmt.Printf("✅ Authentication successful!\n")
+	fmt.Printf("👤 Logged in as: %s (%s)\n", user.DisplayName, user.Username)
+	fmt.Printf("📧 Email: %s\n", user.Email)
+	fmt.Printf("🔐 Method: API Token\n")
+	fmt.Printf("\n💡 Tip: You can set environment variables to avoid re-entering credentials:\n")
+	fmt.Printf("   export BITBUCKET_EMAIL=\"%s\"\n", email)
+	fmt.Printf("   export BITBUCKET_API_TOKEN=\"your-api-token\"\n")
+
+	return nil
+}
+
 // interactiveLogin handles interactive authentication flow
 func (cmd *LoginCmd) interactiveLogin(ctx context.Context, cfg *config.Config) error {
 	fmt.Println("🚀 Welcome to Bitbucket CLI Authentication")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
-
-	// Ask for authentication method
-	method, err := cmd.selectAuthMethod()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("\n🔑 Setting up %s authentication...\n", method)
-
-	switch method {
-	case auth.AuthMethodAppPassword:
-		return cmd.setupAppPassword(ctx)
-	case auth.AuthMethodOAuth:
-		return cmd.setupOAuth(ctx)
-	case auth.AuthMethodAccessToken:
-		return cmd.setupAccessToken(ctx)
-	default:
-		return fmt.Errorf("unsupported authentication method: %s", method)
-	}
-}
-
-// selectAuthMethod prompts user to select authentication method
-func (cmd *LoginCmd) selectAuthMethod() (auth.AuthMethod, error) {
-	fmt.Println("📝 How would you like to authenticate?")
-	fmt.Println()
-	fmt.Println("  1) App Password (username + app password)")
-	fmt.Println("  2) OAuth 2.0 (browser-based)")
-	fmt.Println("  3) Access Token (repository/workspace scoped)")
+	fmt.Println("🔑 Authentication uses API tokens (email + token)")
+	fmt.Println("📋 Create an API token at: https://id.atlassian.com/manage-profile/security/api-tokens")
 	fmt.Println()
 
-	reader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print("🤔 Select authentication method [1-3]: ")
-		
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			return "", fmt.Errorf("failed to read input: %w", err)
-		}
-		
-		choice := strings.TrimSpace(input)
-		switch choice {
-		case "1":
-			return auth.AuthMethodAppPassword, nil
-		case "2":
-			return auth.AuthMethodOAuth, nil
-		case "3":
-			return auth.AuthMethodAccessToken, nil
-		default:
-			fmt.Printf("❌ Invalid choice '%s'. Please enter 1, 2, or 3.\n", choice)
-		}
-	}
+	// Directly use API token authentication
+	return cmd.setupAPIToken(ctx)
 }
+
 
 // setupAppPassword handles app password authentication setup
 func (cmd *LoginCmd) setupAppPassword(ctx context.Context) error {
@@ -245,4 +244,67 @@ func (cmd *LoginCmd) setupAccessToken(ctx context.Context) error {
 	}
 
 	return cmd.authenticateWithToken(ctx, token, "interactive input")
+}
+
+// setupAPIToken handles API token authentication setup (email + token)
+func (cmd *LoginCmd) setupAPIToken(ctx context.Context) error {
+	reader := bufio.NewReader(os.Stdin)
+
+	// Get email
+	fmt.Print("📧 Atlassian account email: ")
+	email, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read email: %w", err)
+	}
+	email = strings.TrimSpace(email)
+
+	if email == "" {
+		return fmt.Errorf("email cannot be empty")
+	}
+
+	// Get API token (hidden input)
+	fmt.Print("🔑 API token (hidden): ")
+	tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return fmt.Errorf("failed to read token: %w", err)
+	}
+	token := strings.TrimSpace(string(tokenBytes))
+	fmt.Println() // New line after hidden input
+
+	if token == "" {
+		return fmt.Errorf("API token cannot be empty")
+	}
+
+	// Set environment variables for authentication (using the same format as app passwords)
+	os.Setenv("BITBUCKET_USERNAME", email) // Use email as username for API tokens
+	os.Setenv("BITBUCKET_PASSWORD", token) // Use token as password
+
+	// Create app password authenticator (API tokens use the same basic auth format)
+	manager, err := createAuthManager(auth.AuthMethodAppPassword)
+	if err != nil {
+		return fmt.Errorf("failed to create auth manager: %w", err)
+	}
+
+	fmt.Println("🔄 Authenticating with Bitbucket API...")
+
+	// Authenticate
+	if err := manager.Authenticate(ctx); err != nil {
+		return fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Get user information
+	user, err := manager.GetAuthenticatedUser(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get user information: %w", err)
+	}
+
+	fmt.Printf("✅ Authentication successful!\n")
+	fmt.Printf("👤 Logged in as: %s (%s)\n", user.DisplayName, user.Username)
+	fmt.Printf("📧 Email: %s\n", user.Email)
+	fmt.Printf("🔐 Method: API Token\n")
+	fmt.Printf("\n💡 Tip: You can set environment variables to avoid re-entering credentials:\n")
+	fmt.Printf("   export BITBUCKET_EMAIL=\"%s\"\n", email)
+	fmt.Printf("   export BITBUCKET_API_TOKEN=\"your-api-token\"\n")
+
+	return nil
 }

@@ -32,7 +32,10 @@
       "Bash(fi)",
       "Bash(ls:*)",
       "Bash(git filter-branch:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(grep:*)",
+      "Bash(gh:*)",
+      "Bash(gemini:*)"
     ],
     "deny": []
   }

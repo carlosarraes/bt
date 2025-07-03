@@ -137,29 +137,32 @@ func (p *PipelineService) GetStepLogs(ctx context.Context, workspace, repoSlug, 
 		return nil, NewValidationError("workspace, repository slug, pipeline UUID, and step UUID are required", "")
 	}
 
-	// Try the simple log endpoint first (most common case)
-	// GET /repositories/{workspace}/{repo_slug}/pipelines/{pipeline_uuid}/steps/{step_uuid}/log
-	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/log", workspace, repoSlug, pipelineUUID, stepUUID)
+	// Format UUIDs for the endpoint (based on user's successful manual test)
+	formattedPipelineUUID := pipelineUUID
+	formattedStepUUID := stepUUID
 	
+	if !strings.HasPrefix(formattedPipelineUUID, "{") {
+		formattedPipelineUUID = "{" + formattedPipelineUUID + "}"
+	}
+	if !strings.HasPrefix(formattedStepUUID, "{") {
+		formattedStepUUID = "{" + formattedStepUUID + "}"
+	}
+	
+	// Use the exact working endpoint format from user's successful test
+	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/log", workspace, repoSlug, formattedPipelineUUID, formattedStepUUID)
+	
+	var resp *http.Response
 	resp, err := p.client.getLogsRequest(ctx, endpoint)
 	if err == nil {
 		return resp.Body, nil
 	}
 	
-	// Store the original error for debugging
 	originalErr := err
 	
-	// Try the alternative endpoint with plural "logs"
-	altEndpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/logs", workspace, repoSlug, pipelineUUID, stepUUID)
-	resp, err = p.client.getLogsRequest(ctx, altEndpoint)
-	if err == nil {
-		return resp.Body, nil
-	}
-	
-	// If both direct endpoints fail, try to get step details and use the logs link
+	// If direct endpoint fails, try to get step details and use the logs link (use original UUID for this)
 	steps, err := p.GetPipelineSteps(ctx, workspace, repoSlug, pipelineUUID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pipeline steps: %w", err)
+		return nil, fmt.Errorf("all direct log endpoints failed (first error: %v), and failed to get pipeline steps: %w", originalErr, err)
 	}
 
 	// Find the specific step
@@ -172,19 +175,23 @@ func (p *PipelineService) GetStepLogs(ctx context.Context, workspace, repoSlug, 
 	}
 
 	if targetStep == nil {
-		return nil, fmt.Errorf("step with UUID %s not found", stepUUID)
+		return nil, fmt.Errorf("all direct log endpoints failed (first error: %v), step with UUID %s not found in pipeline", originalErr, stepUUID)
 	}
 
 	// Check if the step has logs available via the logs link
 	if targetStep.Logs == nil || targetStep.Logs.Href == "" {
-		return nil, fmt.Errorf("no logs available for step %s - step may not have completed or logs may have been cleaned up (original error from direct endpoint: %w)", targetStep.Name, originalErr)
+		stepStatus := "unknown"
+		if targetStep.State != nil {
+			stepStatus = targetStep.State.Name
+		}
+		return nil, fmt.Errorf("no logs available: direct endpoints failed (%v), and no logs link for step '%s' (status: %s)", originalErr, targetStep.Name, stepStatus)
 	}
 
 	// Try the container-specific logs URL
 	logURL := targetStep.Logs.Href
 	resp, err = p.getLogsFromURL(ctx, logURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get logs from step logs URL: %w", err)
+		return nil, fmt.Errorf("all direct log endpoints failed (first error: %v), and failed to get logs from step logs URL (%s): %w", originalErr, logURL, err)
 	}
 
 	return resp.Body, nil

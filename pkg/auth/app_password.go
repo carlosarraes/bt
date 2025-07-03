@@ -67,19 +67,17 @@ func (a *AppPasswordAuth) Authenticate(ctx context.Context) error {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 	
-	// Store credentials if they came from environment variables
-	if os.Getenv("BITBUCKET_USERNAME") != "" && os.Getenv("BITBUCKET_PASSWORD") != "" {
-		a.credentials = &StoredCredentials{
-			Method:    AuthMethodAppPassword,
-			Username:  username,
-			Password:  password,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		}
-		
-		if err := a.storage.Store("auth", a.credentials); err != nil {
-			return fmt.Errorf("failed to store credentials: %w", err)
-		}
+	// Store credentials after successful authentication
+	a.credentials = &StoredCredentials{
+		Method:    AuthMethodAppPassword,
+		Username:  username,
+		Password:  password,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	
+	if err := a.storage.Store("auth", a.credentials); err != nil {
+		return fmt.Errorf("failed to store credentials: %w", err)
 	}
 	
 	return nil

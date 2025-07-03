@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/carlosarraes/bt/pkg/cmd/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/run"
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
@@ -20,10 +21,10 @@ func (v *VersionCmd) Run(ctx context.Context) error {
 
 // AuthCmd represents the auth command group
 type AuthCmd struct {
-	Login   AuthLoginCmd   `cmd:"" help:"Log in to a Bitbucket host"`
-	Logout  AuthLogoutCmd  `cmd:"" help:"Log out of a Bitbucket host"`
-	Status  AuthStatusCmd  `cmd:"" help:"View authentication status"`
-	Refresh AuthRefreshCmd `cmd:"" help:"Refresh stored authentication credentials"`
+	Login   AuthLoginCmd   `cmd:""`
+	Logout  AuthLogoutCmd  `cmd:""`
+	Status  AuthStatusCmd  `cmd:""`
+	Refresh AuthRefreshCmd `cmd:""`
 }
 
 // AuthLoginCmd handles auth login
@@ -68,25 +69,79 @@ func (a *AuthRefreshCmd) Run(ctx context.Context) error {
 
 // RunCmd represents the run command group
 type RunCmd struct {
-	List   RunListCmd   `cmd:"" help:"List pipeline runs"`
-	View   RunViewCmd   `cmd:"" help:"View a specific pipeline run"`
-	Watch  RunWatchCmd  `cmd:"" help:"Watch a pipeline run"`
-	Logs   RunLogsCmd   `cmd:"" help:"View logs for a pipeline run"`
-	Cancel RunCancelCmd `cmd:"" help:"Cancel a running pipeline"`
+	List   RunListCmd   `cmd:""`
+	View   RunViewCmd   `cmd:""`
+	Watch  RunWatchCmd  `cmd:""`
+	Logs   RunLogsCmd   `cmd:""`
+	Cancel RunCancelCmd `cmd:""`
 }
 
 // RunListCmd handles run list
-type RunListCmd struct{}
+type RunListCmd struct {
+	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
+	Branch     string `help:"Filter by branch name"`
+	Limit      int    `help:"Maximum number of runs to show" default:"10"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
 
 func (r *RunListCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("run list not yet implemented")
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.ListCmd{
+		Status:     r.Status,
+		Branch:     r.Branch,
+		Limit:      r.Limit,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // RunViewCmd handles run view
-type RunViewCmd struct{}
+type RunViewCmd struct {
+	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Watch      bool   `short:"w" help:"Watch for live updates (running pipelines only)"`
+	Log        bool   `help:"View full logs for all steps"`
+	LogFailed  bool   `name:"log-failed" help:"View logs only for failed steps (last 100 lines)"`
+	FullOutput bool   `name:"full-output" help:"Show complete logs (use with --log-failed for full failure logs)"`
+	Tests      bool   `short:"t" help:"Show test results and failures"`
+	Step       string `help:"View specific step only"`
+	Web        bool   `help:"Open pipeline in browser"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
 
 func (r *RunViewCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("run view not yet implemented")
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.ViewCmd{
+		PipelineID: r.PipelineID,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Watch:      r.Watch,
+		Log:        r.Log,
+		LogFailed:  r.LogFailed,
+		FullOutput: r.FullOutput,
+		Tests:      r.Tests,
+		Step:       r.Step,
+		Web:        r.Web,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // RunWatchCmd handles run watch
@@ -97,10 +152,36 @@ func (r *RunWatchCmd) Run(ctx context.Context) error {
 }
 
 // RunLogsCmd handles run logs
-type RunLogsCmd struct{}
+type RunLogsCmd struct {
+	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Step       string `help:"Show logs for specific step only"`
+	ErrorsOnly bool   `help:"Extract and show errors only"`
+	Follow     bool   `short:"f" help:"Follow live logs for running pipelines"`
+	Output     string `short:"o" help:"Output format (text, json, yaml)" enum:"text,json,yaml" default:"text"`
+	Context    int    `help:"Number of context lines around errors" default:"3"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
 
 func (r *RunLogsCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("run logs not yet implemented")
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.LogsCmd{
+		PipelineID: r.PipelineID,
+		Step:       r.Step,
+		ErrorsOnly: r.ErrorsOnly,
+		Follow:     r.Follow,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Context:    r.Context,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // RunCancelCmd handles run cancel
