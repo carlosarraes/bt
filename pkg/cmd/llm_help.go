@@ -119,7 +119,7 @@ bt run view <id> --log-failed   # Quick error analysis (⚡ FASTEST)
 bt run view <id> --log          # All step logs
 bt run view <id> --tests        # Test results focus
 bt run view <id> --step "name"  # Specific step logs
-bt run watch <id>               # Real-time monitoring (coming soon)
+bt run watch <id>               # Real-time monitoring ✅ AVAILABLE
 bt run cancel <id>              # Cancel running pipeline (coming soon)
 ` + "```" + `
 
@@ -242,8 +242,26 @@ bt run view <id> --log           # All step logs (verbose)
 bt run view <id> --tests         # Focus on test results
 bt run view <id> --step "Run Tests"  # Specific step only
 bt run view <id> --output json   # Structured data for analysis
-bt run view <id> --watch         # Live updates (running pipelines)
+bt run watch <id>                # Real-time monitoring (dedicated command)
+bt run view <id> --watch         # Live updates (alternative method)
 ` + "```" + `
+
+### bt run watch (NEW - Real-time Monitoring)
+Dedicated command for monitoring running pipelines:
+` + "```bash" + `
+bt run watch <id>                # Monitor pipeline in real-time
+bt run watch <id> --output json  # JSON output for automation
+bt run watch 123                 # Watch pipeline by build number
+bt run watch {uuid}              # Watch pipeline by UUID
+` + "```" + `
+
+**Key Features:**
+- ✅ Live updates every 5 seconds
+- ✅ Step completion notifications
+- ✅ Graceful Ctrl+C exit
+- ✅ Progress indicators and status icons
+- ✅ Automatic completion detection
+- ✅ Works only with running/pending pipelines
 
 ## JSON Output Structure
 Perfect for LLM analysis:
