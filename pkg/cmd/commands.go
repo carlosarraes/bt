@@ -242,6 +242,7 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 type PRCmd struct {
 	List PRListCmd `cmd:""`
 	View PRViewCmd `cmd:""`
+	Diff PRDiffCmd `cmd:""`
 }
 
 // PRListCmd handles pr list
@@ -298,6 +299,39 @@ func (p *PRViewCmd) Run(ctx context.Context) error {
 		PRID:       p.PRID,
 		Web:        p.Web,
 		Comments:   p.Comments,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+
+type PRDiffCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	NameOnly   bool   `name:"name-only" help:"Show only names of changed files"`
+	Patch      bool   `help:"Output in patch format suitable for git apply"`
+	File       string `help:"Show diff for specific file only"`
+	Color      string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
+	Output     string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRDiffCmd) Run(ctx context.Context) error {
+
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.DiffCmd{
+		PRID:       p.PRID,
+		NameOnly:   p.NameOnly,
+		Patch:      p.Patch,
+		File:       p.File,
+		Color:      p.Color,
 		Output:     p.Output,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
