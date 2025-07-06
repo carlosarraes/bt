@@ -37,7 +37,9 @@
       "Bash(gh:*)",
       "Bash(gemini:*)",
       "Bash(rg:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(git tag:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }
