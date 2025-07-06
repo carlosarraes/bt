@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/carlosarraes/bt/pkg/cmd/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/config"
+	"github.com/carlosarraes/bt/pkg/cmd/pr"
 	"github.com/carlosarraes/bt/pkg/cmd/run"
 	"github.com/carlosarraes/bt/pkg/version"
 )
@@ -203,10 +205,30 @@ func (r *RunLogsCmd) Run(ctx context.Context) error {
 }
 
 // RunCancelCmd handles run cancel
-type RunCancelCmd struct{}
+type RunCancelCmd struct {
+	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Force      bool   `short:"f" help:"Force cancellation without confirmation"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
 
 func (r *RunCancelCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("run cancel not yet implemented")
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.CancelCmd{
+		PipelineID: r.PipelineID,
+		Force:      r.Force,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // RepoCmd represents the repo command group
@@ -217,10 +239,71 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 }
 
 // PRCmd represents the pr command group
-type PRCmd struct{}
+type PRCmd struct {
+	List PRListCmd `cmd:""`
+	View PRViewCmd `cmd:""`
+}
 
-func (p *PRCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("pr commands not yet implemented")
+// PRListCmd handles pr list
+type PRListCmd struct {
+	State      string `help:"Filter by state (open, merged, declined, all)" default:"open"`
+	Author     string `help:"Filter by pull request author"`
+	Reviewer   string `help:"Filter by pull request reviewer"`
+	Limit      int    `help:"Maximum number of pull requests to show" default:"30"`
+	Sort       string `help:"Sort by field (created, updated, priority)" default:"updated"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRListCmd) Run(ctx context.Context) error {
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ListCmd{
+		State:      p.State,
+		Author:     p.Author,
+		Reviewer:   p.Reviewer,
+		Limit:      p.Limit,
+		Sort:       p.Sort,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+// PRViewCmd handles pr view
+type PRViewCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Web        bool   `help:"Open pull request in browser"`
+	Comments   bool   `help:"Show comments with the pull request"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRViewCmd) Run(ctx context.Context) error {
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ViewCmd{
+		PRID:       p.PRID,
+		Web:        p.Web,
+		Comments:   p.Comments,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // APICmd represents the api command
@@ -237,11 +320,78 @@ func (b *BrowseCmd) Run(ctx context.Context) error {
 	return fmt.Errorf("browse command not yet implemented")
 }
 
-// ConfigCmd represents the config command
-type ConfigCmd struct{}
+// ConfigCmd represents the config command group
+type ConfigCmd struct {
+	Get   ConfigGetCmd   `cmd:""`
+	Set   ConfigSetCmd   `cmd:""`
+	List  ConfigListCmd  `cmd:""`
+	Unset ConfigUnsetCmd `cmd:""`
+}
 
-func (c *ConfigCmd) Run(ctx context.Context) error {
-	return fmt.Errorf("config command not yet implemented")
+// ConfigGetCmd handles config get
+type ConfigGetCmd struct {
+	Key    string `arg:"" help:"Configuration key to retrieve (e.g., auth.default_workspace)"`
+	Output string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+}
+
+func (c *ConfigGetCmd) Run(ctx context.Context) error {
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &config.GetCmd{
+		Key:     c.Key,
+		Output:  c.Output,
+		NoColor: noColor,
+	}
+	return cmd.Run(ctx)
+}
+
+// ConfigSetCmd handles config set
+type ConfigSetCmd struct {
+	Key   string `arg:"" help:"Configuration key to set (e.g., auth.default_workspace)"`
+	Value string `arg:"" help:"Configuration value to set"`
+}
+
+func (c *ConfigSetCmd) Run(ctx context.Context) error {
+	cmd := &config.SetCmd{
+		Key:   c.Key,
+		Value: c.Value,
+	}
+	return cmd.Run(ctx)
+}
+
+// ConfigListCmd handles config list
+type ConfigListCmd struct {
+	Output string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+}
+
+func (c *ConfigListCmd) Run(ctx context.Context) error {
+	// Get global NoColor from context
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &config.ListCmd{
+		Output:  c.Output,
+		NoColor: noColor,
+	}
+	return cmd.Run(ctx)
+}
+
+// ConfigUnsetCmd handles config unset
+type ConfigUnsetCmd struct {
+	Key string `arg:"" help:"Configuration key to remove (e.g., auth.default_workspace)"`
+}
+
+func (c *ConfigUnsetCmd) Run(ctx context.Context) error {
+	cmd := &config.UnsetCmd{
+		Key: c.Key,
+	}
+	return cmd.Run(ctx)
 }
 
 // StatusCmd represents the status command
