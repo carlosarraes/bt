@@ -10,9 +10,7 @@ import (
 type AuthMethod string
 
 const (
-	AuthMethodAppPassword AuthMethod = "app_password"
-	AuthMethodOAuth       AuthMethod = "oauth"
-	AuthMethodAccessToken AuthMethod = "access_token"
+	AuthMethodAPIToken AuthMethod = "api_token"
 )
 
 // User represents the authenticated Bitbucket user
@@ -38,7 +36,7 @@ type AuthManager interface {
 	// IsAuthenticated checks if the user is currently authenticated
 	IsAuthenticated(ctx context.Context) (bool, error)
 	
-	// Refresh refreshes the authentication token if applicable (OAuth)
+	// Refresh refreshes the authentication token if applicable
 	Refresh(ctx context.Context) error
 	
 	// Logout clears all stored authentication data
@@ -71,20 +69,17 @@ type Authenticator interface {
 
 // Config holds authentication configuration
 type Config struct {
-	Method        AuthMethod `yaml:"method"`
-	Username      string     `yaml:"username,omitempty"`
-	BaseURL       string     `yaml:"base_url"`
-	Timeout       int        `yaml:"timeout_seconds"`
-	OAuthClientID string     `yaml:"oauth_client_id,omitempty"`
+	Method  AuthMethod `yaml:"method"`
+	BaseURL string     `yaml:"base_url"`
+	Timeout int        `yaml:"timeout_seconds"`
 }
 
 // DefaultConfig returns the default authentication configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Method:        AuthMethodAppPassword,
-		BaseURL:       "https://api.bitbucket.org/2.0",
-		Timeout:       30,
-		OAuthClientID: "bt-cli", // Will need to register actual OAuth app
+		Method:  AuthMethodAPIToken,
+		BaseURL: "https://api.bitbucket.org/2.0",
+		Timeout: 30,
 	}
 }
 
@@ -99,23 +94,10 @@ func NewAuthManager(config *Config, storage CredentialStorage) (AuthManager, err
 		storage: storage,
 	}
 	
-	// Create the appropriate authenticator based on method
-	var auth Authenticator
-	var err error
-	
-	switch config.Method {
-	case AuthMethodAppPassword:
-		auth, err = NewAppPasswordAuth(config, storage)
-	case AuthMethodOAuth:
-		auth, err = NewOAuthAuth(config, storage)
-	case AuthMethodAccessToken:
-		auth, err = NewAccessTokenAuth(config, storage)
-	default:
-		return nil, fmt.Errorf("unsupported authentication method: %s", config.Method)
-	}
-	
+	// Create the API token authenticator
+	auth, err := NewAPITokenAuth(config, storage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create authenticator: %w", err)
+		return nil, fmt.Errorf("failed to create API token authenticator: %w", err)
 	}
 	
 	manager.authenticator = auth
