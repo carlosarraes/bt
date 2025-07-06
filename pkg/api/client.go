@@ -65,7 +65,8 @@ type Client struct {
 	baseURL     *url.URL
 	
 	// Services
-	Pipelines *PipelineService
+	Pipelines    *PipelineService
+	PullRequests *PullRequestService
 }
 
 // NewClient creates a new Bitbucket API client
@@ -92,6 +93,7 @@ func NewClient(authManager auth.AuthManager, config *ClientConfig) (*Client, err
 	
 	// Initialize services
 	client.Pipelines = NewPipelineService(client)
+	client.PullRequests = NewPullRequestService(client)
 	
 	return client, nil
 }
@@ -178,6 +180,21 @@ func (c *Client) GetJSON(ctx context.Context, endpoint string, result interface{
 // PostJSON performs a POST request with JSON body and unmarshals the JSON response
 func (c *Client) PostJSON(ctx context.Context, endpoint string, body, result interface{}) error {
 	resp, err := c.Post(ctx, endpoint, body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if result != nil {
+		return json.NewDecoder(resp.Body).Decode(result)
+	}
+
+	return nil
+}
+
+// PutJSON performs a PUT request with JSON body and unmarshals the JSON response
+func (c *Client) PutJSON(ctx context.Context, endpoint string, body, result interface{}) error {
+	resp, err := c.Put(ctx, endpoint, body)
 	if err != nil {
 		return err
 	}
