@@ -18,14 +18,14 @@ type LogoutCmd struct {
 // Run executes the auth logout command
 func (cmd *LogoutCmd) Run(ctx context.Context) error {
 	// First, check if user is currently authenticated
-	currentUser, currentMethod, err := cmd.getCurrentAuthStatus(ctx)
+	currentUser, err := cmd.getCurrentAuthStatus(ctx)
 	if err != nil {
 		fmt.Println("❌ No active authentication found")
 		return nil
 	}
 
 	fmt.Printf("🔍 Found authentication for: %s (%s)\n", currentUser.DisplayName, currentUser.Username)
-	fmt.Printf("🔐 Method: %s\n", currentMethod)
+	fmt.Printf("🔐 Method: API Token\n")
 	fmt.Println()
 
 	// Confirm logout unless --force flag is used
@@ -36,36 +36,19 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	// Perform logout for all authentication methods
+	// Perform logout
 	fmt.Println("🔄 Clearing authentication credentials...")
 
-	var errors []string
-
-	// Clear all possible authentication methods
-	methods := []auth.AuthMethod{
-		auth.AuthMethodAppPassword,
-		auth.AuthMethodOAuth,
-		auth.AuthMethodAccessToken,
-	}
-
-	for _, method := range methods {
-		if err := cmd.clearAuthMethod(method); err != nil {
-			errors = append(errors, fmt.Sprintf("%s: %v", method, err))
-		}
+	// Clear stored credentials
+	if err := cmd.clearAuthMethod(); err != nil {
+		fmt.Printf("⚠️  Error clearing stored credentials: %v\n", err)
 	}
 
 	// Clear environment variables (these won't persist, but clear for current session)
-	os.Unsetenv("BITBUCKET_TOKEN")
-	os.Unsetenv("BITBUCKET_USERNAME")
-	os.Unsetenv("BITBUCKET_PASSWORD")
-
-	if len(errors) > 0 {
-		fmt.Println("⚠️  Some errors occurred during logout:")
-		for _, err := range errors {
-			fmt.Printf("   • %s\n", err)
-		}
-		fmt.Println()
-	}
+	os.Unsetenv("BITBUCKET_EMAIL")
+	os.Unsetenv("BITBUCKET_API_TOKEN")
+	os.Unsetenv("BITBUCKET_USERNAME") // legacy
+	os.Unsetenv("BITBUCKET_PASSWORD") // legacy
 
 	fmt.Println("✅ Successfully logged out from Bitbucket")
 	fmt.Println("💡 Run 'bt auth login' to authenticate again")
@@ -74,27 +57,18 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 }
 
 // getCurrentAuthStatus checks current authentication status
-func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, auth.AuthMethod, error) {
-	// Try each authentication method to find the current one
-	methods := []auth.AuthMethod{
-		auth.AuthMethodAccessToken,
-		auth.AuthMethodAppPassword,
-		auth.AuthMethodOAuth,
+func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, error) {
+	manager, err := createAuthManager(auth.AuthMethodAPIToken)
+	if err != nil {
+		return nil, err
 	}
 
-	for _, method := range methods {
-		manager, err := createAuthManager(method)
-		if err != nil {
-			continue
-		}
-
-		user, err := manager.GetAuthenticatedUser(ctx)
-		if err == nil {
-			return user, method, nil
-		}
+	user, err := manager.GetAuthenticatedUser(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no active authentication found")
 	}
 
-	return nil, "", fmt.Errorf("no active authentication found")
+	return user, nil
 }
 
 // confirmLogout prompts the user to confirm logout
@@ -122,9 +96,9 @@ func (cmd *LogoutCmd) confirmLogout() bool {
 	}
 }
 
-// clearAuthMethod clears stored credentials for a specific authentication method
-func (cmd *LogoutCmd) clearAuthMethod(method auth.AuthMethod) error {
-	manager, err := createAuthManager(method)
+// clearAuthMethod clears stored credentials
+func (cmd *LogoutCmd) clearAuthMethod() error {
+	manager, err := createAuthManager(auth.AuthMethodAPIToken)
 	if err != nil {
 		return err
 	}

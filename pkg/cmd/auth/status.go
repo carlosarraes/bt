@@ -58,13 +58,13 @@ func (cmd *StatusCmd) getAuthStatus(ctx context.Context) (*AuthStatus, error) {
 	}
 
 	// Try to determine authentication method from environment variables or stored credentials
-	method, tokenSource := cmd.detectAuthMethod()
-	if method != "" {
-		status.Method = method
+	tokenSource := cmd.detectAuthMethod()
+	if tokenSource != "" {
+		status.Method = auth.AuthMethodAPIToken
 		status.TokenSource = tokenSource
 
 		// Try to authenticate and get user info
-		manager, err := createAuthManager(method)
+		manager, err := createAuthManager(auth.AuthMethodAPIToken)
 		if err != nil {
 			status.Error = fmt.Sprintf("Failed to create auth manager: %v", err)
 			return status, nil
@@ -80,66 +80,44 @@ func (cmd *StatusCmd) getAuthStatus(ctx context.Context) (*AuthStatus, error) {
 		// Authentication successful
 		status.Authenticated = true
 		status.User = user
-
-		// Add scope information based on method
-		switch method {
-		case auth.AuthMethodAppPassword:
-			status.Scopes = []string{"repository", "pullrequest", "pipeline"}
-		case auth.AuthMethodOAuth:
-			status.Scopes = []string{"repository", "pullrequest", "pipeline", "account"}
-		case auth.AuthMethodAccessToken:
-			status.Scopes = []string{"varies by token configuration"}
-		}
+		status.Scopes = []string{"repository", "pullrequest", "pipeline", "account"}
 	} else {
-		status.Error = "No authentication credentials found"
+		status.Error = "No API token credentials found"
 	}
 
 	return status, nil
 }
 
 // detectAuthMethod tries to detect the current authentication method
-func (cmd *StatusCmd) detectAuthMethod() (auth.AuthMethod, string) {
-	// Check for access token (highest precedence)
-	if token := os.Getenv("BITBUCKET_TOKEN"); token != "" {
-		return auth.AuthMethodAccessToken, "environment variable (BITBUCKET_TOKEN)"
+func (cmd *StatusCmd) detectAuthMethod() string {
+	// Check for preferred environment variables
+	if email := os.Getenv("BITBUCKET_EMAIL"); email != "" {
+		if token := os.Getenv("BITBUCKET_API_TOKEN"); token != "" {
+			return "environment variables (BITBUCKET_EMAIL/BITBUCKET_API_TOKEN)"
+		}
 	}
 
-	// Check for app password credentials
+	// Check for legacy environment variables (backward compatibility)
 	if username := os.Getenv("BITBUCKET_USERNAME"); username != "" {
 		if password := os.Getenv("BITBUCKET_PASSWORD"); password != "" {
-			return auth.AuthMethodAppPassword, "environment variables (BITBUCKET_USERNAME/BITBUCKET_PASSWORD)"
+			return "environment variables (BITBUCKET_USERNAME/BITBUCKET_PASSWORD)"
 		}
 	}
 
 	// Try to load from stored credentials
-	// First try access token from storage
-	if tokenManager, err := createAuthManager(auth.AuthMethodAccessToken); err == nil {
+	if tokenManager, err := createAuthManager(auth.AuthMethodAPIToken); err == nil {
 		if _, err := tokenManager.GetAuthenticatedUser(context.Background()); err == nil {
-			return auth.AuthMethodAccessToken, "stored credentials"
+			return "stored credentials"
 		}
 	}
 
-	// Try app password from storage
-	if appManager, err := createAuthManager(auth.AuthMethodAppPassword); err == nil {
-		if _, err := appManager.GetAuthenticatedUser(context.Background()); err == nil {
-			return auth.AuthMethodAppPassword, "stored credentials"
-		}
-	}
-
-	// Try OAuth from storage
-	if oauthManager, err := createAuthManager(auth.AuthMethodOAuth); err == nil {
-		if _, err := oauthManager.GetAuthenticatedUser(context.Background()); err == nil {
-			return auth.AuthMethodOAuth, "stored credentials"
-		}
-	}
-
-	return "", ""
+	return ""
 }
 
 // String implements fmt.Stringer for table output
 func (s *AuthStatus) String() string {
 	if !s.Authenticated {
-		return fmt.Sprintf("❌ Not authenticated to bitbucket.org\n💡 Run 'bt auth login' to authenticate")
+		return fmt.Sprintf("❌ Not authenticated to bitbucket.org\n💡 Run 'bt auth login' to authenticate with your API token")
 	}
 
 	result := fmt.Sprintf("✅ Authenticated to %s\n", s.Host)
@@ -147,7 +125,7 @@ func (s *AuthStatus) String() string {
 	if s.User.Email != "" {
 		result += fmt.Sprintf("📧 Email: %s\n", s.User.Email)
 	}
-	result += fmt.Sprintf("🔐 Method: %s\n", s.Method)
+	result += fmt.Sprintf("🔐 Method: API Token\n")
 	result += fmt.Sprintf("📍 Source: %s\n", s.TokenSource)
 	
 	if len(s.Scopes) > 0 {
