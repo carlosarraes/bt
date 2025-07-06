@@ -39,6 +39,7 @@ gh pr list       → bt pr list
 gh run list      → bt run list      # Main differentiator: enhanced pipeline debugging
 gh run view      → bt run view      # Enhanced with log analysis
 gh api           → bt api
+gh config        → bt config        # Advanced configuration management
 ` + "```" + `
 
 ## Pipeline Debugging Workflow (Killer Feature)
@@ -120,7 +121,7 @@ bt run view <id> --log          # All step logs
 bt run view <id> --tests        # Test results focus
 bt run view <id> --step "name"  # Specific step logs
 bt run watch <id>               # Real-time monitoring ✅ AVAILABLE
-bt run cancel <id>              # Cancel running pipeline (coming soon)
+bt run cancel <id>              # Cancel running pipeline ✅ AVAILABLE
 ` + "```" + `
 
 ## Output Formats
@@ -172,7 +173,7 @@ Error patterns are automatically highlighted and extracted for faster diagnosis.
 ## Command Categories by Priority
 1. **Critical**: auth, run (pipeline debugging)
 2. **Important**: repo, pr (standard Git operations)  
-3. **Utility**: api, config, browse (advanced features)
+3. **Utility**: config, api, browse (configuration and advanced features)
 
 bt excels at pipeline debugging and provides 5x faster error diagnosis compared to web UI navigation.
 `
@@ -191,6 +192,8 @@ func showCommandLLMHelp(command string) {
 		showPRLLMHelp()
 	case "repo":
 		showRepoLLMHelp()
+	case "config":
+		showConfigLLMHelp()
 	default:
 		fmt.Printf("No specific LLM guidance available for command: %s\n", command)
 		fmt.Println("Use 'bt --llm' for general guidance.")
@@ -421,6 +424,96 @@ gh repo view     → bt repo view
 ` + "```" + `
 
 Note: Repository commands maintain GitHub CLI compatibility for easy migration.
+`
+
+	fmt.Print(help)
+}
+
+func showConfigLLMHelp() {
+	help := `# bt config - Configuration Management (LLM Guide)
+
+## Overview
+Advanced configuration management for bt CLI with nested key support and type validation.
+
+## Key Features
+- **Nested keys**: Use dot notation (auth.default_workspace, api.timeout)
+- **Type validation**: Automatic validation for durations, URLs, and enum values
+- **Multi-format output**: Support for table, JSON, and YAML formats
+- **Safe operations**: Atomic file updates with validation
+
+## Common Commands
+` + "```bash" + `
+# View all configuration
+bt config list
+bt config list --output json        # JSON for automation
+
+# Get specific values
+bt config get auth.method            # Get authentication method
+bt config get auth.default_workspace # Get default workspace
+bt config get api.timeout           # Get API timeout
+
+# Set configuration values with validation
+bt config set auth.default_workspace mycompany  # Set workspace
+bt config set api.timeout 60s                   # Set timeout (validates duration)
+bt config set defaults.output_format json      # Set default output format
+
+# Remove configuration (reset to default)
+bt config unset auth.default_workspace
+bt config unset api.timeout
+` + "```" + `
+
+## Available Configuration Keys
+` + "```" + `
+auth.method              # Authentication method (app_password, oauth, access_token)
+auth.default_workspace   # Default workspace for operations
+api.base_url            # Bitbucket API base URL
+api.timeout             # API request timeout (duration format: 30s, 1m, etc.)
+defaults.output_format  # Default output format (table, json, yaml)
+version                 # Configuration schema version
+` + "```" + `
+
+## Automation Examples
+` + "```bash" + `
+# Export all configuration for backup
+bt config list --output yaml > bt-config-backup.yml
+
+# Get specific config value for scripting
+WORKSPACE=$(bt config get auth.default_workspace --output json | jq -r .value)
+
+# Batch configuration setup
+bt config set auth.default_workspace $MY_WORKSPACE
+bt config set api.timeout 45s
+bt config set defaults.output_format json
+` + "```" + `
+
+## Type Validation
+The config system validates values based on their expected types:
+- **Duration fields** (api.timeout): Must be valid Go duration (30s, 1m, 1h30m)
+- **Enum fields** (auth.method): Must be one of valid options
+- **URL fields** (api.base_url): Must be valid HTTP/HTTPS URLs
+
+## Error Handling
+` + "```bash" + `
+# Invalid duration
+bt config set api.timeout invalid-time
+# Error: invalid duration format
+
+# Invalid auth method  
+bt config set auth.method invalid-method
+# Error: invalid configuration: unknown auth method
+
+# Nonexistent key
+bt config get nonexistent.key
+# Error: configuration key not found
+` + "```" + `
+
+## Best Practices for LLM Integration
+1. **Use JSON output** for structured data extraction
+2. **Validate before setting** complex values like durations
+3. **Use get commands** to check current state before modifications
+4. **Handle errors gracefully** with proper validation feedback
+
+Note: Configuration is automatically saved to ~/.config/bt/config.yml with secure atomic operations.
 `
 
 	fmt.Print(help)
