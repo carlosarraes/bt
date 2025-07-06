@@ -8,6 +8,7 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 
 - **🔄 Drop-in replacement** for GitHub CLI - same commands, same patterns
 - **🔐 Multiple authentication methods** - App passwords, OAuth 2.0, Access tokens
+- **⚙️ Advanced configuration** - Comprehensive CLI config management with validation
 - **📊 Pull request management** - Create, review, merge, and manage PRs
 - **🚀 Pipeline integration** - View runs, logs, and trigger builds
 - **🌐 Repository operations** - Clone, create, fork, and manage repositories
@@ -198,10 +199,10 @@ bt run view 1234 --tests           # Show test results and failures
 bt run view 1234 --step "Run Tests" # Show logs for specific step
 
 # Real-time monitoring
-bt run watch 1234                  # Watch live execution (coming soon)
+bt run watch 1234                  # Watch live execution with real-time updates
 
-# Pipeline management
-bt run cancel 1234                 # Cancel running pipeline (coming soon)
+# Pipeline management  
+bt run cancel 1234                 # Cancel running pipeline with confirmation
 ```
 
 **🎯 Smart Log Analysis - Get to the error instantly:**
@@ -244,15 +245,23 @@ bt api repositories/myworkspace/myrepo/pipelines \
 # View current configuration
 bt config list
 
+# View specific configuration value
+bt config get auth.default_workspace
+
 # Set default workspace
-bt config set default_workspace mycompany
+bt config set auth.default_workspace mycompany
 
 # Set output format preference
-bt config set output.format json
+bt config set defaults.output_format json
 
-# Set up aliases
-bt alias set prs "pr list"
-bt alias set co "pr checkout"
+# Set API timeout
+bt config set api.timeout 45s
+
+# Remove configuration value
+bt config unset auth.default_workspace
+
+# JSON output for automation
+bt config list --output json
 ```
 
 ### Browser Integration
@@ -362,18 +371,24 @@ bt repo list company-workspace
 bt pr list --workspace company-workspace
 ```
 
-### Aliases and Shortcuts
+### Advanced Configuration
 
 ```bash
-# Create custom aliases
-bt alias set prs "pr list --state open"
-bt alias set myprs "pr list --author @me"
-bt alias set failing "run list --status failed"
+# Advanced configuration management
+bt config list                           # View all configuration settings
+bt config get auth.method               # Get specific setting
+bt config set auth.default_workspace myorg  # Set workspace preference  
+bt config set api.timeout 60s           # Increase API timeout
+bt config unset auth.default_workspace  # Reset to default
 
-# Use aliases
-bt prs
-bt myprs
-bt failing
+# Configuration supports nested keys:
+# - auth.method, auth.default_workspace
+# - api.base_url, api.timeout  
+# - defaults.output_format
+# - version
+
+# Export configuration for backup
+bt config list --output yaml > bt-config-backup.yml
 ```
 
 ## GitHub CLI Migration
