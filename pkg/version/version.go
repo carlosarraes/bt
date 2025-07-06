@@ -5,7 +5,7 @@ import "runtime/debug"
 // Version information for the bt CLI
 var (
 	// Version is the current version of bt
-	Version = "dev"
+	Version = "0.0.1"
 
 	// Commit is the git commit hash
 	Commit = "unknown"
@@ -48,4 +48,9 @@ func (b BuildInfo) String() string {
 		return "bt dev (development build)"
 	}
 	return "bt " + b.Version
+}
+
+// GetVersion returns just the version string
+func GetVersion() string {
+	return Version
 }
