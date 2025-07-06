@@ -485,13 +485,24 @@ func CleanupTestData(t *testing.T, cleanup func()) {
 
 // CreateTestAuthManager creates an auth manager for testing
 func CreateTestAuthManager() (auth.AuthManager, error) {
-	username := GetTestUsername()
-	password := GetTestAppPassword()
+	email := GetTestUsername()
+	token := GetTestAppPassword()
 	
-	// Create app password auth manager
-	authManager := auth.NewAppPasswordAuth(username, password)
+	// Set environment variables for API token auth
+	os.Setenv("BITBUCKET_EMAIL", email)
+	os.Setenv("BITBUCKET_API_TOKEN", token)
 	
-	return authManager, nil
+	// Create storage
+	storage, err := auth.NewFileCredentialStorage()
+	if err != nil {
+		return nil, err
+	}
+	
+	// Create config
+	config := auth.DefaultConfig()
+	
+	// Create auth manager
+	return auth.NewAuthManager(config, storage)
 }
 
 // GetTestLogger returns a logger for testing
