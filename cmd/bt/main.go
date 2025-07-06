@@ -13,16 +13,18 @@ import (
 
 var cli struct {
 	// Global flags
-	Verbose bool   `short:"v"`
-	Config  string `default:"~/.config/bt/config.yml"`
-	NoColor bool
-	Help    bool   `short:"h"`
-	LLM     bool   `help:"Show LLM-optimized usage guide and examples"`
+	Verbose    bool   `short:"v"`
+	ConfigFile string `default:"~/.config/bt/config.yml"`
+	NoColor    bool
+	Help       bool   `short:"h"`
+	VersionFlag bool  `name:"version" help:"Show version information"`
+	LLM        bool   `help:"Show LLM-optimized usage guide and examples"`
 
 	// Commands
 	Version cmd.VersionCmd `cmd:""`
 	Auth    cmd.AuthCmd    `cmd:""`
 	Run     cmd.RunCmd     `cmd:""`
+	Config  cmd.ConfigCmd  `cmd:""`
 	Repo    cmd.RepoCmd    `cmd:""`
 	PR      cmd.PRCmd      `cmd:""`
 }
@@ -31,9 +33,15 @@ func main() {
 	// Set up global context with configuration
 	appCtx := context.Background()
 
-	// Intercept help and LLM requests before Kong processes them
+	// Intercept help, version, and LLM requests before Kong processes them
 	originalArgs := os.Args
 	args := os.Args[1:]
+	
+	// Check for --version flag
+	if len(args) >= 1 && args[0] == "--version" {
+		fmt.Println(version.GetBuildInfo().String())
+		return
+	}
 	
 	// Check for global --llm flag
 	if len(args) >= 1 && args[0] == "--llm" {
@@ -64,10 +72,10 @@ func main() {
 		}
 	}
 
-	// Temporarily remove help and llm flags from args to prevent Kong from intercepting
+	// Temporarily remove help, version, and llm flags from args to prevent Kong from intercepting
 	filteredArgs := []string{originalArgs[0]}
 	for _, arg := range args {
-		if arg != "--help" && arg != "-h" && arg != "--llm" {
+		if arg != "--help" && arg != "-h" && arg != "--version" && arg != "--llm" {
 			filteredArgs = append(filteredArgs, arg)
 		}
 	}
@@ -90,11 +98,17 @@ func main() {
 	if cli.NoColor {
 		appCtx = context.WithValue(appCtx, "no-color", true)
 	}
-	appCtx = context.WithValue(appCtx, "config-path", cli.Config)
+	appCtx = context.WithValue(appCtx, "config-path", cli.ConfigFile)
 
 	// Check if help flag was set after Kong parsing
 	if cli.Help {
 		showMainHelp()
+		return
+	}
+	
+	// Check if version flag was set after Kong parsing
+	if cli.VersionFlag {
+		fmt.Println(version.GetBuildInfo().String())
 		return
 	}
 
@@ -114,6 +128,7 @@ Work seamlessly with Bitbucket from the command line.
 Flags:
   -h, --help              Show context-sensitive help.
   -v, --verbose           Enable verbose output
+      --version           Show version information
       --config=PATH       Config file path
   -o, --output=FORMAT     Output format (table,json,yaml)
       --no-color          Disable colored output
@@ -124,6 +139,7 @@ Commands:
   run
   repo
   pr
+  version
 
 Run "bt <command> --help" for more information on a command.
 Run "bt --llm" for LLM-optimized usage guidance.
