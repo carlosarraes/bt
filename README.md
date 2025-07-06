@@ -35,28 +35,16 @@ bt auth login
 bt auth status
 ```
 
-### 2. Clone a repository
+### 2. Work with pull requests
 ```bash
-# Clone using workspace/repo format
-bt repo clone myworkspace/myproject
-
-# Clone using full URL
-bt repo clone https://bitbucket.org/myworkspace/myproject
-```
-
-### 3. Work with pull requests
-```bash
-# Create a pull request
-bt pr create --title "Add new feature" --body "Description of changes"
-
 # List pull requests
 bt pr list
 
-# View a specific pull request
+# View a specific pull request  
 bt pr view 123
 ```
 
-### 4. Monitor pipelines
+### 3. Monitor pipelines
 ```bash
 # List recent pipeline runs
 bt run list
@@ -117,23 +105,8 @@ export BITBUCKET_PASSWORD="your_api_token_here"
 ### Repository Commands
 
 ```bash
-# List repositories in your workspace
-bt repo list
-
-# List repositories in a specific workspace
-bt repo list myworkspace
-
-# Create a new repository
-bt repo create myworkspace/new-repo --private
-
-# Fork a repository
-bt repo fork myworkspace/original-repo
-
-# View repository details
-bt repo view myworkspace/my-repo
-
-# Clone with SSH/HTTPS preference
-bt repo clone myworkspace/my-repo --ssh
+# Repository commands are not yet implemented
+# Coming soon: clone, create, fork, list, view
 ```
 
 ### Pull Request Commands
@@ -145,26 +118,15 @@ bt pr list --state merged          # Filter by state
 bt pr list --author @me             # Your PRs
 bt pr list myworkspace/other-repo   # Different repository
 
-# Create a pull request
-bt pr create                        # Interactive mode
-bt pr create --title "Fix bug" --body "Description" --draft
-bt pr create --base develop --head feature-branch
-
-# View and interact with PRs
+# View pull requests
 bt pr view 42                       # View PR details
-bt pr diff 42                       # View PR diff
-bt pr checkout 42                   # Checkout PR branch
-bt pr checks 42                     # View pipeline status
+bt pr view 42 --web                # Open PR in browser
+bt pr view 42 --comments           # Show PR comments
 
-# Review and merge
-bt pr review 42 --approve
-bt pr review 42 --comment "Looks good!"
-bt pr merge 42 --squash
-bt pr close 42
-
-# Comments and updates
-bt pr comment 42 --body "Great work!"
-bt pr edit 42 --title "New title"
+# Other PR commands not yet implemented:
+# - pr create, pr diff, pr checkout, pr checks
+# - pr review, pr merge, pr close
+# - pr comment, pr edit
 ```
 
 ### Pipeline Commands (The Killer Feature 🚀)
@@ -208,23 +170,6 @@ bt run view 3808 --log-failed --full-output  # Get full context if needed
 # ================================================================================
 ```
 
-### API Access
-
-Make direct API calls to Bitbucket:
-
-```bash
-# Get repository information
-bt api repositories/myworkspace/myrepo
-
-# List pull requests with custom filtering
-bt api repositories/myworkspace/myrepo/pullrequests --query "state=\"OPEN\""
-
-# Trigger a pipeline with variables
-bt api repositories/myworkspace/myrepo/pipelines \
-  --method POST \
-  --field target.ref_name=main \
-  --field variables.ENV=staging
-```
 
 ### Configuration
 
@@ -251,21 +196,6 @@ bt config unset auth.default_workspace
 bt config list --output json
 ```
 
-### Browser Integration
-
-```bash
-# Open repository in browser
-bt browse
-
-# Open specific PR
-bt browse pr/123
-
-# Open pipeline run
-bt browse run/abc123def456
-
-# Open any path
-bt browse /projects/PROJ/repos/myrepo/pull-requests
-```
 
 ## Environment Variables
 
@@ -382,15 +312,14 @@ bt config list --output yaml > bt-config-backup.yml
 If you're coming from GitHub CLI, `bt` commands work identically:
 
 ```bash
-# These commands work the same way
+# Currently implemented commands that work the same way
 gh pr list        →  bt pr list
-gh repo clone     →  bt repo clone
+gh pr view        →  bt pr view  
 gh run list       →  bt run list
-gh api           →  bt api
+gh run view       →  bt run view
+gh auth status    →  bt auth status
 
-# Automatic command translation (planned feature)
-gh pr create --title "Fix bug"
-# → Did you mean: bt pr create --title "Fix bug"?
+# Coming soon: repo clone, api, browse, pr create, etc.
 ```
 
 ## Troubleshooting
@@ -406,15 +335,6 @@ bt auth logout
 bt auth login
 ```
 
-### API Rate Limiting
-
-```bash
-# Check rate limit status
-bt api user --include-rate-limit
-
-# Use personal access token for higher limits
-export BITBUCKET_TOKEN=your_personal_access_token
-```
 
 ### Common Issues
 
@@ -492,16 +412,16 @@ See [SPEC.md](SPEC.md) for detailed technical specifications and architecture de
 
 | Feature | GitHub CLI | Bitbucket CLI | Notes |
 |---------|------------|---------------|-------|
-| Repository management | ✅ | ✅ | Full parity |
-| Pull requests | ✅ | ✅ | Full parity |
-| CI/CD (Actions/Pipelines) | ✅ | ✅ | Pipeline logs are enhanced |
-| Issues | ✅ | ⚠️ | Depends on Jira integration |
-| Releases | ✅ | ➡️ | Maps to tags |
-| Gists | ✅ | ➡️ | Maps to snippets |
+| Repository management | ✅ | 🚧 | Coming soon |
+| Pull requests | ✅ | ⚠️ | List/view implemented, create/merge coming soon |
+| CI/CD (Actions/Pipelines) | ✅ | ✅ | Pipeline logs are enhanced! |
+| Issues | ✅ | ❌ | Would depend on Jira integration |
+| Releases | ✅ | 🚧 | Will map to tags |
+| Gists | ✅ | 🚧 | Will map to snippets |
 | Organizations | ✅ | ➡️ | Maps to workspaces |
-| Authentication | ✅ | ✅ | Multiple methods supported |
-| API Access | ✅ | ✅ | Full Bitbucket API access |
-| Browser integration | ✅ | ✅ | Full parity |
+| Authentication | ✅ | ✅ | API tokens supported |
+| API Access | ✅ | 🚧 | Coming soon |
+| Browser integration | ✅ | 🚧 | Coming soon |
 
 ## FAQ
 
