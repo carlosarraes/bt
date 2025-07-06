@@ -9,7 +9,7 @@ TEST_PACKAGES=$(shell go list ./... | grep -v /vendor/ | grep -v /test/integrati
 INTEGRATION_TEST_PACKAGES=$(shell go list ./test/integration/...)
 
 # Version information
-VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION=$(shell git describe --tags --exact-match 2>/dev/null || echo "0.0.1")
 COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GOVERSION=$(shell go version | cut -d' ' -f3)
