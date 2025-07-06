@@ -56,32 +56,18 @@ download_binary() {
 
   echo "Downloading ${BINARY_NAME} ${VERSION}..."
 
-  # Construct archive name based on OS and architecture
-  ARCHIVE_NAME="${BINARY_NAME}-${OS}-${ARCH}.tar.gz"
+  # Construct binary name based on OS and architecture
+  BINARY_SUFFIX="${BINARY_NAME}-${OS}-${ARCH}"
   
-  DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE_NAME}"
+  DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY_SUFFIX}"
   echo "Downloading from: $DOWNLOAD_URL"
-  curl -fsSL "$DOWNLOAD_URL" -o "${TMP_DIR}/${ARCHIVE_NAME}" || {
+  curl -fsSL "$DOWNLOAD_URL" -o "${TMP_DIR}/${BINARY_NAME}" || {
     echo "Download failed. Check URL/permissions/network."
     exit 1
   }
 
-  # extract archive
-  cd "$TMP_DIR"
-  tar -xzf "$ARCHIVE_NAME" || {
-    echo "Failed to extract archive"
-    exit 1
-  }
-
-  # find the binary (should be bt-OS-ARCH after extraction)
-  BINARY_FILE="${BINARY_NAME}-${OS}-${ARCH}"
-  if [ ! -f "$BINARY_FILE" ]; then
-    echo "Binary file $BINARY_FILE not found in archive"
-    exit 1
-  fi
-
   # make it executable
-  chmod +x "$BINARY_FILE"
+  chmod +x "${TMP_DIR}/${BINARY_NAME}"
 
   # Check if BIN_DIR exists and create if needed
   CREATED_DIR_MSG=""
@@ -94,7 +80,7 @@ download_binary() {
 
   # install binary (no sudo needed for $HOME/.local/bin)
   echo "Installing to $BIN_DIR..."
-  install -m 755 "$BINARY_FILE" "$BIN_DIR/$BINARY_NAME"
+  install -m 755 "${TMP_DIR}/${BINARY_NAME}" "$BIN_DIR/$BINARY_NAME"
 
   # cleanup happens via trap
 

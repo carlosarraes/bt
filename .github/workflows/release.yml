@@ -54,15 +54,12 @@ jobs:
           
           # Copy and rename binary
           cp bt "${BINARY_NAME}"
-          
-          # Create archive
-          tar -czf "${BINARY_NAME}.tar.gz" "${BINARY_NAME}"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: bt-${{ matrix.platform.os }}-${{ matrix.platform.arch }}
-          path: bt-${{ matrix.platform.os }}-${{ matrix.platform.arch }}.tar.gz
+          path: bt-${{ matrix.platform.os }}-${{ matrix.platform.arch }}*
           retention-days: 1
 
   release:
@@ -78,7 +75,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find artifacts -name "*.tar.gz" -type f -exec cp {} release-assets/ \;
+          find artifacts -name "bt*" -type f -exec cp {} release-assets/ \;
           ls -la release-assets/
 
       - name: Create release
