@@ -17,12 +17,18 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 
 ## Installation
 
-### Go Install
+### Quick Install Script (Recommended)
 ```bash
-go install github.com/carraes/bt/cmd/bt@latest
+curl -sSf https://raw.githubusercontent.com/carlosarraes/bt/main/install.sh | sh
 ```
 
-*Binary releases and package managers will be available once we have a working implementation.*
+### Manual Download
+Download the latest binary from the [releases page](https://github.com/carlosarraes/bt/releases) and add it to your PATH.
+
+### Go Install
+```bash
+go install github.com/carlosarraes/bt/cmd/bt@latest
+```
 
 ## Quick Start
 
