@@ -129,13 +129,23 @@ bt pr view 42                       # View PR details
 bt pr view 42 --web                # Open PR in browser
 bt pr view 42 --comments           # Show PR comments
 
+# Review pull requests
+bt pr review 42 --approve            # Approve a PR
+bt pr review 42 --request-changes -b "Please fix tests"  # Request changes
+bt pr review 42 --comment -b "LGTM!" # Add a comment
+
+# View pull request diff
+bt pr diff 42                       # Show diff
+bt pr diff 42 --name-only           # Show changed files only
+bt pr diff 42 | delta               # Enhanced viewing with delta
+
 # Other PR commands not yet implemented:
-# - pr create, pr diff, pr checkout, pr checks
-# - pr review, pr merge, pr close
+# - pr create, pr checkout, pr checks
+# - pr merge, pr close
 # - pr comment, pr edit
 ```
 
-### Pipeline Commands (The Killer Feature 🚀)
+### Pipeline Commands
 
 **✨ New: Smart log viewing with instant failed step detection**
 
@@ -284,13 +294,13 @@ bt run view 3808 --step "Run Tests" --log  # Logs for specific step
 ### Workspace Management
 
 ```bash
-# Switch between workspaces
-bt config set default_workspace personal-workspace
-bt config set default_workspace company-workspace
+# Set default workspace
+bt config set auth.default_workspace personal-workspace
+bt config set auth.default_workspace company-workspace
 
-# Operations on different workspaces
-bt repo list company-workspace
+# Operations on different workspaces (use --workspace flag)
 bt pr list --workspace company-workspace
+bt run list --workspace company-workspace
 ```
 
 ### Advanced Configuration
@@ -319,11 +329,16 @@ If you're coming from GitHub CLI, `bt` commands work identically:
 
 ```bash
 # Currently implemented commands that work the same way
+gh auth login     →  bt auth login
+gh auth status    →  bt auth status
 gh pr list        →  bt pr list
-gh pr view        →  bt pr view  
+gh pr view        →  bt pr view
+gh pr diff        →  bt pr diff
+gh pr review      →  bt pr review
 gh run list       →  bt run list
 gh run view       →  bt run view
-gh auth status    →  bt auth status
+gh run watch      →  bt run watch
+gh run cancel     →  bt run cancel
 
 # Coming soon: repo clone, api, browse, pr create, etc.
 ```
@@ -359,67 +374,13 @@ bt auth login
 - Use `bt --help` to see available commands
 - Ensure you're in a git repository for repo-specific commands
 
-## Contributing
-
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/carraes/bt.git
-cd bt
-
-# Automated development environment setup
-make setup-dev
-# This will:
-# - Install all required development tools (golangci-lint, gosec, etc.)
-# - Download dependencies and verify them
-# - Set up Git hooks for code quality
-# - Configure IDE settings (VS Code)
-
-# Alternative manual setup
-go mod download          # Install dependencies
-make deps-verify         # Verify dependencies
-make test               # Run tests
-make lint               # Run linter
-make build              # Build binary
-
-# Development workflow commands
-make help               # Show all available commands
-make dev                # Build and run in development mode
-make watch              # Watch for changes and rebuild
-make test-cover         # Run tests with coverage
-make security           # Run security scans
-
-# Code quality checks
-make fmt                # Format code
-make check              # Run all quality checks (fmt, vet, lint, test)
-make clean              # Clean build artifacts
-```
-
-### Build System Features
-
-The enhanced build system provides comprehensive development support:
-
-- **50+ Make targets** for build, test, security, and performance
-- **Multi-platform builds** (Linux, macOS, Windows on AMD64/ARM64)
-- **Security scanning** with gosec and vulnerability checking
-- **Performance profiling** and benchmark comparison
-- **Automated CI/CD** with GitHub Actions
-- **Code quality** with golangci-lint (40+ enabled linters)
-- **Development tools** installation and Git hooks setup
-
-### Architecture
-
-See [SPEC.md](SPEC.md) for detailed technical specifications and architecture decisions.
 
 ## Comparison with GitHub CLI
 
 | Feature | GitHub CLI | Bitbucket CLI | Notes |
 |---------|------------|---------------|-------|
 | Repository management | ✅ | 🚧 | Coming soon |
-| Pull requests | ✅ | ⚠️ | List/view implemented, create/merge coming soon |
+| Pull requests | ✅ | ⚠️ | List/view/diff/review implemented, create/merge coming soon |
 | CI/CD (Actions/Pipelines) | ✅ | ✅ | Pipeline logs are enhanced! |
 | Issues | ✅ | ❌ | Would depend on Jira integration |
 | Releases | ✅ | 🚧 | Will map to tags |
