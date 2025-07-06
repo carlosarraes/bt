@@ -240,9 +240,10 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 
 // PRCmd represents the pr command group
 type PRCmd struct {
-	List PRListCmd `cmd:""`
-	View PRViewCmd `cmd:""`
-	Diff PRDiffCmd `cmd:""`
+	List   PRListCmd   `cmd:""`
+	View   PRViewCmd   `cmd:""`
+	Diff   PRDiffCmd   `cmd:""`
+	Review PRReviewCmd `cmd:""`
 }
 
 // PRListCmd handles pr list
@@ -336,6 +337,41 @@ func (p *PRDiffCmd) Run(ctx context.Context) error {
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRReviewCmd struct {
+	PRID           string `arg:"" help:"Pull request ID (number)"`
+	Approve        bool   `help:"Approve the pull request"`
+	RequestChanges bool   `name:"request-changes" help:"Request changes on the pull request"`
+	Comment        bool   `help:"Add a comment to the pull request"`
+	Body           string `short:"b" help:"Comment body text"`
+	BodyFile       string `short:"F" name:"body-file" help:"Read comment body from file"`
+	Force          bool   `short:"f" help:"Skip confirmation prompts"`
+	Output         string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace      string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository     string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRReviewCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ReviewCmd{
+		PRID:           p.PRID,
+		Approve:        p.Approve,
+		RequestChanges: p.RequestChanges,
+		Comment:        p.Comment,
+		Body:           p.Body,
+		BodyFile:       p.BodyFile,
+		Force:          p.Force,
+		Output:         p.Output,
+		NoColor:        noColor,
+		Workspace:      p.Workspace,
+		Repository:     p.Repository,
 	}
 	return cmd.Run(ctx)
 }
