@@ -36,7 +36,8 @@
       "Bash(grep:*)",
       "Bash(gh:*)",
       "Bash(gemini:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
