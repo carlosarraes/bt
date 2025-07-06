@@ -7,7 +7,7 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 ## Features
 
 - **🔄 Drop-in replacement** for GitHub CLI - same commands, same patterns
-- **🔐 Multiple authentication methods** - App passwords, OAuth 2.0, Access tokens
+- **🔐 Secure API token authentication** - Uses Atlassian API tokens for secure access
 - **⚙️ Advanced configuration** - Comprehensive CLI config management with validation
 - **📊 Pull request management** - Create, review, merge, and manage PRs
 - **🚀 Pipeline integration** - View runs, logs, and trigger builds
@@ -70,13 +70,13 @@ bt run watch 1234567890abcdef
 
 ## Authentication
 
-### API Token (Recommended - New Method)
+### API Token Authentication
 
-**⚠️ App passwords are being deprecated by Bitbucket. Use API tokens instead.**
+`bt` uses secure Atlassian API tokens for authentication:
 
 1. Go to [Atlassian Account Security](https://id.atlassian.com/manage-profile/security/api-tokens)
 2. Create a new API token with a descriptive label
-3. Run `bt auth login` - it will guide you through the API token setup
+3. Run `bt auth login` - it will guide you through the setup
 
 ```bash
 bt auth login
@@ -104,26 +104,13 @@ bt run list
 bt run view 1234 --log-failed
 ```
 
-### Legacy Methods (Still Supported)
-
-<details>
-<summary>App Password (Being deprecated by Bitbucket)</summary>
+### Alternative Environment Variables (Backward compatibility)
 
 ```bash
-export BITBUCKET_USERNAME=your_username
-export BITBUCKET_PASSWORD=your_app_password
+# Legacy format (still supported)
+export BITBUCKET_USERNAME="your.email@company.com"
+export BITBUCKET_PASSWORD="your_api_token_here"
 ```
-
-</details>
-
-<details>
-<summary>Access Token (For specific scopes)</summary>
-
-```bash
-export BITBUCKET_TOKEN=your_access_token_here
-```
-
-</details>
 
 ## Usage
 
@@ -287,10 +274,9 @@ bt browse /projects/PROJ/repos/myrepo/pull-requests
 export BITBUCKET_EMAIL="your.email@company.com"      # Your Atlassian account email
 export BITBUCKET_API_TOKEN="your_api_token_here"     # API token from Atlassian
 
-# Legacy authentication (still supported)
-export BITBUCKET_USERNAME=your_username               # For app passwords
-export BITBUCKET_PASSWORD=your_app_password          # App password
-export BITBUCKET_TOKEN=your_access_token             # Access tokens
+# Alternative format (still supported)
+export BITBUCKET_USERNAME="your.email@company.com"   # Your Atlassian account email
+export BITBUCKET_PASSWORD="your_api_token_here"      # API token from Atlassian
 
 # Configuration
 export BITBUCKET_HOST=https://bitbucket.org
@@ -415,10 +401,7 @@ gh pr create --title "Fix bug"
 # Check authentication status
 bt auth status
 
-# Refresh expired tokens
-bt auth refresh
-
-# Re-authenticate
+# Re-authenticate with new token
 bt auth logout
 bt auth login
 ```
