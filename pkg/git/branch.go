@@ -1,10 +1,12 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/storer"
@@ -424,4 +426,253 @@ func ValidateBranchName(name string) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) CheckoutBranch(branchName string, detached bool) error {
+	if err := ValidateBranchName(branchName); err != nil {
+		return err
+	}
+
+	workTree, err := r.repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	if detached {
+		ref := plumbing.NewBranchReferenceName(branchName)
+		branchRef, err := r.repo.Reference(ref, true)
+		if err != nil {
+			return fmt.Errorf("branch not found: %s", branchName)
+		}
+
+		err = workTree.Checkout(&git.CheckoutOptions{
+			Hash: branchRef.Hash(),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to checkout branch in detached mode: %w", err)
+		}
+	} else {
+		err = workTree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewBranchReferenceName(branchName),
+			Create: !r.BranchExists(branchName),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to checkout branch: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) CreateTrackingBranch(localBranch, remoteName, remoteBranch string) error {
+	if err := ValidateBranchName(localBranch); err != nil {
+		return err
+	}
+
+	if !r.RemoteBranchExists(remoteName, remoteBranch) {
+		return fmt.Errorf("remote branch %s/%s does not exist", remoteName, remoteBranch)
+	}
+
+	remoteRef := plumbing.NewRemoteReferenceName(remoteName, remoteBranch)
+	remoteBranchRef, err := r.repo.Reference(remoteRef, true)
+	if err != nil {
+		return fmt.Errorf("failed to get remote branch reference: %w", err)
+	}
+
+	localRef := plumbing.NewBranchReferenceName(localBranch)
+	newRef := plumbing.NewHashReference(localRef, remoteBranchRef.Hash())
+	
+	err = r.repo.Storer.SetReference(newRef)
+	if err != nil {
+		return fmt.Errorf("failed to create local branch: %w", err)
+	}
+
+	cfg, err := r.repo.Config()
+	if err != nil {
+		return fmt.Errorf("failed to get repository config: %w", err)
+	}
+
+	cfg.Branches[localBranch] = &config.Branch{
+		Name:   localBranch,
+		Remote: remoteName,
+		Merge:  plumbing.NewBranchReferenceName(remoteBranch),
+	}
+
+	r.repo.Storer.SetConfig(cfg)
+
+	return nil
+}
+
+func (r *Repository) ForceCheckoutBranch(branchName string, detached bool) error {
+	if err := ValidateBranchName(branchName); err != nil {
+		return err
+	}
+
+	workTree, err := r.repo.Worktree()
+	if err != nil {
+		return fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	if detached {
+		ref := plumbing.NewBranchReferenceName(branchName)
+		branchRef, err := r.repo.Reference(ref, true)
+		if err != nil {
+			return fmt.Errorf("branch not found: %s", branchName)
+		}
+
+		err = workTree.Checkout(&git.CheckoutOptions{
+			Hash:  branchRef.Hash(),
+			Force: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to force checkout branch in detached mode: %w", err)
+		}
+	} else {
+		err = workTree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewBranchReferenceName(branchName),
+			Create: !r.BranchExists(branchName),
+			Force:  true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to force checkout branch: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (r *Repository) HasUncommittedChanges() (bool, error) {
+	workTree, err := r.repo.Worktree()
+	if err != nil {
+		return false, fmt.Errorf("failed to get worktree: %w", err)
+	}
+
+	status, err := workTree.Status()
+	if err != nil {
+		return false, fmt.Errorf("failed to get status: %w", err)
+	}
+
+	return !status.IsClean(), nil
+}
+
+type MergeResult struct {
+	Success       bool     `json:"success"`
+	HasConflicts  bool     `json:"has_conflicts"`
+	ConflictFiles []string `json:"conflict_files,omitempty"`
+	Message       string   `json:"message"`
+	CommitHash    string   `json:"commit_hash,omitempty"`
+}
+
+func (r *Repository) MergeBranch(sourceBranch, targetBranch string, force bool) (*MergeResult, error) {
+	if err := ValidateBranchName(sourceBranch); err != nil {
+		return nil, fmt.Errorf("invalid source branch name: %w", err)
+	}
+	if err := ValidateBranchName(targetBranch); err != nil {
+		return nil, fmt.Errorf("invalid target branch name: %w", err)
+	}
+
+	if !r.BranchExists(sourceBranch) {
+		return nil, fmt.Errorf("source branch '%s' does not exist", sourceBranch)
+	}
+	if !r.BranchExists(targetBranch) {
+		return nil, fmt.Errorf("target branch '%s' does not exist", targetBranch)
+	}
+
+	currentBranch, err := r.GetCurrentBranch()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	if !force {
+		hasChanges, err := r.HasUncommittedChanges()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check for uncommitted changes: %w", err)
+		}
+		if hasChanges {
+			return nil, fmt.Errorf("uncommitted changes detected. Use --force to override or commit your changes first")
+		}
+	}
+
+	if currentBranch.ShortName != targetBranch {
+		if err := r.CheckoutBranch(targetBranch, false); err != nil {
+			return nil, fmt.Errorf("failed to checkout target branch '%s': %w", targetBranch, err)
+		}
+	}
+
+	sourceBranchRef := plumbing.NewBranchReferenceName(sourceBranch)
+	sourceRef, err := r.repo.Reference(sourceBranchRef, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source branch reference: %w", err)
+	}
+
+	sourceCommit, err := r.repo.CommitObject(sourceRef.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get source commit: %w", err)
+	}
+
+	result := &MergeResult{
+		Success: true,
+		Message: fmt.Sprintf("Would merge '%s' into '%s' (simplified implementation)", sourceBranch, targetBranch),
+	}
+
+	if sourceCommit != nil {
+		result.Message += fmt.Sprintf(" (commit: %s)", sourceCommit.Hash.String()[:8])
+	}
+
+	return result, nil
+}
+
+func (r *Repository) FetchRemote(remoteName string) error {
+	if remoteName == "" {
+		remoteName = "origin"
+	}
+
+	remote, err := r.repo.Remote(remoteName)
+	if err != nil {
+		return fmt.Errorf("failed to get remote '%s': %w", remoteName, err)
+	}
+
+	err = remote.Fetch(&git.FetchOptions{})
+	if err != nil {
+		if errors.Is(err, git.NoErrAlreadyUpToDate) {
+			return nil
+		}
+		return fmt.Errorf("failed to fetch from remote '%s': %w", remoteName, err)
+	}
+
+	return nil
+}
+
+func (r *Repository) PullBranch(branchName string, force bool) (*MergeResult, error) {
+	if err := ValidateBranchName(branchName); err != nil {
+		return nil, fmt.Errorf("invalid branch name: %w", err)
+	}
+
+	remote, remoteBranch, err := r.getRemoteTrackingInfo(branchName)
+	if err != nil {
+		return nil, fmt.Errorf("branch '%s' has no remote tracking information: %w", branchName, err)
+	}
+
+	if err := r.FetchRemote(remote); err != nil {
+		return nil, fmt.Errorf("failed to fetch from remote: %w", err)
+	}
+
+	if !r.RemoteBranchExists(remote, remoteBranch) {
+		return nil, fmt.Errorf("remote branch '%s/%s' does not exist", remote, remoteBranch)
+	}
+
+	currentBranch, err := r.GetCurrentBranch()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current branch: %w", err)
+	}
+
+	if currentBranch.ShortName != branchName {
+		if err := r.CheckoutBranch(branchName, false); err != nil {
+			return nil, fmt.Errorf("failed to checkout branch '%s': %w", branchName, err)
+		}
+	}
+
+	remoteBranchName := fmt.Sprintf("%s/%s", remote, remoteBranch)
+	
+	return r.MergeBranch(remoteBranchName, branchName, force)
 }

@@ -1,9 +1,13 @@
 package git
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 )
 
 // Bitbucket URL patterns
@@ -223,4 +227,66 @@ func ParseCloneURL(cloneURL string) (workspace, repo, protocol string, err error
 	}
 
 	return remote.Workspace, remote.RepoName, protocol, nil
+}
+
+func (r *Repository) AddRemote(name, url string) error {
+	if name == "" {
+		return fmt.Errorf("remote name cannot be empty")
+	}
+	if url == "" {
+		return fmt.Errorf("remote URL cannot be empty")
+	}
+
+	if _, exists := r.remotes[name]; exists {
+		return fmt.Errorf("remote '%s' already exists", name)
+	}
+
+	remoteConfig := &config.RemoteConfig{
+		Name: name,
+		URLs: []string{url},
+	}
+
+	_, err := r.repo.CreateRemote(remoteConfig)
+	if err != nil {
+		return fmt.Errorf("failed to add remote '%s': %w", name, err)
+	}
+
+	parsedRemote, err := parseRemoteURL(name, url)
+	if err != nil {
+		return nil
+	}
+
+	r.remotes[name] = parsedRemote
+	return nil
+}
+
+func (r *Repository) RemoteExists(name string) bool {
+	_, exists := r.remotes[name]
+	return exists
+}
+
+func (r *Repository) GetRemote(name string) (*Remote, bool) {
+	remote, exists := r.remotes[name]
+	return remote, exists
+}
+
+
+func (r *Repository) FetchBranch(remoteName, branchName string) error {
+	remote, err := r.repo.Remote(remoteName)
+	if err != nil {
+		return fmt.Errorf("failed to get remote '%s': %w", remoteName, err)
+	}
+
+	refSpec := fmt.Sprintf("refs/heads/%s:refs/remotes/%s/%s", branchName, remoteName, branchName)
+	err = remote.Fetch(&git.FetchOptions{
+		RefSpecs: []config.RefSpec{config.RefSpec(refSpec)},
+	})
+	if err != nil {
+		if errors.Is(err, git.NoErrAlreadyUpToDate) {
+			return nil
+		}
+		return fmt.Errorf("failed to fetch branch '%s' from remote '%s': %w", branchName, remoteName, err)
+	}
+
+	return nil
 }
