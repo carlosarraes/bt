@@ -3,6 +3,8 @@ package pr
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
@@ -191,4 +193,23 @@ func handlePullRequestAPIError(err error) error {
 	}
 
 	return fmt.Errorf("API request failed: %w", err)
+}
+
+func ParsePRID(prIDStr string) (int, error) {
+	if prIDStr == "" {
+		return 0, fmt.Errorf("pull request ID is required")
+	}
+	
+	prIDStr = strings.TrimPrefix(prIDStr, "#")
+	
+	prID, err := strconv.Atoi(prIDStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid pull request ID '%s': must be a number", prIDStr)
+	}
+	
+	if prID <= 0 {
+		return 0, fmt.Errorf("invalid pull request ID '%d': must be positive", prID)
+	}
+	
+	return prID, nil
 }
