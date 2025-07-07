@@ -15,9 +15,9 @@ get_arch() {
   # detect architecture
   ARCH=$(uname -m)
   case $ARCH in
-  x86_64) ARCH="amd64" ;;
-  aarch64) ARCH="arm64" ;;
-  arm64) ARCH="arm64" ;;
+  x86_64) ARCH="x86_64" ;;
+  aarch64) ARCH="aarch64" ;;
+  arm64) ARCH="aarch64" ;;
   *)
     echo "Unsupported architecture: $ARCH"
     exit 1
@@ -30,7 +30,7 @@ get_os() {
   OS=$(uname -s)
   case $OS in
   Linux) OS="linux" ;;
-  Darwin) OS="darwin" ;;
+  Darwin) OS="macos" ;;
   *)
     echo "Unsupported OS: $OS"
     exit 1
