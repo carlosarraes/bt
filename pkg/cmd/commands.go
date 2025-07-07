@@ -240,10 +240,50 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 
 // PRCmd represents the pr command group
 type PRCmd struct {
-	List   PRListCmd   `cmd:""`
-	View   PRViewCmd   `cmd:""`
-	Diff   PRDiffCmd   `cmd:""`
-	Review PRReviewCmd `cmd:""`
+	Create   PRCreateCmd   `cmd:""`
+	List     PRListCmd     `cmd:""`
+	View     PRViewCmd     `cmd:""`
+	Diff     PRDiffCmd     `cmd:""`
+	Review   PRReviewCmd   `cmd:""`
+	Files    PRFilesCmd    `cmd:""`
+	Comment  PRCommentCmd  `cmd:""`
+	Merge    PRMergeCmd    `cmd:""`
+	Checkout PRCheckoutCmd `cmd:""`
+}
+
+type PRCreateCmd struct {
+	Title     string   `help:"Title of the pull request"`
+	Body      string   `help:"Body of the pull request"`
+	Base      string   `help:"Base branch for the pull request"`
+	Draft     bool     `help:"Create a draft pull request"`
+	Reviewer  []string `help:"Reviewers for the pull request"`
+	Fill      bool     `help:"Fill title and body from commit messages"`
+	NoPush    bool     `name:"no-push" help:"Skip pushing branch to remote"`
+	Output    string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string  `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCreateCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.CreateCmd{
+		Title:      p.Title,
+		Body:       p.Body,
+		Base:       p.Base,
+		Draft:      p.Draft,
+		Reviewer:   p.Reviewer,
+		Fill:       p.Fill,
+		NoPush:     p.NoPush,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
 }
 
 // PRListCmd handles pr list
@@ -372,6 +412,116 @@ func (p *PRReviewCmd) Run(ctx context.Context) error {
 		NoColor:        noColor,
 		Workspace:      p.Workspace,
 		Repository:     p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRFilesCmd struct {
+	PRID       string `arg:"" name:"pr-id" help:"Pull request ID or number (e.g., 123 or #123)"`
+	NameOnly   bool   `help:"Show only file names"`
+	Filter     string `help:"Filter files by pattern (e.g., '*.go', 'src/**/*.js')"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRFilesCmd) Run(ctx context.Context) error {
+	cmd := &pr.FilesCmd{
+		PRID:       p.PRID,
+		NameOnly:   p.NameOnly,
+		Filter:     p.Filter,
+		Output:     p.Output,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRCommentCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Body       string `short:"b" help:"Comment body text"`
+	BodyFile   string `short:"F" name:"body-file" help:"Read comment body from file"`
+	ReplyTo    string `name:"reply-to" help:"Reply to comment ID"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCommentCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.CommentCmd{
+		PRID:       p.PRID,
+		Body:       p.Body,
+		BodyFile:   p.BodyFile,
+		ReplyTo:    p.ReplyTo,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRMergeCmd struct {
+	PRID         string `arg:"" help:"Pull request ID (number)"`
+	Squash       bool   `help:"Squash commits when merging"`
+	DeleteBranch bool   `help:"Delete source branch after merge"`
+	Auto         bool   `help:"Automatically merge when checks pass"`
+	Force        bool   `short:"f" help:"Skip confirmation prompt"`
+	Message      string `short:"m" help:"Custom merge commit message"`
+	Output       string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace    string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository   string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRMergeCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.MergeCmd{
+		PRID:         p.PRID,
+		Squash:       p.Squash,
+		DeleteBranch: p.DeleteBranch,
+		Auto:         p.Auto,
+		Force:        p.Force,
+		Message:      p.Message,
+		Output:       p.Output,
+		NoColor:      noColor,
+		Workspace:    p.Workspace,
+		Repository:   p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRCheckoutCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Detach     bool   `help:"Checkout in detached HEAD mode"`
+	Force      bool   `short:"f" help:"Force checkout, discarding local changes"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCheckoutCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.CheckoutCmd{
+		PRID:       p.PRID,
+		Detach:     p.Detach,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
 	}
 	return cmd.Run(ctx)
 }
