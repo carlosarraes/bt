@@ -293,3 +293,16 @@ const (
 func (p PullRequestCheckState) String() string {
 	return string(p)
 }
+
+type PullRequestLockReason string
+
+const (
+	LockReasonOffTopic  PullRequestLockReason = "off_topic"
+	LockReasonResolved  PullRequestLockReason = "resolved"
+	LockReasonSpam      PullRequestLockReason = "spam"
+	LockReasonTooHeated PullRequestLockReason = "too_heated"
+)
+
+func (p PullRequestLockReason) String() string {
+	return string(p)
+}

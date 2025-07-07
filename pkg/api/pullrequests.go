@@ -377,6 +377,29 @@ func (p *PullRequestService) DeclinePullRequest(ctx context.Context, workspace, 
 	return &result, nil
 }
 
+func (p *PullRequestService) ReopenPullRequest(ctx context.Context, workspace, repoSlug string, id int, comment string) (*PullRequest, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+	
+	if id <= 0 {
+		return nil, NewValidationError("pull request ID must be positive", "")
+	}
+
+	request := &UpdatePullRequestRequest{
+		State: "OPEN",
+	}
+
+	if comment != "" {
+		_, err := p.AddComment(ctx, workspace, repoSlug, id, comment, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to add comment: %w", err)
+		}
+	}
+
+	return p.UpdatePullRequest(ctx, workspace, repoSlug, id, request)
+}
+
 // GetPullRequestActivity retrieves activity for a pull request
 func (p *PullRequestService) GetPullRequestActivity(ctx context.Context, workspace, repoSlug string, id int) (*PaginatedResponse, error) {
 	if workspace == "" || repoSlug == "" {
@@ -450,4 +473,71 @@ func (p *PullRequestService) AddInlineComment(ctx context.Context, workspace, re
 	}
 	
 	return p.AddComment(ctx, workspace, repoSlug, id, comment, inline)
+}
+
+func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, workspace, repoSlug string, id int, reason string) (*PullRequest, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+	
+	if id <= 0 {
+		return nil, NewValidationError("pull request ID must be positive", "")
+	}
+
+	pr, err := p.GetPullRequest(ctx, workspace, repoSlug, id)
+	if err != nil {
+		return nil, err
+	}
+
+	lockMessage := "🔒 **Conversation locked**\n\nThis pull request's conversation has been locked to prevent further comments."
+	
+	if reason != "" {
+		var reasonText string
+		switch reason {
+		case "off_topic":
+			reasonText = "off-topic"
+		case "resolved":
+			reasonText = "resolved"
+		case "spam":
+			reasonText = "spam"
+		case "too_heated":
+			reasonText = "too heated"
+		default:
+			reasonText = reason
+		}
+		lockMessage += fmt.Sprintf("\n\n**Reason:** %s", reasonText)
+	}
+	
+	lockMessage += "\n\nIf you have questions about this decision, please contact the repository administrators."
+
+	_, err = p.AddComment(ctx, workspace, repoSlug, id, lockMessage, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add lock comment: %w", err)
+	}
+
+	return pr, nil
+}
+
+func (p *PullRequestService) UnlockPullRequestConversation(ctx context.Context, workspace, repoSlug string, id int) (*PullRequest, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+	
+	if id <= 0 {
+		return nil, NewValidationError("pull request ID must be positive", "")
+	}
+
+	pr, err := p.GetPullRequest(ctx, workspace, repoSlug, id)
+	if err != nil {
+		return nil, err
+	}
+
+	unlockMessage := "🔓 **Conversation unlocked**\n\nThis pull request's conversation has been unlocked and comments are now enabled again."
+
+	_, err = p.AddComment(ctx, workspace, repoSlug, id, unlockMessage, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add unlock comment: %w", err)
+	}
+
+	return pr, nil
 }
