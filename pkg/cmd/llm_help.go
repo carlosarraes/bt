@@ -27,7 +27,8 @@ func showGlobalLLMHelp() {
 ## Overview
 bt is a 1:1 replacement for GitHub CLI that works with Bitbucket Cloud.
 - **Purpose**: Provide identical command structure and user experience as GitHub CLI (gh) for Bitbucket
-- **Key Strength**: 5x faster pipeline debugging compared to Bitbucket web UI
+- **Key Strength**: 5x faster pipeline debugging compared to Bitbucket web UI + AI-powered PR descriptions
+- **AI Innovation**: Intelligent PR description generation with template compliance and JIRA integration
 - **LLM-Friendly**: All commands support structured JSON output for automation
 
 ## GitHub CLI Mapping
@@ -102,12 +103,19 @@ bt repo list                     # List accessible repositories
 bt repo view workspace/repo      # Repository details
 ` + "```" + `
 
-### Pull Request Management
+### Pull Request Management with AI
 ` + "```bash" + `
 bt pr list                       # List pull requests
-bt pr create --title "Fix" --body "Description"  # Create PR
+bt pr create --ai                # AI-generated description (Portuguese)
+bt pr create --ai --template english  # English AI description
+bt pr create --ai --jira context.md   # Include JIRA context
+bt pr create --title "Fix" --body "Description"  # Traditional creation
 bt pr view 42                    # PR details
+bt pr review 42 --approve        # Approve PR
+bt pr comment 42 -b "LGTM!"     # Add comment
 bt pr merge 42                   # Merge PR
+bt pr checkout 42                # Switch to PR branch
+bt pr status                     # Your PR dashboard
 ` + "```" + `
 
 ### Pipeline Monitoring & Debugging
@@ -371,30 +379,109 @@ func showPRLLMHelp() {
 	help := `# bt pr - Pull Requests (LLM Guide)
 
 ## Overview
-Manage Bitbucket pull requests with identical syntax to GitHub CLI.
+Complete pull request workflow with AI-powered descriptions and GitHub CLI compatibility.
 
-## Common Commands
+## AI-Powered PR Creation (🤖 INNOVATION)
 ` + "```bash" + `
-bt pr list                       # List pull requests
-bt pr list --state open         # Filter by state
-bt pr list --author @me         # Your PRs only
-bt pr create                     # Interactive PR creation
-bt pr create --title "Fix" --body "Description"  # Direct creation
-bt pr view 42                    # PR details
-bt pr merge 42                   # Merge PR
-bt pr close 42                   # Close PR
+# AI-generated descriptions with template compliance
+bt pr create --ai                          # Portuguese template (default)
+bt pr create --ai --template english      # English template
+bt pr create --ai --jira project.md       # Include JIRA context from file
+
+# AI process (step-by-step visibility):
+# 🔍 Analyzing PR context...
+# 📊 Analyzing code changes: 5 files (+127 -45 lines)
+# 🏷️ Categorizing changes: backend (3), frontend (2)
+# 📋 Reading JIRA context from project.md...
+# 🧠 Generating changes summary...
+# 📝 Creating checklist for backend and frontend changes...
+# 🎯 Applying Portuguese template...
+# ✅ AI description generated successfully!
 ` + "```" + `
 
-## GitHub CLI Mapping
-` + "```bash" + `
-gh pr list    → bt pr list
-gh pr create  → bt pr create
-gh pr view    → bt pr view
-gh pr merge   → bt pr merge
-gh pr close   → bt pr close
+## Template Structure (STRICT COMPLIANCE)
+Portuguese Template:
+` + "```markdown" + `
+## Descrição da Pull Request
+
+### Contexto
+[JIRA context or branch analysis]
+
+### Alterações Realizadas
+[AI-generated code change summary]
+
+### Cliente Específico
+[Client] JIRA-TICKET
+
+### Checklist
+- [ ] Auto-generated items based on change types
+
+### Evidências
+*Adicionar logs, screenshots ou outros comprovantes*
+
+---
+*Auto-generated stats*
 ` + "```" + `
 
-Note: PR commands follow GitHub CLI patterns exactly for seamless migration.
+## Complete PR Workflow
+` + "```bash" + `
+# Creation and setup
+bt pr list                                 # List pull requests
+bt pr list --state open                   # Filter by state
+bt pr list --author @me                   # Your PRs only
+bt pr create --ai                         # AI-generated description
+bt pr create --title "Fix" --body "Desc" # Traditional creation
+
+# Review and collaboration
+bt pr view 42                             # PR details
+bt pr diff 42                             # Show changes
+bt pr files 42                            # List changed files
+bt pr review 42 --approve                 # Approve PR
+bt pr comment 42 -b "Great work!"         # Add comment
+bt pr checkout 42                         # Switch to PR branch
+
+# Management and status
+bt pr status                              # Your PR dashboard
+bt pr checks 42                           # CI/build status
+bt pr edit 42 --title "New title"        # Edit metadata
+bt pr ready 42                            # Mark draft as ready
+
+# Lifecycle
+bt pr merge 42                            # Merge PR
+bt pr merge 42 --squash --delete-branch  # Squash merge with cleanup
+bt pr close 42                            # Close PR
+bt pr reopen 42                           # Reopen PR
+
+# Advanced operations
+bt pr update-branch 42                    # Sync with target branch
+bt pr lock 42 --reason spam               # Lock conversation
+bt pr unlock 42                           # Unlock conversation
+` + "```" + `
+
+## GitHub CLI Mapping (Complete Parity)
+` + "```bash" + `
+gh pr list     → bt pr list
+gh pr create   → bt pr create     # Enhanced with AI
+gh pr view     → bt pr view
+gh pr diff     → bt pr diff
+gh pr review   → bt pr review
+gh pr comment  → bt pr comment
+gh pr checkout → bt pr checkout
+gh pr merge    → bt pr merge
+gh pr close    → bt pr close
+gh pr edit     → bt pr edit
+gh pr status   → bt pr status
+` + "```" + `
+
+## AI Analysis Capabilities
+- **File categorization**: backend, frontend, database, documentation, configuration
+- **Change type detection**: 20+ programming languages supported
+- **Smart checklists**: Auto-generated based on detected change types
+- **JIRA integration**: Context extraction from markdown files
+- **Template compliance**: Never deviates from required structure
+- **Multi-language**: Portuguese and English template support
+
+Note: bt pr create --ai provides intelligent PR descriptions while maintaining perfect GitHub CLI compatibility for all other commands.
 `
 
 	fmt.Print(help)
