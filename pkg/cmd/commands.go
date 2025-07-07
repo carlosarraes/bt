@@ -240,15 +240,24 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 
 // PRCmd represents the pr command group
 type PRCmd struct {
-	Create   PRCreateCmd   `cmd:""`
-	List     PRListCmd     `cmd:""`
-	View     PRViewCmd     `cmd:""`
-	Diff     PRDiffCmd     `cmd:""`
-	Review   PRReviewCmd   `cmd:""`
-	Files    PRFilesCmd    `cmd:""`
-	Comment  PRCommentCmd  `cmd:""`
-	Merge    PRMergeCmd    `cmd:""`
-	Checkout PRCheckoutCmd `cmd:""`
+	Create       PRCreateCmd       `cmd:""`
+	List         PRListCmd         `cmd:""`
+	View         PRViewCmd         `cmd:""`
+	Edit         PREditCmd         `cmd:""`
+	Diff         PRDiffCmd         `cmd:""`
+	Review       PRReviewCmd       `cmd:""`
+	Files        PRFilesCmd        `cmd:""`
+	Comment      PRCommentCmd      `cmd:""`
+	Merge        PRMergeCmd        `cmd:""`
+	Checkout     PRCheckoutCmd     `cmd:""`
+	Ready        PRReadyCmd        `cmd:""`
+	Checks       PRChecksCmd       `cmd:""`
+	Close        PRCloseCmd        `cmd:""`
+	Reopen       PRReopenCmd       `cmd:""`
+	Status       PRStatusCmd       `cmd:""`
+	UpdateBranch PRUpdateBranchCmd `cmd:"update-branch"`
+	Lock         PRLockCmd         `cmd:""`
+	Unlock       PRUnlockCmd       `cmd:""`
 }
 
 type PRCreateCmd struct {
@@ -258,6 +267,9 @@ type PRCreateCmd struct {
 	Draft     bool     `help:"Create a draft pull request"`
 	Reviewer  []string `help:"Reviewers for the pull request"`
 	Fill      bool     `help:"Fill title and body from commit messages"`
+	AI        bool     `help:"Generate PR description using AI analysis"`
+	Template  string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
+	Jira      string   `help:"Path to JIRA context file (markdown format)"`
 	NoPush    bool     `name:"no-push" help:"Skip pushing branch to remote"`
 	Output    string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace string   `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -277,6 +289,9 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 		Draft:      p.Draft,
 		Reviewer:   p.Reviewer,
 		Fill:       p.Fill,
+		AI:         p.AI,
+		Template:   p.Template,
+		Jira:       p.Jira,
 		NoPush:     p.NoPush,
 		Output:     p.Output,
 		NoColor:    noColor,
@@ -348,6 +363,42 @@ func (p *PRViewCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
+type PREditCmd struct {
+	PRID           string   `arg:"" help:"Pull request ID (number)"`
+	Title          string   `help:"Edit pull request title"`
+	Body           string   `help:"Edit pull request description"`
+	BodyFile       string   `short:"F" name:"body-file" help:"Read description from file"`
+	AddReviewer    []string `name:"add-reviewer" help:"Add reviewer by username"`
+	RemoveReviewer []string `name:"remove-reviewer" help:"Remove reviewer by username"`
+	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
+	Draft          bool     `help:"Convert pull request to draft"`
+	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository     string   `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PREditCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.EditCmd{
+		PRID:           p.PRID,
+		Title:          p.Title,
+		Body:           p.Body,
+		BodyFile:       p.BodyFile,
+		AddReviewer:    p.AddReviewer,
+		RemoveReviewer: p.RemoveReviewer,
+		Ready:          p.Ready,
+		Draft:          p.Draft,
+		Output:         p.Output,
+		NoColor:        noColor,
+		Workspace:      p.Workspace,
+		Repository:     p.Repository,
+	}
+	return cmd.Run(ctx)
+}
 
 type PRDiffCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
@@ -517,6 +568,212 @@ func (p *PRCheckoutCmd) Run(ctx context.Context) error {
 	cmd := &pr.CheckoutCmd{
 		PRID:       p.PRID,
 		Detach:     p.Detach,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRReadyCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Comment    string `help:"Add a comment when marking as ready"`
+	Force      bool   `short:"f" help:"Force mark as ready without confirmation"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRReadyCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ReadyCmd{
+		PRID:       p.PRID,
+		Comment:    p.Comment,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRChecksCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Watch      bool   `short:"w" help:"Watch for live updates"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRChecksCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ChecksCmd{
+		PRID:       p.PRID,
+		Watch:      p.Watch,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRCloseCmd struct {
+	PRID         string `arg:"" help:"Pull request ID (number)"`
+	Comment      string `short:"c" help:"Comment to add when closing the PR"`
+	DeleteBranch bool   `name:"delete-branch" help:"Delete the source branch after closing"`
+	Force        bool   `short:"f" help:"Skip confirmation prompt"`
+	Output       string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace    string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository   string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCloseCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.CloseCmd{
+		PRID:         p.PRID,
+		Comment:      p.Comment,
+		DeleteBranch: p.DeleteBranch,
+		Force:        p.Force,
+		Output:       p.Output,
+		NoColor:      noColor,
+		Workspace:    p.Workspace,
+		Repository:   p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRReopenCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Comment    string `short:"c" help:"Comment to add when reopening the PR"`
+	Force      bool   `short:"f" help:"Skip confirmation prompt"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRReopenCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ReopenCmd{
+		PRID:       p.PRID,
+		Comment:    p.Comment,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRStatusCmd struct {
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRStatusCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.StatusCmd{
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRUpdateBranchCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Force      bool   `short:"f" help:"Force update, overriding safety checks"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRUpdateBranchCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.UpdateBranchCmd{
+		PRID:       p.PRID,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRLockCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Reason     string `help:"Reason for locking conversation (off_topic, resolved, spam, too_heated)"`
+	Force      bool   `short:"f" help:"Skip confirmation prompt"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRLockCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.LockCmd{
+		PRID:       p.PRID,
+		Reason:     p.Reason,
+		Force:      p.Force,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRUnlockCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Force      bool   `short:"f" help:"Skip confirmation prompt"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRUnlockCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.UnlockCmd{
+		PRID:       p.PRID,
 		Force:      p.Force,
 		Output:     p.Output,
 		NoColor:    noColor,
