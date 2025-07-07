@@ -38,7 +38,7 @@ func (cmd *MergeCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	prID, err := parsePRID(cmd.PRID)
+	prID, err := cmd.ParsePRID()
 	if err != nil {
 		return fmt.Errorf("invalid pull request ID '%s': %w", cmd.PRID, err)
 	}
@@ -205,3 +205,6 @@ func getBranchName(branch *api.PullRequestBranch) string {
 	return branch.Branch.Name
 }
 
+func (cmd *MergeCmd) ParsePRID() (int, error) {
+	return ParsePRID(cmd.PRID)
+}

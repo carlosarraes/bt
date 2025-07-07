@@ -40,7 +40,7 @@ func (cmd *CommentCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	prID, err := cmd.parsePRID()
+	prID, err := cmd.ParsePRID()
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (cmd *CommentCmd) Run(ctx context.Context) error {
 	return cmd.displayResult(prCtx, pr, comment)
 }
 
-func (cmd *CommentCmd) parsePRID() (int, error) {
+func (cmd *CommentCmd) ParsePRID() (int, error) {
 	if cmd.PRID == "" {
 		return 0, fmt.Errorf("pull request ID is required")
 	}

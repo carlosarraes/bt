@@ -70,7 +70,7 @@ func TestReviewCmd_ParsePRID(t *testing.T) {
 				PRID: tt.prid,
 			}
 
-			result, err := cmd.parsePRID()
+			result, err := cmd.ParsePRID()
 
 			if tt.expectErr {
 				assert.Error(t, err)
@@ -385,7 +385,7 @@ func BenchmarkReviewCmd_ParsePRID(b *testing.B) {
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = cmd.parsePRID()
+		_, _ = cmd.ParsePRID()
 	}
 }
 

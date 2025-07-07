@@ -40,7 +40,7 @@ index 9876543..fedcba9 100644
 +Added a new line here.
 `
 
-func TestDiffCmd_parsePRID(t *testing.T) {
+func TestDiffCmd_ParsePRID(t *testing.T) {
 	tests := []struct {
 		name    string
 		prid    string
@@ -82,7 +82,7 @@ func TestDiffCmd_parsePRID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &DiffCmd{PRID: tt.prid}
-			got, err := cmd.parsePRID()
+			got, err := cmd.ParsePRID()
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -273,7 +273,7 @@ wantErr: false,
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			_, err := tt.cmd.parsePRID()
+			_, err := tt.cmd.ParsePRID()
 			
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -331,7 +331,7 @@ func TestDiffCmd_ErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &DiffCmd{PRID: tt.prid}
-			_, err := cmd.parsePRID()
+			_, err := cmd.ParsePRID()
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -344,11 +344,11 @@ func TestDiffCmd_ErrorHandling(t *testing.T) {
 }
 
 
-func BenchmarkDiffCmd_parsePRID(b *testing.B) {
+func BenchmarkDiffCmd_ParsePRID(b *testing.B) {
 	cmd := &DiffCmd{PRID: "12345"}
 	
 	for i := 0; i < b.N; i++ {
-		_, _ = cmd.parsePRID()
+		_, _ = cmd.ParsePRID()
 	}
 }
 

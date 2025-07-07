@@ -74,7 +74,7 @@ func TestViewCmd_ParsePRID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{PRID: tt.prid}
-			result, err := cmd.parsePRID()
+			result, err := cmd.ParsePRID()
 			
 			if tt.expectErr {
 				assert.Error(t, err)
@@ -152,7 +152,7 @@ func TestViewCmd_Validation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test PR ID parsing
-			_, err := tt.cmd.parsePRID()
+			_, err := tt.cmd.ParsePRID()
 			
 			if tt.expectErr {
 				assert.Error(t, err)
@@ -515,7 +515,7 @@ func TestViewCmd_GitHubCLICompatibility(t *testing.T) {
 			
 			// Verify PRID parsing works correctly
 			cmd := &ViewCmd{PRID: tt.expected.PRID}
-			prID, err := cmd.parsePRID()
+			prID, err := cmd.ParsePRID()
 			assert.NoError(t, err)
 			assert.Greater(t, prID, 0)
 		})
@@ -554,7 +554,7 @@ func TestViewCmd_ErrorHandling(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{PRID: tt.prid}
-			_, err := cmd.parsePRID()
+			_, err := cmd.ParsePRID()
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tt.errMsg)
 		})

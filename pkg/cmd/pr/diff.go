@@ -46,7 +46,7 @@ prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
 	}
 
 
-	prID, err := cmd.parsePRID()
+	prID, err := cmd.ParsePRID()
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
 }
 
 
-func (cmd *DiffCmd) parsePRID() (int, error) {
+func (cmd *DiffCmd) ParsePRID() (int, error) {
 	if cmd.PRID == "" {
 		return 0, fmt.Errorf("pull request ID is required")
 	}

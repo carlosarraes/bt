@@ -50,7 +50,7 @@ func (cmd *ReviewCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	prID, err := cmd.parsePRID()
+	prID, err := cmd.ParsePRID()
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (cmd *ReviewCmd) Run(ctx context.Context) error {
 	return cmd.executeReviewAction(ctx, prCtx, action, prID, body, pr)
 }
 
-func (cmd *ReviewCmd) parsePRID() (int, error) {
+func (cmd *ReviewCmd) ParsePRID() (int, error) {
 	if cmd.PRID == "" {
 		return 0, fmt.Errorf("pull request ID is required")
 	}

@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestCommentCmd_parsePRID(t *testing.T) {
+func TestCommentCmd_ParsePRID(t *testing.T) {
 	tests := []struct {
 		name    string
 		prid    string
@@ -48,13 +48,13 @@ func TestCommentCmd_parsePRID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &CommentCmd{PRID: tt.prid}
-			got, err := cmd.parsePRID()
+			got, err := cmd.ParsePRID()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parsePRID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParsePRID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("parsePRID() = %v, want %v", got, tt.want)
+				t.Errorf("ParsePRID() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -175,9 +175,9 @@ func TestCommentCmd_Validation(t *testing.T) {
 				ReplyTo:  tt.replyTo,
 			}
 
-			_, err := cmd.parsePRID()
+			_, err := cmd.ParsePRID()
 			if (err != nil) != tt.wantPRIDErr {
-				t.Errorf("parsePRID() error = %v, wantPRIDErr %v", err, tt.wantPRIDErr)
+				t.Errorf("ParsePRID() error = %v, wantPRIDErr %v", err, tt.wantPRIDErr)
 			}
 
 			if tt.body != "" {
