@@ -5,7 +5,7 @@ import "runtime/debug"
 // Version information for the bt CLI
 var (
 	// Version is the current version of bt
-	Version = "0.0.2"
+	Version = "0.0.3"
 
 	// Commit is the git commit hash
 	Commit = "unknown"
