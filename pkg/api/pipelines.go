@@ -624,3 +624,29 @@ func (p *PipelineService) WaitForPipelineCompletion(ctx context.Context, workspa
 		}
 	}
 }
+
+func (p *PipelineService) GetPipelinesByCommit(ctx context.Context, workspace, repoSlug, commitSHA string) ([]*Pipeline, error) {
+	if workspace == "" || repoSlug == "" || commitSHA == "" {
+		return nil, NewValidationError("workspace, repository slug, and commit SHA are required", "")
+	}
+
+	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
+	
+	params := []string{
+		fmt.Sprintf("target.commit.hash=%s", url.QueryEscape(commitSHA)),
+		"sort=-created_on",
+	}
+	endpoint += "?" + strings.Join(params, "&")
+
+	pageOptions := &PageOptions{
+		PageLen: 50,
+	}
+
+	var pipelines []*Pipeline
+	paginator := p.client.Paginate(endpoint, pageOptions)
+	if err := paginator.FetchAllTyped(ctx, &pipelines); err != nil {
+		return nil, fmt.Errorf("failed to fetch pipelines for commit: %w", err)
+	}
+
+	return pipelines, nil
+}
