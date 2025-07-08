@@ -1,6 +1,7 @@
 package run
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // WatchCmd handles the run watch command for real-time pipeline monitoring
@@ -20,6 +22,29 @@ type WatchCmd struct {
 	NoColor    bool   // NoColor is passed from global flag
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+type LogBuffer struct {
+	Lines []string
+	Size  int
+}
+
+func NewLogBuffer(size int) *LogBuffer {
+	return &LogBuffer{
+		Lines: make([]string, 0, size),
+		Size:  size,
+	}
+}
+
+func (lb *LogBuffer) Add(line string) {
+	if len(lb.Lines) >= lb.Size {
+		lb.Lines = lb.Lines[1:]
+	}
+	lb.Lines = append(lb.Lines, line)
+}
+
+func (lb *LogBuffer) GetLines() []string {
+	return lb.Lines
 }
 
 // Run executes the run watch command
@@ -194,7 +219,32 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 	}
 }
 
-// displayWatchUpdate shows a compact status update optimized for watch mode
+func (cmd *WatchCmd) getRecentLogs(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string, lineCount int) ([]string, error) {
+	logReader, err := runCtx.Client.Pipelines.GetStepLogs(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID, stepUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer logReader.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(logReader)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(lines) > lineCount {
+		return lines[len(lines)-lineCount:], nil
+	}
+	return lines, nil
+}
+
 func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext, pipelineUUID string) error {
 	// Get current pipeline state
 	pipeline, err := runCtx.Client.Pipelines.GetPipeline(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
@@ -208,8 +258,7 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 		return err
 	}
 
-	// Clear previous line and display current status
-	fmt.Printf("\r\033[K") // Clear current line
+	fmt.Print("\033[H\033[2J")
 
 	// Pipeline status
 	status := "UNKNOWN"
@@ -227,7 +276,6 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 		duration = FormatDuration(pipeline.BuildSecondsUsed)
 	}
 
-	// Current time and pipeline status
 	fmt.Printf("[%s] %s Pipeline #%d: %s", 
 		time.Now().Format("15:04:05"), 
 		cmd.getStatusIcon(status), 
@@ -242,6 +290,7 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 	activeSteps := 0
 	totalSteps := len(steps)
 	completedSteps := 0
+	var currentStep *api.PipelineStep
 	
 	for _, step := range steps {
 		if step.State != nil {
@@ -250,6 +299,7 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 				completedSteps++
 			case "IN_PROGRESS":
 				activeSteps++
+				currentStep = step
 				// Show which step is currently running
 				fmt.Printf(" | 🔄 %s", step.Name)
 			case "FAILED":
@@ -261,6 +311,32 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 	// Progress indicator
 	if totalSteps > 0 {
 		fmt.Printf(" [%d/%d steps]", completedSteps+activeSteps, totalSteps)
+	}
+
+	fmt.Println()
+
+	if currentStep != nil {
+		fmt.Printf("\n📋 Recent output from \"%s\":\n", currentStep.Name)
+		
+		recentLogs, err := cmd.getRecentLogs(ctx, runCtx, pipelineUUID, currentStep.UUID, 10)
+		if err != nil {
+			fmt.Printf("   (Unable to fetch logs: %v)\n", err)
+		} else if len(recentLogs) > 0 {
+			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+			if cmd.NoColor {
+				dimStyle = lipgloss.NewStyle()
+			}
+			
+			for _, line := range recentLogs {
+				if line != "" {
+					fmt.Printf("   %s\n", dimStyle.Render(line))
+				}
+			}
+		} else {
+			fmt.Printf("   (No recent output)\n")
+		}
+	} else {
+		fmt.Printf("\n💤 No steps currently running\n")
 	}
 
 	return nil
