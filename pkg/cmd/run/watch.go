@@ -195,10 +195,8 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 
 	cmd.logBuffer = NewLogBuffer(10)
 
-	logTicker := time.NewTicker(2 * time.Second)
-	statusTicker := time.NewTicker(10 * time.Second)
-	defer logTicker.Stop()
-	defer statusTicker.Stop()
+	updateTicker := time.NewTicker(3 * time.Second)
+	defer updateTicker.Stop()
 
 	// Show initial state
 	if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
@@ -218,16 +216,7 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 		case <-watchCtx.Done():
 			return watchCtx.Err()
 			
-		case <-logTicker.C:
-			if currentStepUUID != "" {
-				if err := cmd.streamLogsUpdate(watchCtx, runCtx, pipelineUUID, currentStepUUID); err != nil {
-					if cmd.lastDisplayLines > 0 {
-						fmt.Printf("   (Log fetch error: %v)\n", err)
-					}
-				}
-			}
-			
-		case <-statusTicker.C:
+		case <-updateTicker.C:
 			updatedPipeline, err := runCtx.Client.Pipelines.GetPipeline(watchCtx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
 			if err != nil {
 				return handlePipelineAPIError(err)
@@ -254,6 +243,13 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 			if newStepUUID != currentStepUUID {
 				currentStepUUID = newStepUUID
 				cmd.logBuffer = NewLogBuffer(10)
+			}
+
+			if currentStepUUID != "" {
+				allLogs, err := cmd.getAllLogs(watchCtx, runCtx, pipelineUUID, currentStepUUID)
+				if err == nil {
+					cmd.logBuffer.AddNew(allLogs)
+				}
 			}
 
 			if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
@@ -287,19 +283,6 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 	}
 }
 
-func (cmd *WatchCmd) streamLogsUpdate(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string) error {
-	allLogs, err := cmd.getAllLogs(ctx, runCtx, pipelineUUID, stepUUID)
-	if err != nil {
-		return err
-	}
-
-	if cmd.logBuffer.AddNew(allLogs) {
-		cmd.updateLogDisplay()
-	}
-	
-	return nil
-}
-
 func (cmd *WatchCmd) getAllLogs(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string) ([]string, error) {
 	logReader, err := runCtx.Client.Pipelines.GetStepLogs(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID, stepUUID)
 	if err != nil {
@@ -321,28 +304,6 @@ func (cmd *WatchCmd) getAllLogs(ctx context.Context, runCtx *RunContext, pipelin
 	}
 
 	return lines, nil
-}
-
-func (cmd *WatchCmd) updateLogDisplay() {
-	if cmd.lastDisplayLines > 0 {
-		fmt.Printf("\033[%dA", cmd.lastDisplayLines-2)
-		fmt.Print("\033[2K")
-		fmt.Print("\r")
-	}
-
-	recentLogs := cmd.logBuffer.GetLastLines(10)
-	if len(recentLogs) > 0 {
-		dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-		if cmd.NoColor {
-			dimStyle = lipgloss.NewStyle()
-		}
-		
-		for _, line := range recentLogs {
-			if line != "" {
-				fmt.Printf("   %s\n", dimStyle.Render(line))
-			}
-		}
-	}
 }
 
 func (cmd *WatchCmd) getRecentLogs(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string, lineCount int) ([]string, error) {
@@ -407,8 +368,7 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 		duration = FormatDuration(pipeline.BuildSecondsUsed)
 	}
 
-	fmt.Printf("[%s] %s Pipeline #%d: %s", 
-		time.Now().Format("15:04:05"), 
+	fmt.Printf("%s Pipeline #%d: %s", 
 		cmd.getStatusIcon(status), 
 		pipeline.BuildNumber, 
 		status)

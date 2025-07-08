@@ -267,10 +267,10 @@ bt run watch {uuid}              # Watch pipeline by UUID
 ` + "```" + `
 
 **Key Features:**
-- ✅ Continuous log streaming every 2 seconds (true streaming experience)
+- ✅ Unified streaming updates every 3 seconds (clean, no conflicts)
 - ✅ Rolling buffer of last 10 lines with smooth updates
-- ✅ No blinking or screen clearing - logs flow naturally  
-- ✅ Pipeline status updates every 10 seconds
+- ✅ Clean display without timestamp confusion
+- ✅ No duplicate status lines or display conflicts
 - ✅ Step completion notifications with progress tracking
 - ✅ Graceful Ctrl+C exit
 - ✅ Progress indicators and status icons

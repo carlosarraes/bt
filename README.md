@@ -193,10 +193,10 @@ bt run view 1234 --step "Run Tests" # Show logs for specific step
 
 # Real-time monitoring with streaming logs
 bt run watch 1234                  # Watch live execution with continuous log streaming  
-                                   # ✨ Streams new log lines as they appear (2s polling)
+                                   # ✨ Streams new log lines as they appear (3s updates)
                                    # ✨ Shows rolling buffer of last 10 lines
-                                   # ✨ Smooth updates without blinking
-                                   # ✨ Live progress indicators and timestamps
+                                   # ✨ Clean display without timestamp conflicts
+                                   # ✨ Live progress indicators and status
                                    # ✨ Automatic completion detection
 
 # Pipeline management  
