@@ -69,6 +69,12 @@ func main() {
 		case "run":
 			showRunHelp()
 			return
+		case "pr":
+			showPRHelp()
+			return
+		case "config":
+			showConfigHelp()
+			return
 		}
 	}
 
@@ -121,59 +127,178 @@ func main() {
 }
 
 func showMainHelp() {
-	fmt.Print(`Usage: bt <command> [flags]
+	fmt.Print(`Work seamlessly with Bitbucket from the command line.
 
-Work seamlessly with Bitbucket from the command line.
+USAGE
+  bt <command> <subcommand> [flags]
 
-Flags:
-  -h, --help              Show context-sensitive help.
-  -v, --verbose           Enable verbose output
-      --version           Show version information
-      --config=PATH       Config file path
-  -o, --output=FORMAT     Output format (table,json,yaml)
-      --no-color          Disable colored output
-      --llm               Show LLM-optimized usage guide and examples
+CORE COMMANDS
+  auth:          Authenticate bt and git with Bitbucket
+  pr:            Manage pull requests
+  repo:          Manage repositories
+  run:           View and manage pipeline runs
 
-Commands:
-  auth
-  run
-  repo
-  pr
-  version
+ADDITIONAL COMMANDS
+  config:        Manage configuration for bt
+  version:       Show bt version
 
-Run "bt <command> --help" for more information on a command.
-Run "bt --llm" for LLM-optimized usage guidance.
+FLAGS
+  --help              Show help for command
+  --version           Show bt version
+  -v, --verbose       Enable verbose output
+  --config=PATH       Config file path
+  -o, --output=FORMAT Output format (table, json, yaml)
+  --no-color          Disable colored output
+  --llm               Show LLM-optimized usage guide and examples
+
+EXAMPLES
+  $ bt pr create
+  $ bt pr list --state open
+  $ bt run view 123
+  $ bt auth login
+
+LEARN MORE
+  Use 'bt <command> <subcommand> --help' for more information about a command.
+  Run 'bt --llm' for LLM-optimized usage guidance and examples.
 `)
 }
 
 func showAuthHelp() {
-	fmt.Print(`Usage: bt auth <command>
+	fmt.Print(`Authenticate bt and git with Bitbucket.
 
-Authenticate bt and git with Bitbucket.
+USAGE
+  bt auth <command> [flags]
 
-Commands:
-  login
-  logout
-  status
-  refresh
+AVAILABLE COMMANDS
+  login:         Authenticate with Bitbucket
+  logout:        Log out of Bitbucket
+  status:        View authentication status
+  refresh:       Refresh stored authentication credentials
 
-Run "bt auth <command> --help" for more information on a command.
+FLAGS
+  --help   Show help for command
+
+EXAMPLES
+  $ bt auth login
+  $ bt auth status
+  $ bt auth login --with-token
+
+LEARN MORE
+  Use 'bt auth <command> --help' for more information about a command.
 `)
 }
 
 func showRunHelp() {
-	fmt.Print(`Usage: bt run <command>
+	fmt.Print(`View and manage pipeline runs.
 
-View and manage pipeline runs.
+USAGE
+  bt run <command> [flags]
 
-Commands:
-  list
-  view
-  watch
-  logs
-  cancel
+AVAILABLE COMMANDS
+  list:          List pipeline runs
+  view:          View details about a specific pipeline run
+  watch:         Watch a pipeline run in real-time
+  logs:          View logs for a pipeline run
+  cancel:        Cancel a running pipeline
 
-Run "bt run <command> --help" for more information on a command.
+FLAGS
+  -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
+  --help                         Show help for command
+
+INHERITED FLAGS
+  -o, --output=FORMAT   Output format (table, json, yaml)
+  --no-color           Disable colored output
+
+EXAMPLES
+  $ bt run list
+  $ bt run view 123
+  $ bt run logs 123 --errors-only
+  $ bt run watch 123
+
+LEARN MORE
+  Use 'bt run <command> --help' for more information about a command.
+`)
+}
+
+func showPRHelp() {
+	fmt.Print(`Work with Bitbucket pull requests.
+
+USAGE
+  bt pr <command> [flags]
+
+GENERAL COMMANDS
+  create:        Create a pull request
+  list:          List pull requests in a repository
+  status:        Show status of relevant pull requests
+
+TARGETED COMMANDS
+  checkout:      Check out a pull request in git
+  checks:        Show CI status for a single pull request
+  close:         Close a pull request
+  comment:       Add a comment to a pull request
+  diff:          View changes in a pull request
+  edit:          Edit a pull request
+  files:         List files changed in a pull request
+  lock:          Lock pull request conversation
+  merge:         Merge a pull request
+  ready:         Mark a pull request as ready for review
+  reopen:        Reopen a pull request
+  review:        Add a review to a pull request
+  unlock:        Unlock pull request conversation
+  update-branch: Update a pull request branch
+  view:          View a pull request
+
+FLAGS
+  -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
+  --help                         Show help for command
+
+INHERITED FLAGS
+  -o, --output=FORMAT   Output format (table, json, yaml)
+  --no-color           Disable colored output
+
+ARGUMENTS
+  A pull request can be supplied as argument in any of the following formats:
+  - by number, e.g. "123";
+  - by URL, e.g. "https://bitbucket.org/WORKSPACE/REPO/pull-requests/123"; or
+  - by the name of its head branch, e.g. "feature-branch".
+
+EXAMPLES
+  $ bt pr create
+  $ bt pr create --fill
+  $ bt pr create --ai --template portuguese
+  $ bt pr list --state open
+  $ bt pr view 123
+  $ bt pr checkout 123
+  $ bt pr merge 123
+
+LEARN MORE
+  Use 'bt pr <command> --help' for more information about a command.
+`)
+}
+
+func showConfigHelp() {
+	fmt.Print(`Manage configuration for bt.
+
+USAGE
+  bt config <command> [flags]
+
+AVAILABLE COMMANDS
+  get:           Get configuration values
+  set:           Set configuration values
+  list:          List configuration settings
+  unset:         Remove configuration values
+
+FLAGS
+  --help   Show help for command
+
+EXAMPLES
+  $ bt config list
+  $ bt config get auth.default_workspace
+  $ bt config set auth.default_workspace myworkspace
+  $ bt config unset auth.default_workspace
+
+LEARN MORE
+  Use 'bt config <command> --help' for more information about a command.
 `)
 }
 
