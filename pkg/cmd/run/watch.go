@@ -24,29 +24,59 @@ type WatchCmd struct {
 	Repository string `help:"Repository name (defaults to git remote)"`
 	
 	lastDisplayLines int
+	logBuffer        *LogBuffer
+	lastLogPosition  int
 }
 
 type LogBuffer struct {
-	Lines []string
-	Size  int
+	Lines    []string
+	Size     int
+	AllLines []string
 }
 
 func NewLogBuffer(size int) *LogBuffer {
 	return &LogBuffer{
-		Lines: make([]string, 0, size),
-		Size:  size,
+		Lines:    make([]string, 0, size),
+		Size:     size,
+		AllLines: make([]string, 0),
 	}
 }
 
-func (lb *LogBuffer) Add(line string) {
-	if len(lb.Lines) >= lb.Size {
-		lb.Lines = lb.Lines[1:]
+func (lb *LogBuffer) AddNew(newLines []string) bool {
+	if len(newLines) == 0 {
+		return false
 	}
-	lb.Lines = append(lb.Lines, line)
+	
+	hasNew := false
+	startIdx := len(lb.AllLines)
+	
+	if len(newLines) > len(lb.AllLines) {
+		for i := startIdx; i < len(newLines); i++ {
+			line := newLines[i]
+			if line != "" {
+				lb.AllLines = append(lb.AllLines, line)
+				
+				if len(lb.Lines) >= lb.Size {
+					lb.Lines = lb.Lines[1:]
+				}
+				lb.Lines = append(lb.Lines, line)
+				hasNew = true
+			}
+		}
+	}
+	
+	return hasNew
 }
 
 func (lb *LogBuffer) GetLines() []string {
 	return lb.Lines
+}
+
+func (lb *LogBuffer) GetLastLines(count int) []string {
+	if len(lb.Lines) <= count {
+		return lb.Lines
+	}
+	return lb.Lines[len(lb.Lines)-count:]
 }
 
 // Run executes the run watch command
@@ -163,8 +193,12 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 
 	fmt.Printf("🔍 Watching pipeline #%d (Ctrl+C to exit)...\n\n", pipeline.BuildNumber)
 
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+	cmd.logBuffer = NewLogBuffer(10)
+
+	logTicker := time.NewTicker(2 * time.Second)
+	statusTicker := time.NewTicker(10 * time.Second)
+	defer logTicker.Stop()
+	defer statusTicker.Stop()
 
 	// Show initial state
 	if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
@@ -177,18 +211,51 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 		previousState = pipeline.State.Name
 	}
 
+	var currentStepUUID string
+
 	for {
 		select {
 		case <-watchCtx.Done():
 			return watchCtx.Err()
-		case <-ticker.C:
-			// Get updated pipeline status
+			
+		case <-logTicker.C:
+			if currentStepUUID != "" {
+				if err := cmd.streamLogsUpdate(watchCtx, runCtx, pipelineUUID, currentStepUUID); err != nil {
+					if cmd.lastDisplayLines > 0 {
+						fmt.Printf("   (Log fetch error: %v)\n", err)
+					}
+				}
+			}
+			
+		case <-statusTicker.C:
 			updatedPipeline, err := runCtx.Client.Pipelines.GetPipeline(watchCtx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
 			if err != nil {
 				return handlePipelineAPIError(err)
 			}
 
-			// Display update
+			steps, err := runCtx.Client.Pipelines.GetPipelineSteps(watchCtx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
+			if err != nil {
+				return err
+			}
+
+			var activeStep *api.PipelineStep
+			for _, step := range steps {
+				if step.State != nil && step.State.Name == "IN_PROGRESS" {
+					activeStep = step
+					break
+				}
+			}
+
+			newStepUUID := ""
+			if activeStep != nil {
+				newStepUUID = activeStep.UUID
+			}
+
+			if newStepUUID != currentStepUUID {
+				currentStepUUID = newStepUUID
+				cmd.logBuffer = NewLogBuffer(10)
+			}
+
 			if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
 				return err
 			}
@@ -215,6 +282,64 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 					return cmd.formatJSONOutput(runCtx, updatedPipeline)
 				}
 				return nil
+			}
+		}
+	}
+}
+
+func (cmd *WatchCmd) streamLogsUpdate(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string) error {
+	allLogs, err := cmd.getAllLogs(ctx, runCtx, pipelineUUID, stepUUID)
+	if err != nil {
+		return err
+	}
+
+	if cmd.logBuffer.AddNew(allLogs) {
+		cmd.updateLogDisplay()
+	}
+	
+	return nil
+}
+
+func (cmd *WatchCmd) getAllLogs(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string) ([]string, error) {
+	logReader, err := runCtx.Client.Pipelines.GetStepLogs(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID, stepUUID)
+	if err != nil {
+		return nil, err
+	}
+	defer logReader.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(logReader)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
+}
+
+func (cmd *WatchCmd) updateLogDisplay() {
+	if cmd.lastDisplayLines > 0 {
+		fmt.Printf("\033[%dA", cmd.lastDisplayLines-2)
+		fmt.Print("\033[2K")
+		fmt.Print("\r")
+	}
+
+	recentLogs := cmd.logBuffer.GetLastLines(10)
+	if len(recentLogs) > 0 {
+		dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+		if cmd.NoColor {
+			dimStyle = lipgloss.NewStyle()
+		}
+		
+		for _, line := range recentLogs {
+			if line != "" {
+				fmt.Printf("   %s\n", dimStyle.Render(line))
 			}
 		}
 	}
@@ -323,27 +448,29 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 	lineCount++
 
 	if currentStep != nil {
-		fmt.Printf("\n📋 Recent output from \"%s\":\n", currentStep.Name)
+		fmt.Printf("\n📋 Streaming output from \"%s\":\n", currentStep.Name)
 		lineCount += 2
 		
-		recentLogs, err := cmd.getRecentLogs(ctx, runCtx, pipelineUUID, currentStep.UUID, 10)
-		if err != nil {
-			fmt.Printf("   (Unable to fetch logs: %v)\n", err)
-			lineCount++
-		} else if len(recentLogs) > 0 {
-			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-			if cmd.NoColor {
-				dimStyle = lipgloss.NewStyle()
-			}
-			
-			for _, line := range recentLogs {
-				if line != "" {
-					fmt.Printf("   %s\n", dimStyle.Render(line))
-					lineCount++
+		if cmd.logBuffer != nil {
+			recentLogs := cmd.logBuffer.GetLastLines(10)
+			if len(recentLogs) > 0 {
+				dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+				if cmd.NoColor {
+					dimStyle = lipgloss.NewStyle()
 				}
+				
+				for _, line := range recentLogs {
+					if line != "" {
+						fmt.Printf("   %s\n", dimStyle.Render(line))
+						lineCount++
+					}
+				}
+			} else {
+				fmt.Printf("   (Waiting for log output...)\n")
+				lineCount++
 			}
 		} else {
-			fmt.Printf("   (No recent output)\n")
+			fmt.Printf("   (Log buffer not initialized)\n")
 			lineCount++
 		}
 	} else {

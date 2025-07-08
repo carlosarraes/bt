@@ -267,8 +267,10 @@ bt run watch {uuid}              # Watch pipeline by UUID
 ` + "```" + `
 
 **Key Features:**
-- ✅ Live updates every 10 seconds (smooth, no blinking)
-- ✅ Last 10 lines of current step output in dimmed colors
+- ✅ Continuous log streaming every 2 seconds (true streaming experience)
+- ✅ Rolling buffer of last 10 lines with smooth updates
+- ✅ No blinking or screen clearing - logs flow naturally  
+- ✅ Pipeline status updates every 10 seconds
 - ✅ Step completion notifications with progress tracking
 - ✅ Graceful Ctrl+C exit
 - ✅ Progress indicators and status icons
