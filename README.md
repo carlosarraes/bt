@@ -193,7 +193,7 @@ bt run view 1234 --step "Run Tests" # Show logs for specific step
 
 # Real-time monitoring with live logs
 bt run watch 1234                  # Watch live execution with real-time updates
-                                   # ✨ Shows last 10 lines of current step output
+                                   # ✨ Shows last 10 lines of current step output (10s intervals)
                                    # ✨ Live progress indicators and timestamps
                                    # ✨ Automatic completion detection
 

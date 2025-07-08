@@ -22,6 +22,8 @@ type WatchCmd struct {
 	NoColor    bool   // NoColor is passed from global flag
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
+	
+	lastDisplayLines int
 }
 
 type LogBuffer struct {
@@ -161,8 +163,7 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 
 	fmt.Printf("🔍 Watching pipeline #%d (Ctrl+C to exit)...\n\n", pipeline.BuildNumber)
 
-	// Watch loop with polling
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	// Show initial state
@@ -258,8 +259,13 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 		return err
 	}
 
-	fmt.Print("\033[H\033[2J")
+	if cmd.lastDisplayLines > 0 {
+		fmt.Printf("\033[%dA", cmd.lastDisplayLines)
+		fmt.Print("\033[J")
+	}
 
+	lineCount := 0
+	
 	// Pipeline status
 	status := "UNKNOWN"
 	if pipeline.State != nil {
@@ -314,13 +320,16 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 	}
 
 	fmt.Println()
+	lineCount++
 
 	if currentStep != nil {
 		fmt.Printf("\n📋 Recent output from \"%s\":\n", currentStep.Name)
+		lineCount += 2
 		
 		recentLogs, err := cmd.getRecentLogs(ctx, runCtx, pipelineUUID, currentStep.UUID, 10)
 		if err != nil {
 			fmt.Printf("   (Unable to fetch logs: %v)\n", err)
+			lineCount++
 		} else if len(recentLogs) > 0 {
 			dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 			if cmd.NoColor {
@@ -330,14 +339,19 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 			for _, line := range recentLogs {
 				if line != "" {
 					fmt.Printf("   %s\n", dimStyle.Render(line))
+					lineCount++
 				}
 			}
 		} else {
 			fmt.Printf("   (No recent output)\n")
+			lineCount++
 		}
 	} else {
 		fmt.Printf("\n💤 No steps currently running\n")
+		lineCount += 2
 	}
+
+	cmd.lastDisplayLines = lineCount
 
 	return nil
 }
