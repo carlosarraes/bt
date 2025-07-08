@@ -18,15 +18,19 @@ type DescriptionGenerator struct {
 	workspace  string
 	repository string
 	noColor    bool
+	openaiClient *OpenAIClient
 }
 
 func NewDescriptionGenerator(client *api.Client, repo *git.Repository, workspace, repository string, noColor bool) *DescriptionGenerator {
+	openaiClient, _ := NewOpenAIClient()
+	
 	return &DescriptionGenerator{
-		client:     client,
-		repo:       repo,
-		workspace:  workspace,
-		repository: repository,
-		noColor:    noColor,
+		client:       client,
+		repo:         repo,
+		workspace:    workspace,
+		repository:   repository,
+		noColor:      noColor,
+		openaiClient: openaiClient,
 	}
 }
 
@@ -70,11 +74,6 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 			diffData.Stats.FilesChanged, diffData.Stats.LinesAdded, diffData.Stats.LinesRemoved))
 	}
 
-	analysis, err := g.analyzeDiff(diffData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to analyze diff: %w", err)
-	}
-
 	var jiraContext string
 	if opts.JiraFile != "" {
 		if opts.Verbose {
@@ -87,8 +86,92 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 		}
 	}
 
+	if g.openaiClient != nil {
+		if opts.Verbose {
+			g.logStep("🤖 Generating description with OpenAI o4-mini...")
+		}
+		
+		result, err := g.generateWithOpenAI(ctx, opts, branchContext, diffData, jiraContext)
+		if err == nil {
+			if opts.Verbose {
+				g.logStep("✅ OpenAI description generated successfully!")
+			}
+			return result, nil
+		}
+		
+		if opts.Verbose {
+			g.logStep(fmt.Sprintf("⚠️  OpenAI generation failed: %v", err))
+			g.logStep("🔄 Falling back to local template generation...")
+		}
+	}
+
+	return g.generateWithLocalTemplates(ctx, opts, branchContext, diffData, jiraContext)
+}
+
+func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *GenerateOptions, branchContext *BranchContext, diffData *DiffData, jiraContext string) (*PRDescriptionResult, error) {
+	input := &PRAnalysisInput{
+		SourceBranch:   opts.SourceBranch,
+		TargetBranch:   opts.TargetBranch,
+		CommitMessages: branchContext.Commits,
+		ChangedFiles:   diffData.Files,
+		GitDiff:        diffData.Content,
+		FilesChanged:   diffData.Stats.FilesChanged,
+		LinesAdded:     diffData.Stats.LinesAdded,
+		LinesRemoved:   diffData.Stats.LinesRemoved,
+		JiraContext:    jiraContext,
+	}
+
+	schema, err := g.openaiClient.GeneratePRDescription(ctx, input, opts.Template)
+	if err != nil {
+		return nil, err
+	}
+
+	templateVars := map[string]interface{}{
+		"contexto":              schema.Contexto,
+		"alteracoes":            strings.Join(schema.Alteracoes, "\n"),
+		"checklist":             schema.ChecklistItems,
+		"evidence_placeholders": strings.Join(schema.EvidencePlaceholders, "\n"),
+		"branch_name":           opts.SourceBranch,
+		"target_branch":         opts.TargetBranch,
+		"files_changed":         diffData.Stats.FilesChanged,
+		"additions":             diffData.Stats.LinesAdded,
+		"deletions":             diffData.Stats.LinesRemoved,
+		"jira_ticket":           schema.JiraTicket,
+		"client_specific":       schema.ClientSpecific,
+	}
+
+	template := NewTemplateEngine(opts.Template)
+	description, err := template.Apply(templateVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to apply template with OpenAI data: %w", err)
+	}
+
+	return &PRDescriptionResult{
+		Title:       schema.Title,
+		Description: description,
+		Stats:       diffData.Stats,
+		Metadata: map[string]interface{}{
+			"branch_name":    opts.SourceBranch,
+			"target_branch":  opts.TargetBranch,
+			"template":       opts.Template,
+			"has_jira":       opts.JiraFile != "",
+			"openai_used":    true,
+			"files_changed":  diffData.Stats.FilesChanged,
+			"lines_added":    diffData.Stats.LinesAdded,
+			"lines_removed":  diffData.Stats.LinesRemoved,
+		},
+		Generated: time.Now(),
+	}, nil
+}
+
+func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, opts *GenerateOptions, branchContext *BranchContext, diffData *DiffData, jiraContext string) (*PRDescriptionResult, error) {
 	if opts.Verbose {
-		g.logStep("🧠 Generating changes summary...")
+		g.logStep("🧠 Generating changes summary with local templates...")
+	}
+
+	analysis, err := g.analyzeDiff(diffData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze diff: %w", err)
 	}
 
 	templateVars := g.buildTemplateVariables(branchContext, analysis, jiraContext, diffData.Stats)
@@ -113,7 +196,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 	title := g.generateTitle(branchContext, analysis)
 
 	if opts.Verbose {
-		g.logStep("✅ AI description generated successfully!")
+		g.logStep("✅ Local template description generated successfully!")
 		g.logStep("")
 		g.logStep("📋 Generated Description:")
 	}
@@ -128,6 +211,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 			"template":       opts.Template,
 			"has_jira":       opts.JiraFile != "",
 			"change_types":   analysis.ChangeTypes,
+			"openai_used":    false,
 			"files_changed":  diffData.Stats.FilesChanged,
 			"lines_added":    diffData.Stats.LinesAdded,
 			"lines_removed":  diffData.Stats.LinesRemoved,
@@ -145,32 +229,25 @@ type DiffData struct {
 }
 
 func (g *DescriptionGenerator) getGitDiff(sourceBranch, targetBranch string) (*DiffData, error) {
-	
-	diffContent := fmt.Sprintf(`diff --git a/README.md b/README.md
-index 1234567..abcdefg 100644
---- a/README.md
-+++ b/README.md
-@@ -1,5 +1,6 @@
- # Project Title
- 
-+This is a new feature implementation.
- ## Description
- 
- This project implements...
-`)
-
-	stats := &utils.DiffStats{
-		FilesChanged: 1,
-		LinesAdded:   1,
-		LinesRemoved: 0,
+	diffContent, err := g.repo.GetDiff(targetBranch, sourceBranch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get git diff: %w", err)
 	}
 
-	files := []string{"README.md"}
+	changedFiles, err := g.repo.GetChangedFiles(targetBranch, sourceBranch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get changed files: %w", err)
+	}
+
+	stats, err := g.calculateDiffStats(diffContent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate diff stats: %w", err)
+	}
 
 	return &DiffData{
 		Content: diffContent,
 		Stats:   stats,
-		Files:   files,
+		Files:   changedFiles,
 	}, nil
 }
 
@@ -194,10 +271,49 @@ type BranchContext struct {
 }
 
 func (g *DescriptionGenerator) getCommitMessages(sourceBranch, targetBranch string) ([]string, error) {
-	return []string{
-		"feat: implement new feature",
-		"fix: resolve issue with validation",
-		"docs: update README",
+	commits, err := g.repo.GetCommitMessages(targetBranch, sourceBranch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit messages: %w", err)
+	}
+
+	if len(commits) == 0 {
+		return []string{"No commits found"}, nil
+	}
+
+	return commits, nil
+}
+
+func (g *DescriptionGenerator) calculateDiffStats(diffContent string) (*utils.DiffStats, error) {
+	lines := strings.Split(diffContent, "\n")
+	
+	var filesChanged int
+	var linesAdded int
+	var linesRemoved int
+	
+	currentFileChanges := false
+	
+	for _, line := range lines {
+		if strings.HasPrefix(line, "diff --git") {
+			filesChanged++
+			currentFileChanges = true
+			continue
+		}
+		
+		if !currentFileChanges {
+			continue
+		}
+		
+		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
+			linesAdded++
+		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
+			linesRemoved++
+		}
+	}
+	
+	return &utils.DiffStats{
+		FilesChanged: filesChanged,
+		LinesAdded:   linesAdded,
+		LinesRemoved: linesRemoved,
 	}, nil
 }
 
