@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 // Repository represents a Git repository with Bitbucket context
@@ -295,4 +296,132 @@ func FindRepositoryRoot(startPath string) (string, error) {
 	}
 
 	return "", ErrNotGitRepository
+}
+
+func (r *Repository) GetDiff(baseBranch, targetBranch string) (string, error) {
+	baseHash, err := r.repo.ResolveRevision(plumbing.Revision(baseBranch))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve base branch %s: %w", baseBranch, err)
+	}
+
+	targetHash, err := r.repo.ResolveRevision(plumbing.Revision(targetBranch))
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve target branch %s: %w", targetBranch, err)
+	}
+
+	baseCommit, err := r.repo.CommitObject(*baseHash)
+	if err != nil {
+		return "", fmt.Errorf("failed to get base commit: %w", err)
+	}
+
+	targetCommit, err := r.repo.CommitObject(*targetHash)
+	if err != nil {
+		return "", fmt.Errorf("failed to get target commit: %w", err)
+	}
+
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("failed to get base tree: %w", err)
+	}
+
+	targetTree, err := targetCommit.Tree()
+	if err != nil {
+		return "", fmt.Errorf("failed to get target tree: %w", err)
+	}
+
+	patch, err := targetTree.Patch(baseTree)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate patch: %w", err)
+	}
+
+	return patch.String(), nil
+}
+
+func (r *Repository) GetChangedFiles(baseBranch, targetBranch string) ([]string, error) {
+	baseHash, err := r.repo.ResolveRevision(plumbing.Revision(baseBranch))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve base branch %s: %w", baseBranch, err)
+	}
+
+	targetHash, err := r.repo.ResolveRevision(plumbing.Revision(targetBranch))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve target branch %s: %w", targetBranch, err)
+	}
+
+	baseCommit, err := r.repo.CommitObject(*baseHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get base commit: %w", err)
+	}
+
+	targetCommit, err := r.repo.CommitObject(*targetHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get target commit: %w", err)
+	}
+
+	baseTree, err := baseCommit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get base tree: %w", err)
+	}
+
+	targetTree, err := targetCommit.Tree()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get target tree: %w", err)
+	}
+
+	patch, err := targetTree.Patch(baseTree)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate patch: %w", err)
+	}
+
+	var files []string
+	for _, filePatch := range patch.FilePatches() {
+		from, to := filePatch.Files()
+		if from != nil {
+			files = append(files, from.Path())
+		} else if to != nil {
+			files = append(files, to.Path())
+		}
+	}
+
+	return files, nil
+}
+
+func (r *Repository) GetCommitMessages(baseBranch, targetBranch string) ([]string, error) {
+	baseHash, err := r.repo.ResolveRevision(plumbing.Revision(baseBranch))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve base branch %s: %w", baseBranch, err)
+	}
+
+	targetHash, err := r.repo.ResolveRevision(plumbing.Revision(targetBranch))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve target branch %s: %w", targetBranch, err)
+	}
+
+	commitIter, err := r.repo.Log(&git.LogOptions{
+		From: *targetHash,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get commit log: %w", err)
+	}
+	defer commitIter.Close()
+
+	var messages []string
+	baseCommit, _ := r.repo.CommitObject(*baseHash)
+	
+	err = commitIter.ForEach(func(commit *object.Commit) error {
+		if baseCommit != nil && commit.Hash == baseCommit.Hash {
+			return nil
+		}
+		
+		message := strings.Split(strings.TrimSpace(commit.Message), "\n")[0]
+		messages = append(messages, message)
+		
+		return nil
+	})
+	
+	if err != nil {
+		return nil, fmt.Errorf("failed to iterate commits: %w", err)
+	}
+
+	return messages, nil
 }
