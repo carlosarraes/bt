@@ -8,7 +8,7 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 
 - **🔄 Drop-in replacement** for GitHub CLI - same commands, same patterns
 - **🔐 Secure API token authentication** - Uses Atlassian API tokens for secure access
-- **🤖 AI-powered PR descriptions** - Intelligent PR descriptions from code analysis and JIRA context
+- **🤖 AI-powered PR descriptions** - OpenAI o4-mini integration with structured output and 24-hour caching
 - **⚙️ Advanced configuration** - Comprehensive CLI config management with validation
 - **📊 Complete pull request workflow** - Create, review, merge, edit, comment, and manage PRs
 - **🚀 Pipeline debugging** - 5x faster error diagnosis with smart log analysis
@@ -127,10 +127,10 @@ export BITBUCKET_PASSWORD="your_api_token_here"
 **✨ Complete PR workflow with AI-powered descriptions**
 
 ```bash
-# Create pull requests with AI assistance
+# Create pull requests with AI assistance (OpenAI o4-mini)
 bt pr create --ai                          # AI-generated description (Portuguese)
 bt pr create --ai --template english      # English AI description
-bt pr create --ai --jira context.md       # Include JIRA context
+bt pr create --ai --jira context.md       # Include JIRA context for better descriptions
 bt pr create --title "Fix bug" --body "Manual description"  # Traditional creation
 
 # List and filter pull requests
@@ -175,7 +175,7 @@ bt pr unlock 42                           # Unlock conversation
 
 ### Pipeline Commands
 
-**✨ New: Smart log viewing with instant failed step detection**
+**✨ New: Smart log viewing with instant failed step detection + Real-time monitoring**
 
 ```bash
 # List pipeline runs
@@ -191,8 +191,11 @@ bt run view 1234 --log             # Show logs for all steps
 bt run view 1234 --tests           # Show test results and failures
 bt run view 1234 --step "Run Tests" # Show logs for specific step
 
-# Real-time monitoring
+# Real-time monitoring with live logs
 bt run watch 1234                  # Watch live execution with real-time updates
+                                   # ✨ Shows last 10 lines of current step output
+                                   # ✨ Live progress indicators and timestamps
+                                   # ✨ Automatic completion detection
 
 # Pipeline management  
 bt run cancel 1234                 # Cancel running pipeline with confirmation

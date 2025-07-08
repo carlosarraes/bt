@@ -27,8 +27,8 @@ func showGlobalLLMHelp() {
 ## Overview
 bt is a 1:1 replacement for GitHub CLI that works with Bitbucket Cloud.
 - **Purpose**: Provide identical command structure and user experience as GitHub CLI (gh) for Bitbucket
-- **Key Strength**: 5x faster pipeline debugging compared to Bitbucket web UI + AI-powered PR descriptions
-- **AI Innovation**: Intelligent PR description generation with template compliance and JIRA integration
+- **Key Strength**: 5x faster pipeline debugging compared to Bitbucket web UI + AI-powered PR descriptions  
+- **AI Innovation**: OpenAI o4-mini integration with structured output, 24-hour caching, and JIRA context
 - **LLM-Friendly**: All commands support structured JSON output for automation
 
 ## GitHub CLI Mapping
@@ -268,7 +268,8 @@ bt run watch {uuid}              # Watch pipeline by UUID
 
 **Key Features:**
 - ✅ Live updates every 5 seconds
-- ✅ Step completion notifications
+- ✅ Last 10 lines of current step output in dimmed colors
+- ✅ Step completion notifications with progress tracking
 - ✅ Graceful Ctrl+C exit
 - ✅ Progress indicators and status icons
 - ✅ Automatic completion detection
@@ -381,9 +382,9 @@ func showPRLLMHelp() {
 ## Overview
 Complete pull request workflow with AI-powered descriptions and GitHub CLI compatibility.
 
-## AI-Powered PR Creation (🤖 INNOVATION)
+## AI-Powered PR Creation (🤖 INNOVATION - OpenAI o4-mini)
 ` + "```bash" + `
-# AI-generated descriptions with template compliance
+# AI-generated descriptions with OpenAI o4-mini structured output
 bt pr create --ai                          # Portuguese template (default)
 bt pr create --ai --template english      # English template
 bt pr create --ai --jira project.md       # Include JIRA context from file
@@ -393,10 +394,14 @@ bt pr create --ai --jira project.md       # Include JIRA context from file
 # 📊 Analyzing code changes: 5 files (+127 -45 lines)
 # 🏷️ Categorizing changes: backend (3), frontend (2)
 # 📋 Reading JIRA context from project.md...
-# 🧠 Generating changes summary...
-# 📝 Creating checklist for backend and frontend changes...
-# 🎯 Applying Portuguese template...
-# ✅ AI description generated successfully!
+# 🤖 Generating description with OpenAI o4-mini...
+# ✅ OpenAI description generated successfully! (or falls back to local templates)
+
+# Features:
+# - OpenAI o4-mini with structured JSON schema output
+# - 24-hour caching for identical requests
+# - Automatic fallback to local templates if OpenAI fails
+# - OPENAI_API_KEY environment variable required
 ` + "```" + `
 
 ## Template Structure (STRICT COMPLIANCE)
