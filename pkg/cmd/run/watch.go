@@ -23,9 +23,7 @@ type WatchCmd struct {
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 	
-	lastDisplayLines int
 	logBuffer        *LogBuffer
-	lastLogPosition  int
 }
 
 type LogBuffer struct {
@@ -55,13 +53,13 @@ func (lb *LogBuffer) AddNew(newLines []string) bool {
 			line := newLines[i]
 			if line != "" {
 				lb.AllLines = append(lb.AllLines, line)
-				
-				if len(lb.Lines) >= lb.Size {
-					lb.Lines = lb.Lines[1:]
-				}
 				lb.Lines = append(lb.Lines, line)
 				hasNew = true
 			}
+		}
+		
+		if len(lb.Lines) > lb.Size {
+			lb.Lines = lb.Lines[len(lb.Lines)-lb.Size:]
 		}
 	}
 	
@@ -345,12 +343,7 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 		return err
 	}
 
-	if cmd.lastDisplayLines > 0 {
-		fmt.Printf("\033[%dA", cmd.lastDisplayLines)
-		fmt.Print("\033[J")
-	}
-
-	lineCount := 0
+	fmt.Print("\033[2J\033[H")
 	
 	// Pipeline status
 	status := "UNKNOWN"
@@ -405,14 +398,17 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 	}
 
 	fmt.Println()
-	lineCount++
 
 	if currentStep != nil {
 		fmt.Printf("\n📋 Streaming output from \"%s\":\n", currentStep.Name)
-		lineCount += 2
 		
 		if cmd.logBuffer != nil {
 			recentLogs := cmd.logBuffer.GetLastLines(10)
+			
+			if len(recentLogs) > 10 {
+				recentLogs = recentLogs[len(recentLogs)-10:]
+			}
+			
 			if len(recentLogs) > 0 {
 				dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 				if cmd.NoColor {
@@ -422,23 +418,17 @@ func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext,
 				for _, line := range recentLogs {
 					if line != "" {
 						fmt.Printf("   %s\n", dimStyle.Render(line))
-						lineCount++
 					}
 				}
 			} else {
 				fmt.Printf("   (Waiting for log output...)\n")
-				lineCount++
 			}
 		} else {
 			fmt.Printf("   (Log buffer not initialized)\n")
-			lineCount++
 		}
 	} else {
 		fmt.Printf("\n💤 No steps currently running\n")
-		lineCount += 2
 	}
-
-	cmd.lastDisplayLines = lineCount
 
 	return nil
 }
