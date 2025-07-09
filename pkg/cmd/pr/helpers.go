@@ -3,6 +3,7 @@ package pr
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -38,15 +39,26 @@ func NewPRContext(ctx context.Context, outputFormat string, noColor bool) (*PRCo
 	
 	if err != nil {
 		// If not in a git repository, use configuration defaults
+		fmt.Fprintf(os.Stderr, "DEBUG: Not in git repository, error: %v\n", err)
 		if cfg.Auth.DefaultWorkspace == "" {
 			return nil, fmt.Errorf("not in a git repository and no default workspace configured. Run 'bt auth login' or set default_workspace in config")
 		}
 		workspace = cfg.Auth.DefaultWorkspace
+		fmt.Fprintf(os.Stderr, "DEBUG: Using default workspace from config: %s\n", workspace)
 		// Repository will need to be specified via flags or context
 	} else {
 		// Extract workspace and repository from git
 		workspace = gitRepo.GetWorkspace()
 		repository = gitRepo.GetName()
+		
+		fmt.Fprintf(os.Stderr, "DEBUG: Git extracted workspace: %s\n", workspace)
+		fmt.Fprintf(os.Stderr, "DEBUG: Git extracted repository: %s\n", repository)
+		
+		remotes := gitRepo.GetRemotes()
+		fmt.Fprintf(os.Stderr, "DEBUG: Git remotes found: %d\n", len(remotes))
+		for name, remote := range remotes {
+			fmt.Fprintf(os.Stderr, "DEBUG: Remote %s: %s (workspace: %s, repo: %s)\n", name, remote.URL, remote.Workspace, remote.RepoName)
+		}
 		
 		if workspace == "" || repository == "" {
 			return nil, fmt.Errorf("unable to detect Bitbucket workspace and repository from git remotes")
