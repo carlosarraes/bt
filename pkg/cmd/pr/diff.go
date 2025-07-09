@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -13,15 +14,16 @@ import (
 
 
 type DiffCmd struct {
-	PRID       string `arg:"" help:"Pull request ID (number)"`
-	NameOnly   bool   `name:"name-only" help:"Show only names of changed files"`
-	Patch      bool   `help:"Output in patch format suitable for git apply"`
-	File       string `help:"Show diff for specific file only"`
-	Color      string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
-	Output     string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
-NoColor    bool
-	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository string `help:"Repository name (defaults to git remote)"`
+	PRID        string `arg:"" help:"Pull request ID (number)"`
+	NameOnly    bool   `name:"name-only" help:"Show only names of changed files"`
+	Patch       bool   `help:"Output in patch format suitable for git apply"`
+	File        string `help:"Show diff for specific file only"`
+	Color       string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
+	Output      string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
+	DiffSoFancy bool   `name:"diff-so-fancy" help:"Pipe output through diff-so-fancy and less for enhanced viewing"`
+	NoColor     bool
+	Workspace   string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository  string `help:"Repository name (defaults to git remote)"`
 }
 
 
@@ -73,6 +75,8 @@ prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
 		return cmd.outputYAML(prCtx, diff, prID)
 	case cmd.Patch:
 		return cmd.outputPatch(diff)
+	case cmd.DiffSoFancy:
+		return cmd.outputDiffSoFancy(diff)
 	default:
 		return cmd.outputColoredDiff(diff)
 	}
@@ -221,4 +225,61 @@ func (cmd *DiffCmd) shouldUseColors() bool {
 	default:
 		return false
 	}
+}
+
+func (cmd *DiffCmd) outputDiffSoFancy(diff string) error {
+	if cmd.File != "" {
+		diff = utils.FilterDiffByFile(diff, cmd.File)
+		if diff == "" {
+			fmt.Printf("No differences found for file: %s\n", cmd.File)
+			return nil
+		}
+	}
+
+	if _, err := exec.LookPath("diff-so-fancy"); err != nil {
+		return fmt.Errorf("diff-so-fancy is not installed or not in PATH. Please install it first")
+	}
+
+	if _, err := exec.LookPath("less"); err != nil {
+		return fmt.Errorf("less is not installed or not in PATH")
+	}
+
+	diffSoFancyCmd := exec.Command("diff-so-fancy")
+	diffSoFancyCmd.Stdin = strings.NewReader(diff)
+
+	lessCmd := exec.Command("less", "--tabs=2", "-RF")
+	
+	pipe, err := diffSoFancyCmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create pipe: %w", err)
+	}
+	lessCmd.Stdin = pipe
+
+	lessCmd.Stdout = os.Stdout
+	lessCmd.Stderr = os.Stderr
+
+	if err := lessCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start less: %w", err)
+	}
+
+	if err := diffSoFancyCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start diff-so-fancy: %w", err)
+	}
+
+	if err := diffSoFancyCmd.Wait(); err != nil {
+		return fmt.Errorf("diff-so-fancy failed: %w", err)
+	}
+
+	pipe.Close()
+
+	if err := lessCmd.Wait(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if exitError.ExitCode() == 1 {
+				return nil
+			}
+		}
+		return fmt.Errorf("less failed: %w", err)
+	}
+
+	return nil
 }
