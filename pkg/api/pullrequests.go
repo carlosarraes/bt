@@ -30,26 +30,31 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 	
 	// Add query parameters if options are provided
 	if options != nil {
-		params := make([]string, 0)
+		queryParams := url.Values{}
+		var filterParts []string
 		
 		if options.State != "" {
-			params = append(params, fmt.Sprintf("state=%s", url.QueryEscape(options.State)))
+			filterParts = append(filterParts, fmt.Sprintf("state=\"%s\"", options.State))
 		}
 		
 		if options.Author != "" {
-			params = append(params, fmt.Sprintf("author.username=%s", url.QueryEscape(options.Author)))
+			filterParts = append(filterParts, fmt.Sprintf("author.username=\"%s\"", options.Author))
 		}
 		
 		if options.Reviewer != "" {
-			params = append(params, fmt.Sprintf("reviewers.username=%s", url.QueryEscape(options.Reviewer)))
+			filterParts = append(filterParts, fmt.Sprintf("reviewers.username=\"%s\"", options.Reviewer))
+		}
+		
+		if len(filterParts) > 0 {
+			queryParams.Set("q", strings.Join(filterParts, " AND "))
 		}
 		
 		if options.Sort != "" {
-			params = append(params, fmt.Sprintf("sort=%s", url.QueryEscape(options.Sort)))
+			queryParams.Set("sort", options.Sort)
 		}
 		
-		if len(params) > 0 {
-			endpoint += "?" + strings.Join(params, "&")
+		if encodedParams := queryParams.Encode(); encodedParams != "" {
+			endpoint += "?" + encodedParams
 		}
 	}
 
