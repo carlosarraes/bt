@@ -4,9 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/config"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 type ListCmd struct {
@@ -16,6 +19,7 @@ type ListCmd struct {
 	Limit      int    `help:"Maximum number of pull requests to show" default:"30"`
 	Sort       string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	All        bool   `help:"Show all pull requests regardless of author"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -24,7 +28,14 @@ type ListCmd struct {
 func (cmd *ListCmd) Run(ctx context.Context) error {
 	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
-		return err
+		if cmd.Workspace != "" && cmd.Repository != "" {
+			prCtx, err = cmd.createMinimalContext(ctx, cmd.Output, cmd.NoColor)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	if cmd.Workspace != "" {
@@ -33,6 +44,9 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 	if cmd.Repository != "" {
 		prCtx.Repository = cmd.Repository
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Using workspace: %s\n", prCtx.Workspace)
+	fmt.Fprintf(os.Stderr, "DEBUG: Using repository: %s\n", prCtx.Repository)
 
 	if err := prCtx.ValidateWorkspaceAndRepo(); err != nil {
 		return err
@@ -61,7 +75,7 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		options.State = strings.ToUpper(cmd.State)
 	}
 
-	if cmd.Author != "" {
+	if cmd.Author != "" && !cmd.All {
 		options.Author = cmd.Author
 	}
 
@@ -82,14 +96,34 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG: API request options: %+v\n", options)
+	fmt.Fprintf(os.Stderr, "DEBUG: Making API request to /repositories/%s/%s/pullrequests\n", prCtx.Workspace, prCtx.Repository)
+
 	result, err := prCtx.Client.PullRequests.ListPullRequests(ctx, prCtx.Workspace, prCtx.Repository, options)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "DEBUG: API error: %v\n", err)
+		if bitbucketErr, ok := err.(*api.BitbucketError); ok {
+			fmt.Fprintf(os.Stderr, "DEBUG: Error type: %s\n", bitbucketErr.Type)
+			fmt.Fprintf(os.Stderr, "DEBUG: Error message: %s\n", bitbucketErr.Message)
+			fmt.Fprintf(os.Stderr, "DEBUG: Error detail: %s\n", bitbucketErr.Detail)
+			fmt.Fprintf(os.Stderr, "DEBUG: Status code: %d\n", bitbucketErr.StatusCode)
+			fmt.Fprintf(os.Stderr, "DEBUG: Raw response: %s\n", bitbucketErr.Raw)
+		}
 		return handlePullRequestAPIError(err)
 	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: API response - Page: %d, PageLen: %d, Size: %d\n", result.Page, result.PageLen, result.Size)
+	fmt.Fprintf(os.Stderr, "DEBUG: API response - Next: %s\n", result.Next)
+	fmt.Fprintf(os.Stderr, "DEBUG: API response - Values length: %d\n", len(result.Values))
 
 	pullRequests, err := parsePullRequestResults(result)
 	if err != nil {
 		return fmt.Errorf("failed to parse pull request results: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Parsed %d pull requests\n", len(pullRequests))
+	for i, pr := range pullRequests {
+		fmt.Fprintf(os.Stderr, "DEBUG: PR %d - ID: %d, Title: %s, State: %s\n", i, pr.ID, pr.Title, pr.State)
 	}
 
 	return cmd.formatOutput(prCtx, pullRequests)
@@ -267,4 +301,43 @@ func renderCustomTable(headers []string, rows [][]string) error {
 	}
 
 	return nil
+}
+
+func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
+	loader := config.NewLoader()
+	cfg, err := loader.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	authManager, err := createAuthManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth manager: %w", err)
+	}
+
+	clientConfig := api.DefaultClientConfig()
+	clientConfig.BaseURL = cfg.API.BaseURL
+	clientConfig.Timeout = cfg.API.Timeout
+
+	client, err := api.NewClient(authManager, clientConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	formatterOpts := &output.FormatterOptions{
+		NoColor: noColor,
+	}
+	
+	formatter, err := output.NewFormatter(output.Format(outputFormat), formatterOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create output formatter: %w", err)
+	}
+
+	return &PRContext{
+		Client:     client,
+		Config:     cfg,
+		Workspace:  cmd.Workspace,
+		Repository: cmd.Repository,
+		Formatter:  formatter,
+	}, nil
 }
