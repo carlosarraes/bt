@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -108,7 +107,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Full request URL: %s\n", fetchURL)
+	// fmt.Fprintf(os.Stderr, "DEBUG: Full request URL: %s\n", fetchURL)
 	
 	// Make the request
 	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
@@ -125,7 +124,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Request headers: %+v\n", req.Header)
+	// fmt.Fprintf(os.Stderr, "DEBUG: Request headers: %+v\n", req.Header)
 
 	resp, err := p.client.doRequest(req)
 	if err != nil {
@@ -133,7 +132,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 	}
 	defer resp.Body.Close()
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Response status: %d %s\n", resp.StatusCode, resp.Status)
+	// fmt.Fprintf(os.Stderr, "DEBUG: Response status: %d %s\n", resp.StatusCode, resp.Status)
 
 	// Parse the paginated response
 	var paginatedResp PaginatedResponse

@@ -20,13 +20,14 @@ type ListCmd struct {
 	Sort       string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	All        bool   `help:"Show all pull requests regardless of author"`
+	Debug      bool   `help:"Show debug output"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
 
 func (cmd *ListCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor, cmd.Debug)
 	if err != nil {
 		if cmd.Workspace != "" && cmd.Repository != "" {
 			prCtx, err = cmd.createMinimalContext(ctx, cmd.Output, cmd.NoColor)
@@ -45,8 +46,10 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		prCtx.Repository = cmd.Repository
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Using workspace: %s\n", prCtx.Workspace)
-	fmt.Fprintf(os.Stderr, "DEBUG: Using repository: %s\n", prCtx.Repository)
+	if cmd.Debug {
+		fmt.Fprintf(os.Stderr, "DEBUG: Using workspace: %s\n", prCtx.Workspace)
+		fmt.Fprintf(os.Stderr, "DEBUG: Using repository: %s\n", prCtx.Repository)
+	}
 
 	if err := prCtx.ValidateWorkspaceAndRepo(); err != nil {
 		return err
@@ -75,8 +78,24 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		options.State = strings.ToUpper(cmd.State)
 	}
 
-	if cmd.Author != "" && !cmd.All {
-		options.Author = cmd.Author
+	if !cmd.All {
+		if cmd.Author != "" {
+			options.Author = cmd.Author
+		} else {
+			if prCtx.Client != nil {
+				currentUser, err := prCtx.Client.GetAuthManager().GetAuthenticatedUser(ctx)
+				if err == nil && currentUser != nil {
+					options.Author = currentUser.Username
+					if cmd.Debug {
+						fmt.Fprintf(os.Stderr, "DEBUG: Filtering by current user: %s\n", currentUser.Username)
+					}
+				} else {
+					if cmd.Debug {
+						fmt.Fprintf(os.Stderr, "DEBUG: Could not get current user, showing all PRs: %v\n", err)
+					}
+				}
+			}
+		}
 	}
 
 	if cmd.Reviewer != "" {
@@ -96,34 +115,42 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: API request options: %+v\n", options)
-	fmt.Fprintf(os.Stderr, "DEBUG: Making API request to /repositories/%s/%s/pullrequests\n", prCtx.Workspace, prCtx.Repository)
+	if cmd.Debug {
+		fmt.Fprintf(os.Stderr, "DEBUG: API request options: %+v\n", options)
+		fmt.Fprintf(os.Stderr, "DEBUG: Making API request to /repositories/%s/%s/pullrequests\n", prCtx.Workspace, prCtx.Repository)
+	}
 
 	result, err := prCtx.Client.PullRequests.ListPullRequests(ctx, prCtx.Workspace, prCtx.Repository, options)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "DEBUG: API error: %v\n", err)
-		if bitbucketErr, ok := err.(*api.BitbucketError); ok {
-			fmt.Fprintf(os.Stderr, "DEBUG: Error type: %s\n", bitbucketErr.Type)
-			fmt.Fprintf(os.Stderr, "DEBUG: Error message: %s\n", bitbucketErr.Message)
-			fmt.Fprintf(os.Stderr, "DEBUG: Error detail: %s\n", bitbucketErr.Detail)
-			fmt.Fprintf(os.Stderr, "DEBUG: Status code: %d\n", bitbucketErr.StatusCode)
-			fmt.Fprintf(os.Stderr, "DEBUG: Raw response: %s\n", bitbucketErr.Raw)
+		if cmd.Debug {
+			fmt.Fprintf(os.Stderr, "DEBUG: API error: %v\n", err)
+			if bitbucketErr, ok := err.(*api.BitbucketError); ok {
+				fmt.Fprintf(os.Stderr, "DEBUG: Error type: %s\n", bitbucketErr.Type)
+				fmt.Fprintf(os.Stderr, "DEBUG: Error message: %s\n", bitbucketErr.Message)
+				fmt.Fprintf(os.Stderr, "DEBUG: Error detail: %s\n", bitbucketErr.Detail)
+				fmt.Fprintf(os.Stderr, "DEBUG: Status code: %d\n", bitbucketErr.StatusCode)
+				fmt.Fprintf(os.Stderr, "DEBUG: Raw response: %s\n", bitbucketErr.Raw)
+			}
 		}
 		return handlePullRequestAPIError(err)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: API response - Page: %d, PageLen: %d, Size: %d\n", result.Page, result.PageLen, result.Size)
-	fmt.Fprintf(os.Stderr, "DEBUG: API response - Next: %s\n", result.Next)
-	fmt.Fprintf(os.Stderr, "DEBUG: API response - Values length: %d\n", len(result.Values))
+	if cmd.Debug {
+		fmt.Fprintf(os.Stderr, "DEBUG: API response - Page: %d, PageLen: %d, Size: %d\n", result.Page, result.PageLen, result.Size)
+		fmt.Fprintf(os.Stderr, "DEBUG: API response - Next: %s\n", result.Next)
+		fmt.Fprintf(os.Stderr, "DEBUG: API response - Values length: %d\n", len(result.Values))
+	}
 
 	pullRequests, err := parsePullRequestResults(result)
 	if err != nil {
 		return fmt.Errorf("failed to parse pull request results: %w", err)
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: Parsed %d pull requests\n", len(pullRequests))
-	for i, pr := range pullRequests {
-		fmt.Fprintf(os.Stderr, "DEBUG: PR %d - ID: %d, Title: %s, State: %s\n", i, pr.ID, pr.Title, pr.State)
+	if cmd.Debug {
+		fmt.Fprintf(os.Stderr, "DEBUG: Parsed %d pull requests\n", len(pullRequests))
+		for i, pr := range pullRequests {
+			fmt.Fprintf(os.Stderr, "DEBUG: PR %d - ID: %d, Title: %s, State: %s\n", i, pr.ID, pr.Title, pr.State)
+		}
 	}
 
 	return cmd.formatOutput(prCtx, pullRequests)
@@ -339,5 +366,6 @@ func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat strin
 		Workspace:  cmd.Workspace,
 		Repository: cmd.Repository,
 		Formatter:  formatter,
+		Debug:      cmd.Debug,
 	}, nil
 }
