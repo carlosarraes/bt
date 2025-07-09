@@ -88,6 +88,7 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 					options.Author = currentUser.Username
 					if cmd.Debug {
 						fmt.Fprintf(os.Stderr, "DEBUG: Filtering by current user: %s\n", currentUser.Username)
+						fmt.Fprintf(os.Stderr, "DEBUG: Current user details: %+v\n", currentUser)
 					}
 				} else {
 					if cmd.Debug {

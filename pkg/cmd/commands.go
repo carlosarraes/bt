@@ -309,6 +309,8 @@ type PRListCmd struct {
 	Limit      int    `help:"Maximum number of pull requests to show" default:"30"`
 	Sort       string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	All        bool   `help:"Show all pull requests regardless of author"`
+	Debug      bool   `help:"Show debug output"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
@@ -327,6 +329,8 @@ func (p *PRListCmd) Run(ctx context.Context) error {
 		Limit:      p.Limit,
 		Sort:       p.Sort,
 		Output:     p.Output,
+		All:        p.All,
+		Debug:      p.Debug,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
