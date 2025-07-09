@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -107,17 +108,32 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 		}
 	}
 
+	fmt.Fprintf(os.Stderr, "DEBUG: Full request URL: %s\n", fetchURL)
+	
 	// Make the request
 	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "bt/1.0.0")
+	
+	if p.client.authManager != nil {
+		if err := p.client.authManager.SetHTTPHeaders(req); err != nil {
+			return nil, fmt.Errorf("failed to set auth headers: %w", err)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Request headers: %+v\n", req.Header)
+
 	resp, err := p.client.doRequest(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	fmt.Fprintf(os.Stderr, "DEBUG: Response status: %d %s\n", resp.StatusCode, resp.Status)
 
 	// Parse the paginated response
 	var paginatedResp PaginatedResponse

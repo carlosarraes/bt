@@ -54,10 +54,21 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 	}
 
 	// Use the paginator for large result sets
-	paginator := p.client.Paginate(endpoint, &PageOptions{
-		Page:    options.Page,
-		PageLen: options.PageLen,
-	})
+	pageOptions := &PageOptions{
+		Page:    1,
+		PageLen: 50,
+	}
+	
+	if options != nil {
+		if options.Page > 0 {
+			pageOptions.Page = options.Page
+		}
+		if options.PageLen > 0 {
+			pageOptions.PageLen = options.PageLen
+		}
+	}
+	
+	paginator := p.client.Paginate(endpoint, pageOptions)
 
 	return paginator.NextPage(ctx)
 }
