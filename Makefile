@@ -43,11 +43,14 @@ help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Build targets
-build: ## Build the binary (optimized)
+build: ## Build the binary (optimized) and copy to ~/.local/bin
 	@echo "Building ${BINARY_NAME}..."
 	@mkdir -p ${BUILD_DIR}
 	@go build ${BUILD_FLAGS} ${LDFLAGS} -o ${BUILD_DIR}/${BINARY_NAME} ${CMD_DIR}
 	@echo "Built ${BUILD_DIR}/${BINARY_NAME}"
+	@mkdir -p ~/.local/bin
+	@cp ${BUILD_DIR}/${BINARY_NAME} ~/.local/bin/
+	@echo "Copied to ~/.local/bin/${BINARY_NAME}"
 
 build-dev: ## Build for development (no optimizations)
 	@echo "Building ${BINARY_NAME} for development..."
