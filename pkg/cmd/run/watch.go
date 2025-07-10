@@ -27,54 +27,37 @@ type WatchCmd struct {
 }
 
 type LogBuffer struct {
-	Lines    []string
-	Size     int
-	AllLines []string
+	AllLines     []string
+	LastLogCount int
 }
 
-func NewLogBuffer(size int) *LogBuffer {
+func NewLogBuffer() *LogBuffer {
 	return &LogBuffer{
-		Lines:    make([]string, 0, size),
-		Size:     size,
-		AllLines: make([]string, 0),
+		AllLines:     make([]string, 0),
+		LastLogCount: 0,
 	}
 }
 
-func (lb *LogBuffer) AddNew(newLines []string) bool {
-	if len(newLines) == 0 {
-		return false
+func (lb *LogBuffer) GetNewLines(allLines []string) []string {
+	if len(allLines) <= lb.LastLogCount {
+		return nil
 	}
 	
-	hasNew := false
-	startIdx := len(lb.AllLines)
+	newLines := allLines[lb.LastLogCount:]
+	lb.LastLogCount = len(allLines)
 	
-	if len(newLines) > len(lb.AllLines) {
-		for i := startIdx; i < len(newLines); i++ {
-			line := newLines[i]
-			if line != "" {
-				lb.AllLines = append(lb.AllLines, line)
-				lb.Lines = append(lb.Lines, line)
-				hasNew = true
-			}
-		}
-		
-		if len(lb.Lines) > lb.Size {
-			lb.Lines = lb.Lines[len(lb.Lines)-lb.Size:]
+	var validLines []string
+	for _, line := range newLines {
+		if strings.TrimSpace(line) != "" {
+			validLines = append(validLines, line)
 		}
 	}
 	
-	return hasNew
+	return validLines
 }
 
-func (lb *LogBuffer) GetLines() []string {
-	return lb.Lines
-}
-
-func (lb *LogBuffer) GetLastLines(count int) []string {
-	if len(lb.Lines) <= count {
-		return lb.Lines
-	}
-	return lb.Lines[len(lb.Lines)-count:]
+func (lb *LogBuffer) Reset() {
+	lb.LastLogCount = 0
 }
 
 // Run executes the run watch command
@@ -189,25 +172,16 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 		}
 	}
 
-	fmt.Printf("🔍 Watching pipeline #%d (Ctrl+C to exit)...\n\n", pipeline.BuildNumber)
+	fmt.Printf("🔍 Watching pipeline #%d (Ctrl+C to exit)...\n", pipeline.BuildNumber)
 
-	cmd.logBuffer = NewLogBuffer(10)
+	cmd.logBuffer = NewLogBuffer()
 
-	updateTicker := time.NewTicker(3 * time.Second)
+	updateTicker := time.NewTicker(2 * time.Second)
 	defer updateTicker.Stop()
 
-	// Show initial state
-	if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
-		return err
-	}
-
-	// Track previous state for change detection
-	var previousState string
-	if pipeline.State != nil {
-		previousState = pipeline.State.Name
-	}
-
 	var currentStepUUID string
+	var currentStepName string
+	var displayedInitialStatus bool
 
 	for {
 		select {
@@ -226,50 +200,76 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 			}
 
 			var activeStep *api.PipelineStep
+			completedSteps := 0
+			totalSteps := len(steps)
+			
 			for _, step := range steps {
-				if step.State != nil && step.State.Name == "IN_PROGRESS" {
-					activeStep = step
-					break
+				if step.State != nil {
+					switch step.State.Name {
+					case "IN_PROGRESS":
+						activeStep = step
+					case "COMPLETED", "SUCCESSFUL":
+						completedSteps++
+					case "FAILED":
+						completedSteps++
+					}
 				}
 			}
 
 			newStepUUID := ""
+			newStepName := ""
 			if activeStep != nil {
 				newStepUUID = activeStep.UUID
+				newStepName = activeStep.Name
 			}
 
 			if newStepUUID != currentStepUUID {
+				if currentStepUUID != "" && currentStepName != "" && newStepUUID != "" {
+					fmt.Printf("✅ Step completed: %s\n", currentStepName)
+				}
+				
 				currentStepUUID = newStepUUID
-				cmd.logBuffer = NewLogBuffer(10)
+				currentStepName = newStepName
+				cmd.logBuffer.Reset()
+				
+				if activeStep != nil {
+					fmt.Printf("🔄 Pipeline #%d: IN_PROGRESS | 🔄 %s [%d/%d steps]\n", 
+						updatedPipeline.BuildNumber, activeStep.Name, completedSteps+1, totalSteps)
+					fmt.Printf("📋 Streaming output from \"%s\":\n", activeStep.Name)
+					displayedInitialStatus = true
+				}
+			} else if !displayedInitialStatus && activeStep != nil {
+				status := ""
+				if updatedPipeline.State != nil {
+					status = updatedPipeline.State.Name
+				}
+				fmt.Printf("%s Pipeline #%d: %s | 🔄 %s [%d/%d steps]\n", 
+					cmd.getStatusIcon(status), updatedPipeline.BuildNumber, status, 
+					activeStep.Name, completedSteps+1, totalSteps)
+				fmt.Printf("📋 Streaming output from \"%s\":\n", activeStep.Name)
+				displayedInitialStatus = true
 			}
 
 			if currentStepUUID != "" {
 				allLogs, err := cmd.getAllLogs(watchCtx, runCtx, pipelineUUID, currentStepUUID)
 				if err == nil {
-					cmd.logBuffer.AddNew(allLogs)
+					newLines := cmd.logBuffer.GetNewLines(allLogs)
+					dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+					if cmd.NoColor {
+						dimStyle = lipgloss.NewStyle()
+					}
+					for _, line := range newLines {
+						fmt.Printf("   %s\n", dimStyle.Render(line))
+					}
 				}
 			}
-
-			if err := cmd.displayWatchUpdate(watchCtx, runCtx, pipelineUUID); err != nil {
-				return err
-			}
-
-			// Check for state changes and notify
-			currentState := ""
-			if updatedPipeline.State != nil {
-				currentState = updatedPipeline.State.Name
-			}
-
-			if currentState != previousState && previousState != "" {
-				cmd.notifyStateChange(previousState, currentState, updatedPipeline.BuildNumber)
-			}
-			previousState = currentState
 
 			// Check if pipeline completed
 			if updatedPipeline.State != nil && 
 			   updatedPipeline.State.Name != "IN_PROGRESS" && 
 			   updatedPipeline.State.Name != "PENDING" {
-				fmt.Printf("\n🏁 Pipeline #%d completed with status: %s\n", 
+				
+				fmt.Printf("🏁 Pipeline #%d completed with status: %s\n", 
 					updatedPipeline.BuildNumber, updatedPipeline.State.Name)
 				
 				if cmd.Output == "json" {
@@ -304,139 +304,6 @@ func (cmd *WatchCmd) getAllLogs(ctx context.Context, runCtx *RunContext, pipelin
 	return lines, nil
 }
 
-func (cmd *WatchCmd) getRecentLogs(ctx context.Context, runCtx *RunContext, pipelineUUID, stepUUID string, lineCount int) ([]string, error) {
-	logReader, err := runCtx.Client.Pipelines.GetStepLogs(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID, stepUUID)
-	if err != nil {
-		return nil, err
-	}
-	defer logReader.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(logReader)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-
-	if len(lines) > lineCount {
-		return lines[len(lines)-lineCount:], nil
-	}
-	return lines, nil
-}
-
-func (cmd *WatchCmd) displayWatchUpdate(ctx context.Context, runCtx *RunContext, pipelineUUID string) error {
-	// Get current pipeline state
-	pipeline, err := runCtx.Client.Pipelines.GetPipeline(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
-	if err != nil {
-		return err
-	}
-
-	// Get current steps
-	steps, err := runCtx.Client.Pipelines.GetPipelineSteps(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
-	if err != nil {
-		return err
-	}
-
-	fmt.Print("\033[2J\033[H")
-	
-	// Pipeline status
-	status := "UNKNOWN"
-	if pipeline.State != nil {
-		if pipeline.State.Result != nil && pipeline.State.Result.Name != "" {
-			status = pipeline.State.Result.Name
-		} else {
-			status = pipeline.State.Name
-		}
-	}
-
-	// Duration
-	duration := ""
-	if pipeline.BuildSecondsUsed > 0 {
-		duration = FormatDuration(pipeline.BuildSecondsUsed)
-	}
-
-	fmt.Printf("%s Pipeline #%d: %s", 
-		cmd.getStatusIcon(status), 
-		pipeline.BuildNumber, 
-		status)
-	
-	if duration != "" {
-		fmt.Printf(" (%s)", duration)
-	}
-
-	// Show current step progress
-	activeSteps := 0
-	totalSteps := len(steps)
-	completedSteps := 0
-	var currentStep *api.PipelineStep
-	
-	for _, step := range steps {
-		if step.State != nil {
-			switch step.State.Name {
-			case "COMPLETED":
-				completedSteps++
-			case "IN_PROGRESS":
-				activeSteps++
-				currentStep = step
-				// Show which step is currently running
-				fmt.Printf(" | 🔄 %s", step.Name)
-			case "FAILED":
-				completedSteps++
-			}
-		}
-	}
-
-	// Progress indicator
-	if totalSteps > 0 {
-		fmt.Printf(" [%d/%d steps]", completedSteps+activeSteps, totalSteps)
-	}
-
-	fmt.Println()
-
-	if currentStep != nil {
-		fmt.Printf("\n📋 Streaming output from \"%s\":\n", currentStep.Name)
-		
-		if cmd.logBuffer != nil {
-			recentLogs := cmd.logBuffer.GetLastLines(10)
-			
-			if len(recentLogs) > 10 {
-				recentLogs = recentLogs[len(recentLogs)-10:]
-			}
-			
-			if len(recentLogs) > 0 {
-				dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-				if cmd.NoColor {
-					dimStyle = lipgloss.NewStyle()
-				}
-				
-				for _, line := range recentLogs {
-					if line != "" {
-						fmt.Printf("   %s\n", dimStyle.Render(line))
-					}
-				}
-			} else {
-				fmt.Printf("   (Waiting for log output...)\n")
-			}
-		} else {
-			fmt.Printf("   (Log buffer not initialized)\n")
-		}
-	} else {
-		fmt.Printf("\n💤 No steps currently running\n")
-	}
-
-	return nil
-}
-
-// notifyStateChange shows a notification when pipeline state changes
-func (cmd *WatchCmd) notifyStateChange(previousState, currentState string, buildNumber int) {
-	fmt.Printf("\n📢 Pipeline #%d: %s → %s\n", buildNumber, previousState, currentState)
-}
 
 // getStatusIcon returns an icon for the given status
 func (cmd *WatchCmd) getStatusIcon(status string) string {
