@@ -91,8 +91,10 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 	}
 
 	options := &api.PipelineListOptions{
-		PageLen: 50,
+		PageLen: 100,
 	}
+	
+	fmt.Printf("🔍 Searching for pipeline #%d in workspace '%s', repository '%s'\n", buildNumber, runCtx.Workspace, runCtx.Repository)
 	
 	resp, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
 	if err != nil {
@@ -104,13 +106,19 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
 	}
 
-	for _, pipeline := range pipelines {
+	fmt.Printf("📋 Found %d pipelines. Looking for build number %d:\n", len(pipelines), buildNumber)
+	
+	for i, pipeline := range pipelines {
+		fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, pipeline.State.Name)
 		if pipeline.BuildNumber == buildNumber {
+			fmt.Printf("✅ Found matching pipeline: #%d -> %s\n", buildNumber, pipeline.UUID)
 			return pipeline.UUID, nil
 		}
 	}
 
-	return "", fmt.Errorf("pipeline with build number %d not found", buildNumber)
+	fmt.Printf("❌ Pipeline #%d not found in the %d recent pipelines\n", buildNumber, len(pipelines))
+	fmt.Printf("💡 Try using the full UUID instead, or check if the pipeline is older than the %d most recent ones.\n", len(pipelines))
+	return "", fmt.Errorf("pipeline with build number %d not found in the %d most recent pipelines", buildNumber, len(pipelines))
 }
 
 func (cmd *RerunCmd) parsePipelineResults(result *api.PaginatedResponse) ([]*api.Pipeline, error) {
