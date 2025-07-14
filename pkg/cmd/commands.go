@@ -76,6 +76,7 @@ type RunCmd struct {
 	Watch  RunWatchCmd  `cmd:""`
 	Logs   RunLogsCmd   `cmd:""`
 	Cancel RunCancelCmd `cmd:""`
+	Rerun  RunRerunCmd  `cmd:""`
 }
 
 // RunListCmd handles run list
@@ -222,6 +223,35 @@ func (r *RunCancelCmd) Run(ctx context.Context) error {
 	
 	cmd := &run.CancelCmd{
 		PipelineID: r.PipelineID,
+		Force:      r.Force,
+		Output:     r.Output,
+		NoColor:    noColor,
+		Workspace:  r.Workspace,
+		Repository: r.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type RunRerunCmd struct {
+	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Failed     bool   `help:"Rerun only failed steps"`
+	Step       string `help:"Rerun specific step"`
+	Force      bool   `short:"f" help:"Force rerun without confirmation"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (r *RunRerunCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.RerunCmd{
+		PipelineID: r.PipelineID,
+		Failed:     r.Failed,
+		Step:       r.Step,
 		Force:      r.Force,
 		Output:     r.Output,
 		NoColor:    noColor,
