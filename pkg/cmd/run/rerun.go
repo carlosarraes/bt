@@ -17,6 +17,7 @@ type RerunCmd struct {
 	Failed     bool   `help:"Rerun only failed steps"`
 	Step       string `help:"Rerun specific step"`
 	Force      bool   `short:"f" help:"Force rerun without confirmation"`
+	Debug      bool   `help:"Show debug information"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -110,7 +111,21 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 	fmt.Printf("📋 Found %d pipelines. Looking for build number %d:\n", len(pipelines), buildNumber)
 	
 	for i, pipeline := range pipelines {
-		fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, pipeline.State.Name)
+		stateName := "UNKNOWN"
+		resultName := "UNKNOWN"
+		if pipeline.State != nil {
+			stateName = pipeline.State.Name
+			if pipeline.State.Result != nil {
+				resultName = pipeline.State.Result.Name
+			}
+		}
+		
+		if cmd.Debug {
+			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s, Result: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName, resultName)
+		} else {
+			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName)
+		}
+		
 		if pipeline.BuildNumber == buildNumber {
 			fmt.Printf("✅ Found matching pipeline: #%d -> %s\n", buildNumber, pipeline.UUID)
 			return pipeline.UUID, nil
@@ -145,13 +160,29 @@ func (cmd *RerunCmd) parsePipelineResults(result *api.PaginatedResponse) ([]*api
 }
 
 func (cmd *RerunCmd) validateRerunnable(pipeline *api.Pipeline) error {
+	if pipeline.State == nil {
+		return fmt.Errorf("pipeline #%d has no state information", pipeline.BuildNumber)
+	}
+	
 	switch pipeline.State.Name {
-	case "SUCCESSFUL", "FAILED", "ERROR", "STOPPED":
-		return nil
 	case "PENDING", "IN_PROGRESS":
 		return fmt.Errorf("pipeline #%d is still running (state: %s) and cannot be rerun. Use 'bt run cancel' to stop it first", 
 			pipeline.BuildNumber, pipeline.State.Name)
+	}
+	
+	switch pipeline.State.Name {
+	case "COMPLETED":
+		return nil
+	case "SUCCESSFUL", "FAILED", "ERROR", "STOPPED":
+		return nil
 	default:
+		if cmd.Debug {
+			resultName := "UNKNOWN"
+			if pipeline.State.Result != nil {
+				resultName = pipeline.State.Result.Name
+			}
+			fmt.Printf("🐛 Debug: State=%s, Result=%s\n", pipeline.State.Name, resultName)
+		}
 		return fmt.Errorf("pipeline #%d is in an unknown state (%s) and may not be rerunnable", 
 			pipeline.BuildNumber, pipeline.State.Name)
 	}
