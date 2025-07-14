@@ -92,6 +92,7 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 
 	options := &api.PipelineListOptions{
 		PageLen: 100,
+		Sort:    "-created_on",
 	}
 	
 	fmt.Printf("🔍 Searching for pipeline #%d in workspace '%s', repository '%s'\n", buildNumber, runCtx.Workspace, runCtx.Repository)
