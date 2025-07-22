@@ -44,11 +44,12 @@ type PipelineResult struct {
 
 // PipelineTarget represents the target of a pipeline (branch, tag, etc.)
 type PipelineTarget struct {
-	Type      string     `json:"type"`
-	RefType   string     `json:"ref_type,omitempty"`
-	RefName   string     `json:"ref_name,omitempty"`
-	Selector  *Selector  `json:"selector,omitempty"`
-	Commit    *Commit    `json:"commit,omitempty"`
+	Type           string     `json:"type"`
+	RefType        string     `json:"ref_type,omitempty"`
+	RefName        string     `json:"ref_name,omitempty"`
+	Selector       *Selector  `json:"selector,omitempty"`
+	Commit         *Commit    `json:"commit,omitempty"`
+	PullRequestId  *int       `json:"pullRequestId,omitempty"`
 }
 
 // PipelineTrigger represents what triggered the pipeline
