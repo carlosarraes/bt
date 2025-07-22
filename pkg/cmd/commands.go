@@ -237,6 +237,7 @@ type RunRerunCmd struct {
 	Failed     bool   `help:"Rerun only failed steps"`
 	Step       string `help:"Rerun specific step"`
 	Force      bool   `short:"f" help:"Force rerun without confirmation"`
+	Debug      bool   `help:"Show debug information"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -253,6 +254,7 @@ func (r *RunRerunCmd) Run(ctx context.Context) error {
 		Failed:     r.Failed,
 		Step:       r.Step,
 		Force:      r.Force,
+		Debug:      r.Debug,
 		Output:     r.Output,
 		NoColor:    noColor,
 		Workspace:  r.Workspace,
