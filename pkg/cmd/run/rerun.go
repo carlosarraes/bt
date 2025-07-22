@@ -75,6 +75,77 @@ func (cmd *RerunCmd) Run(ctx context.Context) error {
 	return cmd.outputSuccess(runCtx, pipeline, newPipeline)
 }
 
+func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunContext, commitHash string) (*int, error) {
+	if cmd.Debug {
+		fmt.Printf("🐛 Debug: Looking for PR with commit hash: %s\n", commitHash)
+	}
+	
+	options := &api.PullRequestListOptions{
+		State:   "OPEN,MERGED,DECLINED",
+		PageLen: 50,
+	}
+	
+	resp, err := runCtx.Client.PullRequests.ListPullRequests(ctx, runCtx.Workspace, runCtx.Repository, options)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pull requests: %w", err)
+	}
+	
+	pullRequests, err := cmd.parsePullRequestResults(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse pull request results: %w", err)
+	}
+	
+	for _, pr := range pullRequests {
+		if pr.Source != nil && pr.Source.Commit != nil && pr.Source.Commit.Hash == commitHash {
+			if cmd.Debug {
+				fmt.Printf("🐛 Debug: Found matching PR #%d for commit %s (source)\n", pr.ID, commitHash)
+			}
+			return &pr.ID, nil
+		}
+		
+		if pr.Destination != nil && pr.Destination.Commit != nil && pr.Destination.Commit.Hash == commitHash {
+			if cmd.Debug {
+				fmt.Printf("🐛 Debug: Found matching PR #%d for commit %s (destination)\n", pr.ID, commitHash)
+			}
+			return &pr.ID, nil
+		}
+		
+		if cmd.Debug && pr.Source != nil && pr.Source.Commit != nil {
+			fmt.Printf("🐛 Debug: PR #%d source commit: %s\n", pr.ID, pr.Source.Commit.Hash)
+		}
+		if cmd.Debug && pr.Destination != nil && pr.Destination.Commit != nil {
+			fmt.Printf("🐛 Debug: PR #%d destination commit: %s\n", pr.ID, pr.Destination.Commit.Hash)
+		}
+	}
+	
+	if cmd.Debug {
+		fmt.Printf("🐛 Debug: No PR found for commit %s\n", commitHash)
+	}
+	return nil, fmt.Errorf("no pull request found for commit %s", commitHash)
+}
+
+func (cmd *RerunCmd) parsePullRequestResults(result *api.PaginatedResponse) ([]*api.PullRequest, error) {
+	var pullRequests []*api.PullRequest
+
+	if result.Values != nil {
+		var values []json.RawMessage
+		if err := json.Unmarshal(result.Values, &values); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal pull request values: %w", err)
+		}
+
+		pullRequests = make([]*api.PullRequest, len(values))
+		for i, rawPR := range values {
+			var pr api.PullRequest
+			if err := json.Unmarshal(rawPR, &pr); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal pull request %d: %w", i, err)
+			}
+			pullRequests[i] = &pr
+		}
+	}
+
+	return pullRequests, nil
+}
+
 func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
 	pipelineID := strings.TrimSpace(cmd.PipelineID)
 	
@@ -113,17 +184,21 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 	for i, pipeline := range pipelines {
 		stateName := "UNKNOWN"
 		resultName := "UNKNOWN"
+		displayStatus := "UNKNOWN"
 		if pipeline.State != nil {
 			stateName = pipeline.State.Name
 			if pipeline.State.Result != nil {
 				resultName = pipeline.State.Result.Name
+				displayStatus = resultName
+			} else {
+				displayStatus = stateName
 			}
 		}
 		
 		if cmd.Debug {
 			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s, Result: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName, resultName)
 		} else {
-			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName)
+			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, displayStatus)
 		}
 		
 		if pipeline.BuildNumber == buildNumber {
@@ -196,8 +271,13 @@ func (cmd *RerunCmd) confirmRerun(pipeline *api.Pipeline) bool {
 		action = fmt.Sprintf("rerun step '%s' of", cmd.Step)
 	}
 
+	displayStatus := pipeline.State.Name
+	if pipeline.State.Result != nil && pipeline.State.Result.Name != "" {
+		displayStatus = pipeline.State.Result.Name
+	}
+	
 	fmt.Printf("Are you sure you want to %s pipeline #%d (%s)?\n", 
-		action, pipeline.BuildNumber, pipeline.State.Name)
+		action, pipeline.BuildNumber, displayStatus)
 	
 	if pipeline.Target != nil {
 		fmt.Printf("  Branch: %s\n", pipeline.Target.RefName)
@@ -223,13 +303,57 @@ func (cmd *RerunCmd) buildTriggerRequest(ctx context.Context, runCtx *RunContext
 		return nil, fmt.Errorf("pipeline #%d has no target information", pipeline.BuildNumber)
 	}
 
+	if cmd.Debug {
+		fmt.Printf("🐛 Debug: Original pipeline target:\n")
+		fmt.Printf("  Type: %s\n", pipeline.Target.Type)
+		fmt.Printf("  RefType: %s\n", pipeline.Target.RefType)
+		fmt.Printf("  RefName: %s\n", pipeline.Target.RefName)
+		if pipeline.Target.PullRequestId != nil {
+			fmt.Printf("  PullRequestId: %d\n", *pipeline.Target.PullRequestId)
+		} else {
+			fmt.Printf("  PullRequestId: nil\n")
+		}
+		if pipeline.Target.Selector != nil {
+			fmt.Printf("  Selector: %+v\n", pipeline.Target.Selector)
+		} else {
+			fmt.Printf("  Selector: nil\n")
+		}
+		if pipeline.Target.Commit != nil {
+			fmt.Printf("  Commit: %s\n", pipeline.Target.Commit.Hash)
+		} else {
+			fmt.Printf("  Commit: nil\n")
+		}
+	}
+
+	pullRequestId := pipeline.Target.PullRequestId
+	if pipeline.Target.Type == "pipeline_pullrequest_target" && pullRequestId == nil {
+		if pipeline.Target.Commit != nil {
+			if cmd.Debug {
+				fmt.Printf("🐛 Debug: PR pipeline missing pullRequestId, attempting to find by commit hash\n")
+			}
+			
+			foundPRId, err := cmd.findPullRequestByCommit(ctx, runCtx, pipeline.Target.Commit.Hash)
+			if err != nil {
+				return nil, fmt.Errorf("failed to find pull request for commit %s: %w", pipeline.Target.Commit.Hash, err)
+			}
+			pullRequestId = foundPRId
+			
+			if cmd.Debug {
+				fmt.Printf("🐛 Debug: Found PR ID: %d\n", *pullRequestId)
+			}
+		} else {
+			return nil, fmt.Errorf("pull request pipeline missing both pullRequestId and commit hash")
+		}
+	}
+
 	request := &api.TriggerPipelineRequest{
 		Target: &api.PipelineTarget{
-			Type:     pipeline.Target.Type,
-			RefType:  pipeline.Target.RefType,
-			RefName:  pipeline.Target.RefName,
-			Selector: pipeline.Target.Selector,
-			Commit:   pipeline.Target.Commit,
+			Type:          pipeline.Target.Type,
+			RefType:       pipeline.Target.RefType,
+			RefName:       pipeline.Target.RefName,
+			Selector:      pipeline.Target.Selector,
+			Commit:        pipeline.Target.Commit,
+			PullRequestId: pullRequestId,
 		},
 	}
 
