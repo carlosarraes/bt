@@ -201,6 +201,7 @@ bt run watch 1234                  # Watch live execution with continuous log st
 
 # Pipeline management  
 bt run cancel 1234                 # Cancel running pipeline with confirmation
+bt run rerun 1234                  # ⚠️ Rerun pipeline (currently has issues with PR pipelines - WIP)
 ```
 
 **🎯 Smart Log Analysis - Get to the error instantly:**
