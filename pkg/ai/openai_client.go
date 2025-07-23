@@ -115,14 +115,16 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 			},
 			"jira_ticket": map[string]interface{}{
 				"type":        "string",
-				"description": "JIRA ticket ID if found in context (optional)",
+				"description": "JIRA ticket ID if found in context, or empty string if none",
+				"default":     "",
 			},
 			"client_specific": map[string]interface{}{
 				"type":        "string",
-				"description": "Client-specific information if found (optional)",
+				"description": "Client-specific information if found, or empty string if none",
+				"default":     "",
 			},
 		},
-		"required":             []string{"contexto", "alteracoes", "checklist_items", "evidence_placeholders", "title"},
+		"required":             []string{"contexto", "alteracoes", "checklist_items", "evidence_placeholders", "title", "client_specific", "jira_ticket"},
 		"additionalProperties": false,
 	}
 
@@ -207,7 +209,7 @@ Guidelines:
 }
 
 func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput, language string) string {
-	prompt := fmt.Sprintf(`Analyze the following PR information and generate a structured description:
+	prompt := fmt.Sprintf(`Analyze the following PR information and generate a structured description based on ACTUAL CODE CHANGES:
 
 **Branch Information:**
 - Source: %s
@@ -219,19 +221,21 @@ func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput, language string) stri
 **Files Changed:**
 %s
 
-**Git Diff (first 2000 chars):**
+**Git Diff (ANALYZE THIS CAREFULLY):**
 %s
 
 **Statistics:**
 - Files changed: %d
 - Lines added: %d  
 - Lines removed: %d
+
+IMPORTANT: Base your description on the ACTUAL git diff content above. Don't give generic responses. Analyze what specific code changes were made and describe them clearly.
 `, 
 		input.SourceBranch,
 		input.TargetBranch,
 		formatCommits(input.CommitMessages),
 		formatFiles(input.ChangedFiles),
-		truncateString(input.GitDiff, 2000),
+		truncateString(input.GitDiff, 3000),
 		input.FilesChanged,
 		input.LinesAdded,
 		input.LinesRemoved,
