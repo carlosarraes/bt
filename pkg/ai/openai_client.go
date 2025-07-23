@@ -90,21 +90,21 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 			},
 			"alteracoes": map[string]interface{}{
 				"type":        "array",
-				"description": "List of specific changes made, each starting with bullet point (•)",
+				"description": "List of specific changes made, each item starting with bullet (•) and complete on its own",
 				"items": map[string]interface{}{
 					"type": "string",
 				},
 			},
 			"checklist_items": map[string]interface{}{
 				"type":        "array",
-				"description": "Dynamic checklist items based on change types, each starting with ✅",
+				"description": "Dynamic checklist items based on change types, each item starting with ✅ and complete on its own",
 				"items": map[string]interface{}{
 					"type": "string",
 				},
 			},
 			"evidence_placeholders": map[string]interface{}{
 				"type":        "array",
-				"description": "Evidence placeholder items based on change types, each starting with - [ ]",
+				"description": "Evidence placeholder items based on change types, each item starting with - [ ] and complete on its own",
 				"items": map[string]interface{}{
 					"type": "string",
 				},
@@ -185,9 +185,10 @@ Diretrizes:
 - Use emojis e formatação markdown quando apropriado
 - Crie checklists dinâmicos baseados no tipo de mudança
 - Mantenha o tom profissional mas acessível
-- Para alterações: use bullets (•) 
-- Para checklist: use ✅ 
-- Para evidências: use - [ ]
+- Para alterações: cada item deve começar com bullet (•) e estar em linha separada
+- Para checklist: cada item deve começar com ✅ e estar em linha separada 
+- Para evidências: cada item deve começar com - [ ] e estar em linha separada
+- IMPORTANTE: Coloque cada item de lista em sua própria linha, não junte tudo numa linha só
 - Identifique tickets JIRA se presentes no contexto
 - Extraia informações específicas do cliente quando relevante`
 	}
@@ -201,9 +202,10 @@ Guidelines:
 - Use emojis and markdown formatting when appropriate  
 - Create dynamic checklists based on change types
 - Maintain a professional but accessible tone
-- For changes: use bullets (•)
-- For checklist: use ✅
-- For evidence: use - [ ]
+- For changes: each item should start with bullet (•) and be on separate line
+- For checklist: each item should start with ✅ and be on separate line
+- For evidence: each item should start with - [ ] and be on separate line
+- IMPORTANT: Put each list item on its own line, don't combine them into one line
 - Identify JIRA tickets if present in context
 - Extract client-specific information when relevant`
 }
@@ -229,7 +231,15 @@ func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput, language string) stri
 - Lines added: %d  
 - Lines removed: %d
 
-IMPORTANT: Base your description on the ACTUAL git diff content above. Don't give generic responses. Analyze what specific code changes were made and describe them clearly.
+CRITICAL INSTRUCTIONS FOR GIT DIFF ANALYSIS:
+1. Lines starting with '+' are ADDITIONS (new code being added)
+2. Lines starting with '-' are DELETIONS (old code being removed)  
+3. When you see a function/feature being added (more + lines), say it's being ADDED/IMPLEMENTED
+4. When you see a function/feature being removed (more - lines), say it's being REMOVED
+5. Read the diff carefully - don't assume what the change is doing
+6. Be specific about what code is actually changing based on the +/- indicators
+7. Each bullet point and checklist item should be on a separate line
+8. If no client-specific info is found, set client_specific to empty string
 `, 
 		input.SourceBranch,
 		input.TargetBranch,
