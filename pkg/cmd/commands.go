@@ -293,19 +293,20 @@ type PRCmd struct {
 }
 
 type PRCreateCmd struct {
-	Title     string   `help:"Title of the pull request"`
-	Body      string   `help:"Body of the pull request"`
-	Base      string   `help:"Base branch for the pull request"`
-	Draft     bool     `help:"Create a draft pull request"`
-	Reviewer  []string `help:"Reviewers for the pull request"`
-	Fill      bool     `help:"Fill title and body from commit messages"`
-	AI        bool     `help:"Generate PR description using AI analysis"`
-	Template  string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
-	Jira      string   `help:"Path to JIRA context file (markdown format)"`
-	NoPush    bool     `name:"no-push" help:"Skip pushing branch to remote"`
-	Output    string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
-	Workspace string   `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository string  `help:"Repository name (defaults to git remote)"`
+	Title             string   `help:"Title of the pull request"`
+	Body              string   `help:"Body of the pull request"`
+	Base              string   `help:"Base branch for the pull request"`
+	Draft             bool     `help:"Create a draft pull request"`
+	Reviewer          []string `help:"Reviewers for the pull request"`
+	Fill              bool     `help:"Fill title and body from commit messages"`
+	AI                bool     `help:"Generate PR description using AI analysis"`
+	Template          string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
+	Jira              string   `help:"Path to JIRA context file (markdown format)"`
+	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
+	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
+	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository        string   `help:"Repository name (defaults to git remote)"`
 }
 
 func (p *PRCreateCmd) Run(ctx context.Context) error {
@@ -315,20 +316,21 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 	}
 	
 	cmd := &pr.CreateCmd{
-		Title:      p.Title,
-		Body:       p.Body,
-		Base:       p.Base,
-		Draft:      p.Draft,
-		Reviewer:   p.Reviewer,
-		Fill:       p.Fill,
-		AI:         p.AI,
-		Template:   p.Template,
-		Jira:       p.Jira,
-		NoPush:     p.NoPush,
-		Output:     p.Output,
-		NoColor:    noColor,
-		Workspace:  p.Workspace,
-		Repository: p.Repository,
+		Title:             p.Title,
+		Body:              p.Body,
+		Base:              p.Base,
+		Draft:             p.Draft,
+		Reviewer:          p.Reviewer,
+		Fill:              p.Fill,
+		AI:                p.AI,
+		Template:          p.Template,
+		Jira:              p.Jira,
+		NoPush:            p.NoPush,
+		CloseSourceBranch: p.CloseSourceBranch,
+		Output:            p.Output,
+		NoColor:           noColor,
+		Workspace:         p.Workspace,
+		Repository:        p.Repository,
 	}
 	return cmd.Run(ctx)
 }
@@ -408,6 +410,9 @@ type PREditCmd struct {
 	RemoveReviewer []string `name:"remove-reviewer" help:"Remove reviewer by username"`
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
 	Draft          bool     `help:"Convert pull request to draft"`
+	AI             bool     `help:"Generate PR description using AI analysis"`
+	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
+	Jira           string   `help:"Path to JIRA context file (markdown format)"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository     string   `help:"Repository name (defaults to git remote)"`
@@ -428,6 +433,9 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 		RemoveReviewer: p.RemoveReviewer,
 		Ready:          p.Ready,
 		Draft:          p.Draft,
+		AI:             p.AI,
+		Template:       p.Template,
+		Jira:           p.Jira,
 		Output:         p.Output,
 		NoColor:        noColor,
 		Workspace:      p.Workspace,

@@ -15,20 +15,21 @@ import (
 )
 
 type CreateCmd struct {
-	Title     string   `help:"Title of the pull request"`
-	Body      string   `help:"Body of the pull request"`
-	Base      string   `help:"Base branch for the pull request"`
-	Draft     bool     `help:"Create a draft pull request"`
-	Reviewer  []string `help:"Reviewers for the pull request"`
-	Fill      bool     `help:"Fill title and body from commit messages"`
-	AI        bool     `help:"Generate PR description using AI analysis"`
-	Template  string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
-	Jira      string   `help:"Path to JIRA context file (markdown format)"`
-	NoPush    bool     `name:"no-push" help:"Skip pushing branch to remote"`
-	Output    string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
-	NoColor   bool
-	Workspace string   `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository string  `help:"Repository name (defaults to git remote)"`
+	Title             string   `help:"Title of the pull request"`
+	Body              string   `help:"Body of the pull request"`
+	Base              string   `help:"Base branch for the pull request"`
+	Draft             bool     `help:"Create a draft pull request"`
+	Reviewer          []string `help:"Reviewers for the pull request"`
+	Fill              bool     `help:"Fill title and body from commit messages"`
+	AI                bool     `help:"Generate PR description using AI analysis"`
+	Template          string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
+	Jira              string   `help:"Path to JIRA context file (markdown format)"`
+	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
+	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
+	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	NoColor           bool
+	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository        string   `help:"Repository name (defaults to git remote)"`
 }
 
 type PRCreateResult struct {
@@ -69,7 +70,13 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 		}
 		
 		branchStatus, err := repo.GetBranchStatus(currentBranch.ShortName)
-		if err == nil && (!branchStatus.HasRemote || branchStatus.Ahead > 0) {
+		if err != nil {
+			fmt.Printf("Warning: Could not determine branch status: %v\n", err)
+		} else if !branchStatus.HasRemote {
+			if err := cmd.handleBranchPush(currentBranch.ShortName); err != nil {
+				return err
+			}
+		} else if branchStatus.Ahead > 0 {
 			if err := cmd.handleBranchPush(currentBranch.ShortName); err != nil {
 				return err
 			}
@@ -255,7 +262,7 @@ func (cmd *CreateCmd) createPullRequest(ctx context.Context, prCtx *PRContext, t
 			},
 		},
 		Reviewers:         reviewers,
-		CloseSourceBranch: false,
+		CloseSourceBranch: cmd.CloseSourceBranch,
 	}
 
 	pr, err := prCtx.Client.PullRequests.CreatePullRequest(ctx, prCtx.Workspace, prCtx.Repository, request)
