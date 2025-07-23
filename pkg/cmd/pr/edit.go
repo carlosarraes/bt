@@ -8,7 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/carlosarraes/bt/pkg/ai"
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/git"
 )
 
 type EditCmd struct {
@@ -20,6 +22,9 @@ type EditCmd struct {
 	RemoveReviewer []string `name:"remove-reviewer" help:"Remove reviewer by username"`
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
 	Draft          bool     `help:"Convert pull request to draft"`
+	AI             bool     `help:"Generate PR description using AI analysis"`
+	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
+	Jira           string   `help:"Path to JIRA context file (markdown format)"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor        bool
 	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -61,6 +66,25 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 		return handlePullRequestAPIError(err)
 	}
 
+	if cmd.AI {
+		if err := cmd.validateAIOptions(); err != nil {
+			return err
+		}
+		
+		aiResult, err := cmd.generateAIDescription(ctx, prCtx, pr)
+		if err != nil {
+			fmt.Printf("⚠️  AI generation failed: %v\n", err)
+			fmt.Println("Falling back to current description...")
+		} else {
+			if cmd.Body == "" {
+				cmd.Body = aiResult.Description
+			}
+			if cmd.Title == "" {
+				cmd.Title = aiResult.Title
+			}
+		}
+	}
+
 	updateReq, err := cmd.buildUpdateRequest(pr)
 	if err != nil {
 		return err
@@ -83,13 +107,13 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 func (cmd *EditCmd) isInteractiveMode() bool {
 	return cmd.Title == "" && cmd.Body == "" && cmd.BodyFile == "" &&
 		len(cmd.AddReviewer) == 0 && len(cmd.RemoveReviewer) == 0 &&
-		!cmd.Ready && !cmd.Draft
+		!cmd.Ready && !cmd.Draft && !cmd.AI
 }
 
 func (cmd *EditCmd) hasChanges() bool {
 	return cmd.Title != "" || cmd.Body != "" || cmd.BodyFile != "" ||
 		len(cmd.AddReviewer) > 0 || len(cmd.RemoveReviewer) > 0 ||
-		cmd.Ready || cmd.Draft
+		cmd.Ready || cmd.Draft || cmd.AI
 }
 
 func (cmd *EditCmd) runInteractiveMode(ctx context.Context, prCtx *PRContext, prID int) error {
@@ -346,4 +370,52 @@ func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 	}
 
 	return nil
+}
+
+func (cmd *EditCmd) validateAIOptions() error {
+	if err := ai.ValidateLanguage(cmd.Template); err != nil {
+		return err
+	}
+	
+	if cmd.Jira != "" {
+		if _, err := os.Stat(cmd.Jira); os.IsNotExist(err) {
+			return fmt.Errorf("JIRA context file not found: %s", cmd.Jira)
+		}
+	}
+	
+	return nil
+}
+
+func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext, pr *api.PullRequest) (*ai.PRDescriptionResult, error) {
+	repo, err := git.NewRepository("")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get git repository: %w", err)
+	}
+
+	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor)
+	
+	sourceBranch := "unknown"
+	targetBranch := "unknown"
+	
+	if pr.Source != nil && pr.Source.Branch != nil {
+		sourceBranch = pr.Source.Branch.Name
+	}
+	if pr.Destination != nil && pr.Destination.Branch != nil {
+		targetBranch = pr.Destination.Branch.Name
+	}
+	
+	opts := &ai.GenerateOptions{
+		SourceBranch: sourceBranch,
+		TargetBranch: targetBranch,
+		Template:     cmd.Template,
+		JiraFile:     cmd.Jira,
+		Verbose:      true,
+	}
+	
+	result, err := generator.GenerateDescription(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	
+	return result, nil
 }
