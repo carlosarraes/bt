@@ -65,6 +65,9 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 	}
 
 	if !cmd.NoPush {
+		if err := repo.FetchRemote("origin"); err != nil {
+		}
+		
 		branchStatus, err := repo.GetBranchStatus(currentBranch.ShortName)
 		if err == nil && (!branchStatus.HasRemote || branchStatus.Ahead > 0) {
 			if err := cmd.handleBranchPush(currentBranch.ShortName); err != nil {
