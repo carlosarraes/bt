@@ -63,6 +63,10 @@ func (t *TemplateEngine) getEnglishTemplate() string {
 ### Changes Made
 {{alteracoes}}
 
+{{if client_specific}}### Client Specific
+[{{client_specific}}] {{jira_ticket}}
+{{end}}
+
 ### Checklist
 {{checklist}}
 
@@ -112,13 +116,26 @@ func (t *TemplateEngine) processConditionals(template string, vars map[string]in
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		
-		if strings.HasPrefix(trimmed, "{{if ") && strings.HasSuffix(trimmed, "}}") {
-			inIf = true
-			condition := trimmed[5 : len(trimmed)-2]
-			condition = strings.TrimSpace(condition)
-			ifCondition = condition
-			ifContent = []string{}
-			continue
+		if strings.Contains(trimmed, "{{if ") {
+			ifStart := strings.Index(trimmed, "{{if ")
+			ifEndOffset := strings.Index(trimmed[ifStart:], "}}")
+			if ifEndOffset != -1 {
+				ifEnd := ifStart + ifEndOffset
+				
+				condition := trimmed[ifStart+5 : ifEnd]
+				condition = strings.TrimSpace(condition)
+				
+				contentAfterIf := strings.TrimSpace(trimmed[ifEnd+2:])
+				
+				inIf = true
+				ifCondition = condition
+				ifContent = []string{}
+				
+				if contentAfterIf != "" {
+					ifContent = append(ifContent, contentAfterIf)
+				}
+				continue
+			}
 		}
 		
 		if trimmed == "{{end}}" {

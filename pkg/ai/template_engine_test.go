@@ -135,3 +135,69 @@ func TestTemplateEngine_Conditionals(t *testing.T) {
 		t.Error("Template should contain JIRA ticket")
 	}
 }
+
+func TestTemplateEngine_ConditionalEmpty(t *testing.T) {
+	engine := NewTemplateEngine("portuguese")
+	
+	vars := map[string]interface{}{
+		"contexto":        "Test context",
+		"alteracoes":      "Test changes",
+		"client_specific": "",
+		"jira_ticket":     "PROJ-123",
+		"checklist":       []string{"✅ Test"},
+		"evidence_placeholders": "- [ ] Test evidence",
+		"files_changed":   1,
+		"additions":       5,
+		"deletions":       2,
+		"branch_name":     "test",
+		"target_branch":   "main",
+	}
+	
+	result, err := engine.Apply(vars)
+	if err != nil {
+		t.Fatalf("Failed to apply template: %v", err)
+	}
+	
+	if strings.Contains(result, "Cliente Específico") {
+		t.Error("Template should not contain client-specific section when empty")
+	}
+	
+	if strings.Contains(result, "{{if client_specific}}") {
+		t.Error("Template should not contain unprocessed conditional syntax")
+	}
+}
+
+func TestTemplateEngine_ConditionalInlineContent(t *testing.T) {
+	engine := NewTemplateEngine("portuguese")
+	
+	vars := map[string]interface{}{
+		"contexto":        "Test context",
+		"alteracoes":      "Test changes",
+		"client_specific": "TestClient",
+		"jira_ticket":     "PROJ-123",
+		"checklist":       []string{"✅ Test"},
+		"evidence_placeholders": "- [ ] Test evidence",
+		"files_changed":   1,
+		"additions":       5,
+		"deletions":       2,
+		"branch_name":     "test",
+		"target_branch":   "main",
+	}
+	
+	result, err := engine.Apply(vars)
+	if err != nil {
+		t.Fatalf("Failed to apply template: %v", err)
+	}
+	
+	if !strings.Contains(result, "### Cliente Específico") {
+		t.Error("Template should contain client-specific section header when provided")
+	}
+	
+	if !strings.Contains(result, "[TestClient] PROJ-123") {
+		t.Error("Template should contain formatted client and JIRA ticket")
+	}
+	
+	if strings.Contains(result, "{{if client_specific}}") {
+		t.Error("Template should not contain unprocessed conditional syntax")
+	}
+}
