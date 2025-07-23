@@ -149,7 +149,6 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 			Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
 			JSONSchema: schema,
 		},
-		Temperature: 0.3,
 	}
 
 	resp, err := c.client.CreateChatCompletion(ctx, req)
