@@ -65,8 +65,9 @@ type Client struct {
 	baseURL     *url.URL
 	
 	// Services
-	Pipelines    *PipelineService
-	PullRequests *PullRequestService
+	Pipelines     *PipelineService
+	PullRequests  *PullRequestService
+	Repositories  *RepositoryService
 }
 
 // NewClient creates a new Bitbucket API client
@@ -94,6 +95,7 @@ func NewClient(authManager auth.AuthManager, config *ClientConfig) (*Client, err
 	// Initialize services
 	client.Pipelines = NewPipelineService(client)
 	client.PullRequests = NewPullRequestService(client)
+	client.Repositories = NewRepositoryService(client)
 	
 	return client, nil
 }
