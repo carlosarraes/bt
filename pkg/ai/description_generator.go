@@ -153,11 +153,33 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 		return nil, err
 	}
 
+	if opts.Debug {
+		fmt.Printf("\n=== DEBUG: OpenAI Schema Response ===\n")
+		fmt.Printf("Contexto: %s\n", schema.Contexto)
+		fmt.Printf("Alteracoes: %v\n", schema.Alteracoes)
+		fmt.Printf("ChecklistItems: %v\n", schema.ChecklistItems)
+		fmt.Printf("EvidencePlaceholders: %v\n", schema.EvidencePlaceholders)
+		fmt.Printf("Title: %s\n", schema.Title)
+		fmt.Printf("JiraTicket: %s\n", schema.JiraTicket)
+		fmt.Printf("ClientSpecific: %s\n", schema.ClientSpecific)
+		fmt.Printf("=== END DEBUG ===\n\n")
+	}
+
+	checklist := strings.Join(schema.ChecklistItems, "\n\n")
+	if strings.TrimSpace(checklist) == "" {
+		checklist = "✅ Testado localmente\n\n✅ Código revisado"
+	}
+	
+	evidencePlaceholders := strings.Join(schema.EvidencePlaceholders, "\n\n")
+	if strings.TrimSpace(evidencePlaceholders) == "" {
+		evidencePlaceholders = "- [ ] Evidências de teste\n\n- [ ] Documentação relevante"
+	}
+
 	templateVars := map[string]interface{}{
 		"contexto":              schema.Contexto,
-		"alteracoes":            strings.Join(schema.Alteracoes, "\n"),
-		"checklist":             strings.Join(schema.ChecklistItems, "\n"),
-		"evidence_placeholders": strings.Join(schema.EvidencePlaceholders, "\n"),
+		"alteracoes":            strings.Join(schema.Alteracoes, "\n\n"),
+		"checklist":             checklist,
+		"evidence_placeholders": evidencePlaceholders,
 		"branch_name":           opts.SourceBranch,
 		"target_branch":         opts.TargetBranch,
 		"files_changed":         diffData.Stats.FilesChanged,
