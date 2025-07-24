@@ -33,21 +33,37 @@ func (t *TemplateEngine) Apply(vars map[string]interface{}) (string, error) {
 func (t *TemplateEngine) getPortugueseTemplate() string {
 	return `## Descrição da Pull Request
 
+
+
 ### Contexto
+
 {{contexto}}
 
+
+
 ### Alterações Realizadas
+
 {{alteracoes}}
 
-{{if client_specific}}### Cliente Específico
-[{{client_specific}}] {{jira_ticket}}
-{{end}}
 
-### Checklist
+
+{{if client_specific}}### Cliente Específico
+
+[{{client_specific}}] {{jira_ticket}}
+
+
+
+{{end}}### Checklist
+
 {{checklist}}
 
+
+
 ### Evidências
+
 {{evidence_placeholders}}
+
+
 
 ---
 **Estatísticas:** {{files_changed}} arquivo(s) alterado(s) • +{{additions}} -{{deletions}} linhas  
@@ -57,21 +73,37 @@ func (t *TemplateEngine) getPortugueseTemplate() string {
 func (t *TemplateEngine) getEnglishTemplate() string {
 	return `## Pull Request Description
 
+
+
 ### Context
+
 {{contexto}}
 
+
+
 ### Changes Made
+
 {{alteracoes}}
 
-{{if client_specific}}### Client Specific
-[{{client_specific}}] {{jira_ticket}}
-{{end}}
 
-### Checklist
+
+{{if client_specific}}### Client Specific
+
+[{{client_specific}}] {{jira_ticket}}
+
+
+
+{{end}}### Checklist
+
 {{checklist}}
 
+
+
 ### Evidence
+
 {{evidence_placeholders}}
+
+
 
 ---
 **Statistics:** {{files_changed}} file(s) changed • +{{additions}} -{{deletions}} lines  
@@ -138,7 +170,7 @@ func (t *TemplateEngine) processConditionals(template string, vars map[string]in
 			}
 		}
 		
-		if trimmed == "{{end}}" {
+		if strings.HasPrefix(trimmed, "{{end}}") {
 			if inIf {
 				if t.evaluateCondition(ifCondition, vars) {
 					result = append(result, ifContent...)
@@ -146,6 +178,11 @@ func (t *TemplateEngine) processConditionals(template string, vars map[string]in
 				inIf = false
 				ifCondition = ""
 				ifContent = []string{}
+			}
+			
+			contentAfterEnd := strings.TrimSpace(trimmed[7:])
+			if contentAfterEnd != "" {
+				result = append(result, contentAfterEnd)
 			}
 			continue
 		}
