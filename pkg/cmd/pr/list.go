@@ -176,7 +176,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 		return nil
 	}
 
-	headers := []string{"ID", "Title", "Branch", "Author", "State", "Updated"}
+	headers := []string{"ID", "Title", "Branch", "Author", "State", "Approved", "Updated"}
 	rows := make([][]string, len(pullRequests))
 	
 	for i, pr := range pullRequests {
@@ -211,6 +211,12 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 		}
 
 		updatedTime := FormatRelativeTime(pr.UpdatedOn)
+		
+		approved := cmd.isPRApproved(pr)
+		approvedStatus := "✗"
+		if approved {
+			approvedStatus = "✓"
+		}
 
 		rows[i] = []string{
 			fmt.Sprintf("#%d", pr.ID),
@@ -218,6 +224,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 			sourceBranch,
 			author,
 			state,
+			approvedStatus,
 			updatedTime,
 		}
 	}
@@ -369,4 +376,24 @@ func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat strin
 		Formatter:  formatter,
 		Debug:      cmd.Debug,
 	}, nil
+}
+
+func (cmd *ListCmd) isPRApproved(pr *api.PullRequest) bool {
+	if pr.Reviewers != nil {
+		for _, reviewer := range pr.Reviewers {
+			if reviewer.Approved {
+				return true
+			}
+		}
+	}
+	
+	if pr.Participants != nil {
+		for _, participant := range pr.Participants {
+			if participant.Approved {
+				return true
+			}
+		}
+	}
+	
+	return false
 }
