@@ -274,7 +274,9 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 type PRCmd struct {
 	Create       PRCreateCmd       `cmd:""`
 	List         PRListCmd         `cmd:""`
+	ListAll      PRListAllCmd      `cmd:"list-all"`
 	View         PRViewCmd         `cmd:""`
+	Open         PROpenCmd         `cmd:""`
 	Edit         PREditCmd         `cmd:""`
 	Diff         PRDiffCmd         `cmd:""`
 	Review       PRReviewCmd       `cmd:""`
@@ -372,6 +374,33 @@ func (p *PRListCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
+type PRListAllCmd struct {
+	State     string `help:"Filter by state (open, merged, declined, all)" default:"open"`
+	Limit     int    `help:"Maximum number of pull requests per repository" default:"10"`
+	Sort      string `help:"Sort by field (created, updated, priority)" default:"updated"`
+	Output    string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Debug     bool   `help:"Show debug output"`
+	Workspace string `help:"Bitbucket workspace (defaults to git remote or config)"`
+}
+
+func (p *PRListAllCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.ListAllCmd{
+		State:     p.State,
+		Limit:     p.Limit,
+		Sort:      p.Sort,
+		Output:    p.Output,
+		Debug:     p.Debug,
+		NoColor:   noColor,
+		Workspace: p.Workspace,
+	}
+	return cmd.Run(ctx)
+}
+
 // PRViewCmd handles pr view
 type PRViewCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
@@ -397,6 +426,31 @@ func (p *PRViewCmd) Run(ctx context.Context) error {
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PROpenCmd struct {
+	PRIDs      []string `arg:"" help:"Pull request IDs (numbers)"`
+	Show       bool     `help:"Print URLs instead of opening in browser"`
+	Workspace  string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string   `help:"Repository name (defaults to git remote)"`
+	Debug      bool     `help:"Show debug output"`
+}
+
+func (p *PROpenCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &pr.OpenCmd{
+		PRIDs:      p.PRIDs,
+		Show:       p.Show,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+		Debug:      p.Debug,
+		NoColor:    noColor,
 	}
 	return cmd.Run(ctx)
 }
