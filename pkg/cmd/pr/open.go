@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/config"
 )
 
 type OpenCmd struct {
@@ -60,7 +61,10 @@ func (cmd *OpenCmd) processPR(ctx context.Context, prid string) error {
 
 	prCtx, err := NewPRContext(ctx, "table", cmd.NoColor, cmd.Debug)
 	if err != nil {
-		return fmt.Errorf("failed to create PR context: %w", err)
+		prCtx, err = cmd.createMinimalContext(ctx, "table", cmd.NoColor)
+		if err != nil {
+			return fmt.Errorf("failed to create PR context: %w", err)
+		}
 	}
 
 	if prCtx.Workspace == "" {
@@ -127,20 +131,54 @@ func (cmd *OpenCmd) findPRURL(ctx context.Context, prCtx *PRContext, prID int) (
 				}
 			}
 
-			_, err := prCtx.Client.PullRequests.GetPullRequest(ctx, prCtx.Workspace, repoSlug, prID)
+			pr, err := prCtx.Client.PullRequests.GetPullRequest(ctx, prCtx.Workspace, repoSlug, prID)
 			if err == nil {
-				url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d", prCtx.Workspace, repoSlug, prID)
-				if cmd.Debug {
-					fmt.Fprintf(os.Stderr, "DEBUG: Found PR #%d in repository %s\n", prID, repo.FullName)
+				if pr.State != "OPEN" {
+					if cmd.Debug {
+						fmt.Fprintf(os.Stderr, "DEBUG: PR #%d in repository %s is %s, skipping\n", prID, repo.FullName, pr.State)
+					}
+					return
+				}
+				currentUser, userErr := prCtx.Client.GetAuthManager().GetAuthenticatedUser(ctx)
+				if userErr != nil {
+					if cmd.Debug {
+						fmt.Fprintf(os.Stderr, "DEBUG: Could not get current user: %v\n", userErr)
+					}
+					return
 				}
 				
-				mu.Lock()
-				matches = append(matches, PRMatch{
-					URL:        url,
-					Repository: repoSlug,
-					FullName:   repo.FullName,
-				})
-				mu.Unlock()
+				if cmd.Debug {
+					fmt.Fprintf(os.Stderr, "DEBUG: Current user username: '%s', account_id: '%s'\n", currentUser.Username, currentUser.AccountID)
+					if pr.Author != nil {
+						fmt.Fprintf(os.Stderr, "DEBUG: PR author username: '%s', display_name: '%s', account_id: '%s'\n", 
+							pr.Author.Username, pr.Author.DisplayName, pr.Author.AccountID)
+					} else {
+						fmt.Fprintf(os.Stderr, "DEBUG: PR #%d in repository %s has no author field\n", prID, repo.FullName)
+					}
+				}
+				
+				if pr.Author != nil && pr.Author.AccountID == currentUser.AccountID {
+					url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d", prCtx.Workspace, repoSlug, prID)
+					if cmd.Debug {
+						fmt.Fprintf(os.Stderr, "DEBUG: Found user's PR #%d in repository %s\n", prID, repo.FullName)
+					}
+					
+					mu.Lock()
+					matches = append(matches, PRMatch{
+						URL:        url,
+						Repository: repoSlug,
+						FullName:   repo.FullName,
+					})
+					mu.Unlock()
+				} else {
+					if cmd.Debug {
+						authorAccountID := "unknown"
+						if pr.Author != nil {
+							authorAccountID = pr.Author.AccountID
+						}
+						fmt.Fprintf(os.Stderr, "DEBUG: PR #%d in repository %s belongs to account '%s', not '%s'\n", prID, repo.FullName, authorAccountID, currentUser.AccountID)
+					}
+				}
 				return
 			}
 
@@ -198,4 +236,38 @@ func (cmd *OpenCmd) openInBrowser(url string) error {
 
 	execCmd := exec.Command(cmdName, args...)
 	return execCmd.Start()
+}
+
+func (cmd *OpenCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
+	loader := config.NewLoader()
+	cfg, err := loader.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	authManager, err := createAuthManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth manager: %w", err)
+	}
+
+	clientConfig := api.DefaultClientConfig()
+	clientConfig.BaseURL = cfg.API.BaseURL
+	clientConfig.Timeout = cfg.API.Timeout
+
+	client, err := api.NewClient(authManager, clientConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	workspace := cmd.Workspace
+	if workspace == "" {
+		workspace = cfg.Auth.DefaultWorkspace
+	}
+
+	return &PRContext{
+		Client:    client,
+		Config:    cfg,
+		Workspace: workspace,
+		Debug:     cmd.Debug,
+	}, nil
 }
