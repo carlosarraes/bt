@@ -28,9 +28,11 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests", workspace, repoSlug)
 	
+	queryParams := url.Values{}
+	queryParams.Set("fields", "+values.reviewers,+values.participants")
+	
 	// Add query parameters if options are provided
 	if options != nil {
-		queryParams := url.Values{}
 		var filterParts []string
 		
 		if options.State != "" {
@@ -52,10 +54,10 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 		if options.Sort != "" {
 			queryParams.Set("sort", options.Sort)
 		}
-		
-		if encodedParams := queryParams.Encode(); encodedParams != "" {
-			endpoint += "?" + encodedParams
-		}
+	}
+	
+	if encodedParams := queryParams.Encode(); encodedParams != "" {
+		endpoint += "?" + encodedParams
 	}
 
 	// Use the paginator for large result sets
