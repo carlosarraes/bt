@@ -2,7 +2,7 @@
 
 > A 1:1 replacement for GitHub CLI that works with Bitbucket Cloud
 
-Work seamlessly with Bitbucket from the command line. `bt` provides the same command structure and user experience as GitHub CLI (`gh`), but for Bitbucket repositories, pull requests, and pipelines. Now with **AI-powered PR descriptions** for intelligent development workflows.
+Work seamlessly with Bitbucket from the command line. `bt` provides the same command structure and user experience as GitHub CLI (`gh`), but for Bitbucket repositories, pull requests, and pipelines. Now with **AI-powered PR descriptions** and **workspace-wide PR management** for intelligent development workflows.
 
 ## Features
 
@@ -11,6 +11,8 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 - **🤖 AI-powered PR descriptions** - OpenAI o4-mini integration with structured output and 24-hour caching
 - **⚙️ Advanced configuration** - Comprehensive CLI config management with validation
 - **📊 Complete pull request workflow** - Create, review, merge, edit, comment, and manage PRs
+- **🌐 Workspace-wide PR operations** - List and manage all your PRs across all repositories
+- **🔗 Smart PR opening** - Open multiple PRs with intelligent duplicate handling
 - **🚀 Pipeline debugging** - 5x faster error diagnosis with smart log analysis
 - **🌐 Repository operations** - Clone, create, fork, and manage repositories
 - **📱 Cross-platform** - Works on macOS, Linux, and Windows
@@ -45,13 +47,17 @@ bt auth status
 ### 2. Work with pull requests
 ```bash
 # List pull requests
-bt pr list
+bt pr list                              # Current repository
+bt pr list-all                          # All your PRs across all repositories
+bt pr list-all --url                    # Get URLs for scripting/automation
 
 # Create PR with AI-generated description
 bt pr create --ai --template portuguese
 
-# View a specific pull request  
-bt pr view 123
+# View and open pull requests
+bt pr view 123                          # View PR details
+bt pr open 123                          # Open PR in browser
+bt pr open 123 456 --show              # Get URLs for multiple PRs
 
 # Review and approve PRs
 bt pr review 123 --approve
@@ -138,6 +144,21 @@ bt pr list                                 # Current repository
 bt pr list --state merged                 # Filter by state
 bt pr list --author @me                   # Your PRs
 bt pr list myworkspace/other-repo          # Different repository
+
+# Workspace-wide PR operations (NEW)
+bt pr list-all                             # All your open PRs across all repositories
+bt pr list-all --workspace mycompany      # Specific workspace
+bt pr list-all --limit 5                  # Limit results per repository
+bt pr list-all --sort created             # Sort by creation date
+bt pr list-all --url                      # Script-friendly URL output
+bt pr list-all --url --limit 3 | head -5  # Perfect for automation
+
+# Open PRs in browser or get URLs (NEW)
+bt pr open 123                             # Open single PR in browser
+bt pr open 123 456 789                    # Open multiple PRs in tabs
+bt pr open 123 --show                     # Print URL instead of opening
+bt pr open 123 456 --show                 # Get multiple URLs
+bt pr open 1 --workspace company --repository api  # Handle duplicate PR IDs
 
 # View and inspect pull requests
 bt pr view 42                             # View PR details
@@ -306,6 +327,80 @@ bt run logs 123 --output json | jq '.steps[] | select(.state == "FAILED") | .nam
 bt pr list --template "{{range .}}{{.id}}: {{.title}} ({{.state}}){{end}}"
 ```
 
+## Advanced PR Workflows
+
+### Workspace-wide PR Management
+
+**✨ NEW: Get a birds-eye view of all your pull requests across all repositories**
+
+```bash
+# See all your open PRs across all repositories (sorted by homolog branches first)
+bt pr list-all
+# Repository       ID    Title                         Source       Target   State  Updated
+# ---------------  ----  ----------------------------  -----------  -------  -----  ------------
+# api              #912  ZUP-57 hml                    ZUP-57-hml   homolog  OPEN   16 hours ago
+# web              #656  ZUP-676 hml                   ZUP-676-hml  homolog  OPEN   2 days ago
+# api              #873  ZUP-8 prd                     ZUP-8-prd    main     OPEN   2 days ago
+# validator        #5    ZUP-54-prd                    ZUP-54-prd   main     OPEN   1 day ago
+
+# Get URLs for automation and scripting
+bt pr list-all --url
+# api:ZUP-57-hml homolog https://bitbucket.org/company/api/pull-requests/912
+# web:ZUP-676-hml homolog https://bitbucket.org/company/web/pull-requests/656
+# api:ZUP-8-prd main https://bitbucket.org/company/api/pull-requests/873
+# validator:ZUP-54-prd main https://bitbucket.org/company/validator/pull-requests/5
+
+# Perfect for shell scripting and automation
+bt pr list-all --url | grep homolog | cut -d' ' -f3  # Get all homolog PR URLs
+bt pr list-all --url --limit 3 | while read repo branch url; do echo "Review: $url"; done
+```
+
+### Smart PR Opening
+
+**✨ NEW: Open PRs intelligently with duplicate handling**
+
+```bash
+# Open single PR (works across all repositories in workspace)
+bt pr open 123                          # Opens in default browser
+
+# Open multiple PRs at once (great for code reviews)
+bt pr open 912 656 873                  # Opens all PRs in separate tabs
+
+# Get URLs instead of opening (perfect for sharing)
+bt pr open 123 --show                   # Print URL to stdout
+bt pr open 912 656 --show              # Get multiple URLs
+# https://bitbucket.org/company/api/pull-requests/912
+# https://bitbucket.org/company/web/pull-requests/656
+
+# Handle duplicate PR IDs gracefully
+bt pr open 1                            # When PR #1 exists in multiple repos:
+# Multiple PRs found with ID #1:
+# [1] company/api (https://bitbucket.org/company/api/pull-requests/1)
+# [2] company/validator (https://bitbucket.org/company/validator/pull-requests/1)
+# 
+# Please be more specific by using: bt pr open --workspace company --repository api 1
+
+# Be specific when needed
+bt pr open 1 --repository api           # Opens the specific one
+```
+
+### Advanced Filtering and Sorting
+
+```bash
+# Focus on homolog branches (staging/integration branches)
+bt pr list-all                          # Auto-sorts homolog branches first
+
+# Limit results per repository
+bt pr list-all --limit 3                # Max 3 PRs per repository
+
+# Sort by different criteria
+bt pr list-all --sort created           # Newest PRs first
+bt pr list-all --sort updated           # Recently updated first
+
+# Work with specific workspaces
+bt pr list-all --workspace company      # Specific workspace only
+```
+
 ## Advanced Features
 
 ### Pipeline Log Analysis (🤖 LLM Integration)
@@ -381,6 +476,10 @@ gh run view          →  bt run view
 gh run watch         →  bt run watch
 gh run cancel        →  bt run cancel
 
+# ✨ Enhanced Bitbucket-specific commands (beyond GitHub CLI)
+# No GitHub equivalent  →  bt pr list-all   # All your PRs across workspaces
+# No GitHub equivalent  →  bt pr open       # Smart PR opening with duplicate handling
+
 # Coming soon: repo clone, api, browse
 ```
 
@@ -422,6 +521,9 @@ bt auth login
 |---------|------------|---------------|-------|
 | Repository management | ✅ | 🚧 | Coming soon |
 | Pull requests | ✅ | ✅ | **Complete workflow implemented** + AI descriptions |
+| **Workspace-wide PR operations** | ❌ | ✅ | **bt CLI innovation** - `list-all` across all repos |
+| **Smart PR opening** | ❌ | ✅ | **bt CLI innovation** - handles duplicates, multiple PRs |
+| **Script-friendly URLs** | ❌ | ✅ | **bt CLI innovation** - `--url` flag for automation |
 | CI/CD (Actions/Pipelines) | ✅ | ✅ | **Enhanced** - 5x faster debugging |
 | AI-powered descriptions | ❌ | ✅ | **bt CLI innovation** - intelligent PR descriptions |
 | Issues | ✅ | ❌ | Would depend on Jira integration |
@@ -430,7 +532,7 @@ bt auth login
 | Organizations | ✅ | ➡️ | Maps to workspaces |
 | Authentication | ✅ | ✅ | API tokens supported |
 | API Access | ✅ | 🚧 | Coming soon |
-| Browser integration | ✅ | 🚧 | Coming soon |
+| Browser integration | ✅ | ✅ | **Enhanced** - `pr open` with duplicate handling |
 
 ## FAQ
 
@@ -442,6 +544,9 @@ A: Currently, `bt` is designed for Bitbucket Cloud. Bitbucket Server support may
 
 **Q: Can I use this with AI coding assistants?**  
 A: Absolutely! `bt` is designed to work seamlessly with AI agents. The structured JSON output, identical command patterns, and built-in AI-powered PR descriptions make it perfect for LLM-based automation and intelligent development workflows.
+
+**Q: What makes the workspace-wide PR management special?**  
+A: Unlike other CLIs that require you to be in a specific repository, `bt pr list-all` shows all your open PRs across every repository in your workspace. The `--url` flag provides script-friendly output perfect for automation, and `bt pr open` can find and open PRs by ID across all repositories with smart duplicate handling.
 
 **Q: Is this an official Atlassian project?**  
 A: No, this is an independent open-source project. It uses Bitbucket's public APIs.
