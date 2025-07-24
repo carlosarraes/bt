@@ -19,6 +19,7 @@ type ListAllCmd struct {
 	Limit     int    `help:"Maximum number of pull requests per repository" default:"10"`
 	Sort      string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output    string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	URL       bool   `help:"Output URLs in format: <repo:source-branch> <target-branch> <url>"`
 	Debug     bool   `help:"Show debug output"`
 	NoColor   bool
 	Workspace string `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -249,6 +250,10 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 }
 
 func (cmd *ListAllCmd) formatOutput(prCtx *PRContext, prs []*PRWithRepo) error {
+	if cmd.URL {
+		return cmd.formatURL(prCtx, prs)
+	}
+	
 	switch cmd.Output {
 	case "table":
 		return cmd.formatTable(prCtx, prs)
@@ -337,6 +342,41 @@ func (cmd *ListAllCmd) formatYAML(prCtx *PRContext, prs []*PRWithRepo) error {
 	}
 
 	return prCtx.Formatter.Format(output)
+}
+
+func (cmd *ListAllCmd) formatURL(prCtx *PRContext, prs []*PRWithRepo) error {
+	if len(prs) == 0 {
+		return nil
+	}
+
+	for _, prWithRepo := range prs {
+		pr := prWithRepo.PullRequest
+		repo := prWithRepo.Repository
+
+		repoName := repo.Name
+		if repo.FullName != "" {
+			parts := strings.Split(repo.FullName, "/")
+			if len(parts) == 2 {
+				repoName = parts[1]
+			}
+		}
+
+		sourceBranch := "-"
+		if pr.Source != nil && pr.Source.Branch != nil {
+			sourceBranch = pr.Source.Branch.Name
+		}
+
+		targetBranch := "-"
+		if pr.Destination != nil && pr.Destination.Branch != nil {
+			targetBranch = pr.Destination.Branch.Name
+		}
+
+		url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d", prWithRepo.Workspace, repoName, pr.ID)
+
+		fmt.Printf("%s:%s %s %s\n", repoName, sourceBranch, targetBranch, url)
+	}
+
+	return nil
 }
 
 func (cmd *ListAllCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
