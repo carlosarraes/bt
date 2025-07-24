@@ -272,7 +272,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		return nil
 	}
 
-	headers := []string{"Repository", "ID", "Title", "Source", "Target", "State", "Updated"}
+	headers := []string{"Repository", "ID", "Title", "Source", "Target", "State", "Approved", "Updated"}
 	rows := make([][]string, len(prs))
 	
 	for i, prWithRepo := range prs {
@@ -311,6 +311,12 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		}
 
 		updatedTime := FormatRelativeTime(pr.UpdatedOn)
+		
+		approved := cmd.isPRApproved(pr)
+		approvedStatus := "✗"
+		if approved {
+			approvedStatus = "✓"
+		}
 
 		rows[i] = []string{
 			repoName,
@@ -319,6 +325,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 			sourceBranch,
 			targetBranch,
 			state,
+			approvedStatus,
 			updatedTime,
 		}
 	}
@@ -406,4 +413,24 @@ func (cmd *ListAllCmd) createMinimalContext(ctx context.Context, outputFormat st
 		Workspace: cmd.Workspace,
 		Debug:     cmd.Debug,
 	}, nil
+}
+
+func (cmd *ListAllCmd) isPRApproved(pr *api.PullRequest) bool {
+	if pr.Reviewers != nil {
+		for _, reviewer := range pr.Reviewers {
+			if reviewer.Approved {
+				return true
+			}
+		}
+	}
+	
+	if pr.Participants != nil {
+		for _, participant := range pr.Participants {
+			if participant.Approved {
+				return true
+			}
+		}
+	}
+	
+	return false
 }
