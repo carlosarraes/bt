@@ -329,7 +329,7 @@ func (r *Repository) GetDiff(baseBranch, targetBranch string) (string, error) {
 		return "", fmt.Errorf("failed to get target tree: %w", err)
 	}
 
-	patch, err := targetTree.Patch(baseTree)
+	patch, err := baseTree.Patch(targetTree)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate patch: %w", err)
 	}
@@ -368,7 +368,7 @@ func (r *Repository) GetChangedFiles(baseBranch, targetBranch string) ([]string,
 		return nil, fmt.Errorf("failed to get target tree: %w", err)
 	}
 
-	patch, err := targetTree.Patch(baseTree)
+	patch, err := baseTree.Patch(targetTree)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate patch: %w", err)
 	}
