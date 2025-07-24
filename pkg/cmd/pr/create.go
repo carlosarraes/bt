@@ -24,6 +24,7 @@ type CreateCmd struct {
 	AI                bool     `help:"Generate PR description using AI analysis"`
 	Template          string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira              string   `help:"Path to JIRA context file (markdown format)"`
+	Debug             bool     `help:"Enable debug output for AI generation"`
 	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
 	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -396,6 +397,7 @@ func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContex
 		Template:     cmd.Template,
 		JiraFile:     cmd.Jira,
 		Verbose:      true,
+		Debug:        cmd.Debug,
 	}
 	
 	result, err := generator.GenerateDescription(ctx, opts)
