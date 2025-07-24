@@ -40,6 +40,7 @@ type GenerateOptions struct {
 	Template     string
 	JiraFile     string
 	Verbose      bool
+	Debug        bool
 }
 
 type PRDescriptionResult struct {
@@ -121,6 +122,32 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 		JiraContext:    jiraContext,
 	}
 
+	if opts.Debug {
+		fmt.Printf("\n=== DEBUG: AI INPUT DATA ===\n")
+		fmt.Printf("Source Branch: %s\n", input.SourceBranch)
+		fmt.Printf("Target Branch: %s\n", input.TargetBranch)
+		fmt.Printf("Files Changed: %d\n", input.FilesChanged)
+		fmt.Printf("Lines Added: %d\n", input.LinesAdded)
+		fmt.Printf("Lines Removed: %d\n", input.LinesRemoved)
+		fmt.Printf("\nCommit Messages:\n")
+		for i, commit := range input.CommitMessages {
+			fmt.Printf("  %d: %s\n", i+1, commit)
+		}
+		fmt.Printf("\nChanged Files:\n")
+		for i, file := range input.ChangedFiles {
+			fmt.Printf("  %d: %s\n", i+1, file)
+		}
+		fmt.Printf("\nGit Diff (first 1000 chars):\n")
+		fmt.Printf("---\n")
+		if len(input.GitDiff) > 1000 {
+			fmt.Printf("%s\n... [truncated for display]\n", input.GitDiff[:1000])
+		} else {
+			fmt.Printf("%s\n", input.GitDiff)
+		}
+		fmt.Printf("---\n")
+		fmt.Printf("=== END DEBUG ===\n\n")
+	}
+
 	schema, err := g.openaiClient.GeneratePRDescription(ctx, input, opts.Template)
 	if err != nil {
 		return nil, err
@@ -129,7 +156,7 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 	templateVars := map[string]interface{}{
 		"contexto":              schema.Contexto,
 		"alteracoes":            strings.Join(schema.Alteracoes, "\n"),
-		"checklist":             schema.ChecklistItems,
+		"checklist":             strings.Join(schema.ChecklistItems, "\n"),
 		"evidence_placeholders": strings.Join(schema.EvidencePlaceholders, "\n"),
 		"branch_name":           opts.SourceBranch,
 		"target_branch":         opts.TargetBranch,

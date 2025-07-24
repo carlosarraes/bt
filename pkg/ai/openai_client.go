@@ -188,6 +188,8 @@ Diretrizes:
 - Para alterações: cada item deve começar com bullet (•) e estar em linha separada
 - Para checklist: cada item deve começar com ✅ e estar em linha separada 
 - Para evidências: cada item deve começar com - [ ] e estar em linha separada
+- CRÍTICO: Cada item do array representa UMA linha no markdown final - não coloque múltiplos itens em um único elemento do array
+- CRÍTICO: Retorne elementos separados do array para cada bullet point, item de checklist e item de evidência
 - IMPORTANTE: Coloque cada item de lista em sua própria linha, não junte tudo numa linha só
 - Identifique tickets JIRA se presentes no contexto
 - Extraia informações específicas do cliente quando relevante`
@@ -205,6 +207,8 @@ Guidelines:
 - For changes: each item should start with bullet (•) and be on separate line
 - For checklist: each item should start with ✅ and be on separate line
 - For evidence: each item should start with - [ ] and be on separate line
+- CRITICAL: Each array item represents ONE line in the final markdown - don't put multiple items in a single array element
+- CRITICAL: Return separate array elements for each bullet point, checklist item, and evidence item
 - IMPORTANT: Put each list item on its own line, don't combine them into one line
 - Identify JIRA tickets if present in context
 - Extract client-specific information when relevant`
