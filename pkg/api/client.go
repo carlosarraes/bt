@@ -267,7 +267,7 @@ func (c *Client) createRequest(ctx context.Context, method, url string, body int
 	req.Header.Set("User-Agent", c.config.UserAgent)
 	
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	}
 
 	// Add authentication headers
