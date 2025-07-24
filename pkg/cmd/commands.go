@@ -413,6 +413,7 @@ type PREditCmd struct {
 	AI             bool     `help:"Generate PR description using AI analysis"`
 	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira           string   `help:"Path to JIRA context file (markdown format)"`
+	Debug          bool     `help:"Print debug information including git diff and AI inputs"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository     string   `help:"Repository name (defaults to git remote)"`
@@ -436,6 +437,7 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 		AI:             p.AI,
 		Template:       p.Template,
 		Jira:           p.Jira,
+		Debug:          p.Debug,
 		Output:         p.Output,
 		NoColor:        noColor,
 		Workspace:      p.Workspace,

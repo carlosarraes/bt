@@ -25,6 +25,7 @@ type EditCmd struct {
 	AI             bool     `help:"Generate PR description using AI analysis"`
 	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira           string   `help:"Path to JIRA context file (markdown format)"`
+	Debug          bool     `help:"Print debug information including git diff and AI inputs"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor        bool
 	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -410,6 +411,7 @@ func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext,
 		Template:     cmd.Template,
 		JiraFile:     cmd.Jira,
 		Verbose:      true,
+		Debug:        cmd.Debug,
 	}
 	
 	result, err := generator.GenerateDescription(ctx, opts)
