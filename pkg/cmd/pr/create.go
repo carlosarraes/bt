@@ -26,6 +26,7 @@ type CreateCmd struct {
 	Jira              string   `help:"Path to JIRA context file (markdown format)"`
 	Debug             bool     `help:"Enable debug output for AI generation"`
 	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
+	NoEmoji           bool     `name:"no-emoji" help:"Skip emojis in auto-generated titles"`
 	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor           bool
@@ -85,14 +86,27 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 	}
 
 	baseBranch := cmd.Base
+	var autoDetectedBase bool
 	if baseBranch == "" {
-		baseBranch, err = repo.GetDefaultBranch()
-		if err != nil {
-			baseBranch = "main"
+		if detectedBase := cmd.detectBaseBranchFromSuffix(prCtx, currentBranch.ShortName); detectedBase != "" {
+			baseBranch = detectedBase
+			autoDetectedBase = true
+			fmt.Printf("🎯 Auto-detected base branch from suffix: %s\n", detectedBase)
+		} else {
+			baseBranch, err = repo.GetDefaultBranch()
+			if err != nil {
+				baseBranch = "main"
+			}
+			fmt.Printf("📍 Using default base branch: %s\n", baseBranch)
 		}
 	}
 
 	title := cmd.Title
+	if title == "" {
+		title = cmd.generateTitleFromBranch(currentBranch.ShortName, baseBranch, autoDetectedBase, cmd.NoEmoji)
+		fmt.Printf("🔤 Auto-generated title from branch '%s': %s\n", currentBranch.ShortName, title)
+	}
+
 	body := cmd.Body
 
 	if cmd.AI {
@@ -406,4 +420,66 @@ func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContex
 	}
 	
 	return result, nil
+}
+
+func (cmd *CreateCmd) generateTitleFromBranch(branchName, baseBranch string, autoDetectedBase, noEmoji bool) string {
+	title := branchName
+	prefixes := []string{"feature/", "feat/", "fix/", "hotfix/", "bugfix/", "chore/", "docs/", "style/", "refactor/", "test/"}
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(title, prefix) {
+			title = strings.TrimPrefix(title, prefix)
+			break
+		}
+	}
+	
+	title = strings.ReplaceAll(title, "-", " ")
+	title = strings.ReplaceAll(title, "_", " ")
+	
+	suffixes := []string{"-hml", "-prd", "-dev", "-staging", "-prod"}
+	for _, suffix := range suffixes {
+		title = strings.TrimSuffix(title, suffix)
+	}
+	
+	title = strings.TrimSpace(title)
+	if len(title) > 0 {
+		title = strings.ToUpper(title[:1]) + title[1:]
+	}
+	
+	if autoDetectedBase {
+		if noEmoji {
+			title = fmt.Sprintf("%s (%s)", title, baseBranch)
+		} else {
+			emoji := cmd.getBaseBranchEmoji(baseBranch)
+			title = fmt.Sprintf("%s %s (%s)", title, emoji, baseBranch)
+		}
+	}
+	
+	return title
+}
+
+func (cmd *CreateCmd) getBaseBranchEmoji(baseBranch string) string {
+	switch strings.ToLower(baseBranch) {
+	case "homolog":
+		return "🧪"
+	case "main", "master":
+		return "🚀"
+	case "develop", "dev":
+		return "🔧"
+	case "staging":
+		return "🎭"
+	default:
+		return "🌿"
+	}
+}
+
+func (cmd *CreateCmd) detectBaseBranchFromSuffix(prCtx *PRContext, branchName string) string {
+	suffixMapping := prCtx.Config.PR.BranchSuffixMapping
+	
+	for suffix, baseBranch := range suffixMapping {
+		if strings.HasSuffix(branchName, "-"+suffix) {
+			return baseBranch
+		}
+	}
+	
+	return ""
 }
