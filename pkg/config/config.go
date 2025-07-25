@@ -10,6 +10,7 @@ type Config struct {
 	Auth     AuthConfig    `koanf:"auth" yaml:"auth"`
 	API      APIConfig     `koanf:"api" yaml:"api"`
 	Defaults DefaultConfig `koanf:"defaults" yaml:"defaults"`
+	PR       PRConfig      `koanf:"pr" yaml:"pr"`
 }
 
 // AuthConfig holds authentication-related configuration
@@ -29,6 +30,10 @@ type DefaultConfig struct {
 	OutputFormat string `koanf:"output_format" yaml:"output_format"`
 }
 
+type PRConfig struct {
+	BranchSuffixMapping map[string]string `koanf:"branch_suffix_mapping" yaml:"branch_suffix_mapping"`
+}
+
 // NewDefaultConfig returns a new Config with sensible defaults
 func NewDefaultConfig() *Config {
 	return &Config{
@@ -43,6 +48,12 @@ func NewDefaultConfig() *Config {
 		},
 		Defaults: DefaultConfig{
 			OutputFormat: "table",
+		},
+		PR: PRConfig{
+			BranchSuffixMapping: map[string]string{
+				"hml": "homolog",
+				"prd": "main",
+			},
 		},
 	}
 }
