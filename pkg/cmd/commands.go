@@ -306,6 +306,7 @@ type PRCreateCmd struct {
 	Jira              string   `help:"Path to JIRA context file (markdown format)"`
 	Debug             bool     `help:"Enable debug output for AI generation"`
 	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
+	NoEmoji           bool     `name:"no-emoji" help:"Skip emojis in auto-generated titles"`
 	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -330,6 +331,7 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 		Jira:              p.Jira,
 		Debug:             p.Debug,
 		NoPush:            p.NoPush,
+		NoEmoji:           p.NoEmoji,
 		CloseSourceBranch: p.CloseSourceBranch,
 		Output:            p.Output,
 		NoColor:           noColor,
