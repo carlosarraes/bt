@@ -18,6 +18,23 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 - **📱 Cross-platform** - Works on macOS, Linux, and Windows
 - **🤖 LLM-friendly** - Structured output perfect for AI agents and automation
 
+## What's New ✨
+
+### Latest Features
+
+- **🎯 Smart PR Creation** - Auto-generate titles and detect base branches from branch names
+  - `feat/new-feature-hml` → `"New feature 🧪 (homolog)"` targeting `homolog` branch
+  - Configurable suffix mappings (`-hml` → `homolog`, `-prd` → `main`)
+  - Fun emoji indicators or `--no-emoji` for serious business
+  
+- **✅ PR Approval Status** - See approval status at a glance in `pr list` and `pr list-all`
+  - ✓ for approved PRs, ✗ for PRs needing review
+  - Works across all repositories in workspace-wide views
+
+- **🧪 Enhanced AI Templates** - Fixed line break rendering and character encoding
+  - Proper markdown formatting in Bitbucket descriptions
+  - Complete template structure with checklist and evidence sections
+
 ## Installation
 
 ### Quick Install Script (Recommended)
@@ -139,14 +156,21 @@ bt pr create --ai --template english      # English AI description
 bt pr create --ai --jira context.md       # Include JIRA context for better descriptions
 bt pr create --title "Fix bug" --body "Manual description"  # Traditional creation
 
-# List and filter pull requests
-bt pr list                                 # Current repository
+# ✨ Smart auto-detection features (NEW)
+bt pr create --ai                          # Auto-detects title and base branch from branch name
+# Branch: ZUP-63-hml → Title: "ZUP 63 🧪 (homolog)", Base: homolog
+# Branch: feat/new-feature-prd → Title: "New feature 🚀 (main)", Base: main
+bt pr create --ai --no-emoji              # Same auto-detection but without emojis
+# Branch: ZUP-63-hml → Title: "ZUP 63 (homolog)", Base: homolog
+
+# List and filter pull requests with approval status
+bt pr list                                 # Current repository (shows Approved ✓/✗ column)
 bt pr list --state merged                 # Filter by state
 bt pr list --author @me                   # Your PRs
 bt pr list myworkspace/other-repo          # Different repository
 
-# Workspace-wide PR operations (NEW)
-bt pr list-all                             # All your open PRs across all repositories
+# Workspace-wide PR operations with approval tracking (NEW)
+bt pr list-all                             # All your open PRs across all repositories (shows Approved ✓/✗ column)
 bt pr list-all --workspace mycompany      # Specific workspace
 bt pr list-all --limit 5                  # Limit results per repository
 bt pr list-all --sort created             # Sort by creation date
@@ -266,6 +290,26 @@ bt config unset auth.default_workspace
 # JSON output for automation
 bt config list --output json
 ```
+
+#### Pull Request Configuration
+
+Configure branch suffix mappings for auto-base-branch detection:
+
+```yaml
+# ~/.config/bt/config.yml
+pr:
+  branch_suffix_mapping:
+    hml: homolog      # Branches ending in -hml → target homolog
+    prd: main         # Branches ending in -prd → target main  
+    dev: develop      # Branches ending in -dev → target develop
+    staging: staging  # Custom mappings supported
+```
+
+**Auto-detection behavior:**
+- **Title generation**: Removes prefixes (`feat/`, `fix/`, etc.) and suffixes (`-hml`, `-prd`)
+- **Base branch detection**: Uses suffix mappings, falls back to repository default
+- **Visual indicators**: Adds emojis (🧪 homolog, 🚀 main, 🔧 develop, 🎭 staging) unless `--no-emoji` is used
+- **Only when auto-detected**: Explicit `--title` and `--base` flags override auto-detection
 
 
 ## Environment Variables
@@ -461,7 +505,7 @@ If you're coming from GitHub CLI, `bt` commands work identically:
 gh auth login        →  bt auth login
 gh auth status       →  bt auth status
 gh pr list           →  bt pr list
-gh pr create         →  bt pr create      # ✨ Enhanced with AI descriptions
+gh pr create         →  bt pr create      # ✨ Enhanced with AI descriptions & smart auto-detection
 gh pr view           →  bt pr view
 gh pr diff           →  bt pr diff
 gh pr review         →  bt pr review
