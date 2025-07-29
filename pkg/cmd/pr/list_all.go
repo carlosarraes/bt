@@ -20,6 +20,7 @@ type ListAllCmd struct {
 	Sort      string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output    string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	URL       bool   `help:"Output URLs in format: <repo:source-branch> <target-branch> <url>"`
+	Approved  bool   `help:"Filter to show only approved PRs"`
 	Debug     bool   `help:"Show debug output"`
 	NoColor   bool
 	Workspace string `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -244,6 +245,20 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 
 	if cmd.Debug {
 		fmt.Fprintf(os.Stderr, "DEBUG: Total PRs found across all repositories: %d\n", len(allPRs))
+	}
+
+	if cmd.Approved {
+		var approvedPRs []*PRWithRepo
+		for _, prWithRepo := range allPRs {
+			if cmd.isPRApproved(prWithRepo.PullRequest) {
+				approvedPRs = append(approvedPRs, prWithRepo)
+			}
+		}
+		allPRs = approvedPRs
+		
+		if cmd.Debug {
+			fmt.Fprintf(os.Stderr, "DEBUG: Filtered to %d approved PRs\n", len(allPRs))
+		}
 	}
 
 	return cmd.formatOutput(prCtx, allPRs)

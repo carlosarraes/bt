@@ -384,6 +384,7 @@ type PRListAllCmd struct {
 	Sort      string `help:"Sort by field (created, updated, priority)" default:"updated"`
 	Output    string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	URL       bool   `help:"Output URLs in format: <repo:source-branch> <target-branch> <url>"`
+	Approved  bool   `help:"Filter to show only approved PRs"`
 	Debug     bool   `help:"Show debug output"`
 	Workspace string `help:"Bitbucket workspace (defaults to git remote or config)"`
 }
@@ -400,6 +401,7 @@ func (p *PRListAllCmd) Run(ctx context.Context) error {
 		Sort:      p.Sort,
 		Output:    p.Output,
 		URL:       p.URL,
+		Approved:  p.Approved,
 		Debug:     p.Debug,
 		NoColor:   noColor,
 		Workspace: p.Workspace,
