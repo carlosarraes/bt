@@ -515,8 +515,9 @@ type PRDiffCmd struct {
 	File        string `help:"Show diff for specific file only"`
 	Color       string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
 	Output      string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
-	DiffSoFancy bool   `name:"diff-so-fancy" help:"Pipe output through diff-so-fancy and less for enhanced viewing"`
-	Workspace   string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Page         bool   `help:"Page output through diff-so-fancy and less for enhanced viewing"`
+	IncludeTests bool   `name:"include-tests" help:"Include test files in diff (excluded by default)"`
+	Workspace    string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository  string `help:"Repository name (defaults to git remote)"`
 }
 
@@ -534,8 +535,9 @@ func (p *PRDiffCmd) Run(ctx context.Context) error {
 		File:        p.File,
 		Color:       p.Color,
 		Output:      p.Output,
-		DiffSoFancy: p.DiffSoFancy,
-		NoColor:     noColor,
+		Page:         p.Page,
+		IncludeTests: p.IncludeTests,
+		NoColor:      noColor,
 		Workspace:   p.Workspace,
 		Repository:  p.Repository,
 	}

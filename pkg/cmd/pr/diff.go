@@ -14,16 +14,17 @@ import (
 
 
 type DiffCmd struct {
-	PRID        string `arg:"" help:"Pull request ID (number)"`
-	NameOnly    bool   `name:"name-only" help:"Show only names of changed files"`
-	Patch       bool   `help:"Output in patch format suitable for git apply"`
-	File        string `help:"Show diff for specific file only"`
-	Color       string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
-	Output      string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
-	DiffSoFancy bool   `name:"diff-so-fancy" help:"Pipe output through diff-so-fancy and less for enhanced viewing"`
-	NoColor     bool
-	Workspace   string `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository  string `help:"Repository name (defaults to git remote)"`
+	PRID         string `arg:"" help:"Pull request ID (number)"`
+	NameOnly     bool   `name:"name-only" help:"Show only names of changed files"`
+	Patch        bool   `help:"Output in patch format suitable for git apply"`
+	File         string `help:"Show diff for specific file only"`
+	Color        string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
+	Output       string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
+	Page         bool   `help:"Page output through diff-so-fancy and less for enhanced viewing"`
+	IncludeTests bool   `name:"include-tests" help:"Include test files in diff (excluded by default)"`
+	NoColor      bool
+	Workspace    string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository   string `help:"Repository name (defaults to git remote)"`
 }
 
 
@@ -65,6 +66,14 @@ prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
 		return nil
 	}
 
+	if !cmd.IncludeTests {
+		diff = cmd.filterTestFiles(diff)
+		if diff == "" {
+			fmt.Println("No non-test changes found in this pull request.")
+			return nil
+		}
+	}
+
 
 	switch {
 	case cmd.NameOnly:
@@ -75,8 +84,8 @@ prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
 		return cmd.outputYAML(prCtx, diff, prID)
 	case cmd.Patch:
 		return cmd.outputPatch(diff)
-	case cmd.DiffSoFancy:
-		return cmd.outputDiffSoFancy(diff)
+	case cmd.Page:
+		return cmd.outputWithPager(diff)
 	default:
 		return cmd.outputColoredDiff(diff)
 	}
@@ -227,7 +236,7 @@ func (cmd *DiffCmd) shouldUseColors() bool {
 	}
 }
 
-func (cmd *DiffCmd) outputDiffSoFancy(diff string) error {
+func (cmd *DiffCmd) outputWithPager(diff string) error {
 	if cmd.File != "" {
 		diff = utils.FilterDiffByFile(diff, cmd.File)
 		if diff == "" {
@@ -236,50 +245,133 @@ func (cmd *DiffCmd) outputDiffSoFancy(diff string) error {
 		}
 	}
 
-	if _, err := exec.LookPath("diff-so-fancy"); err != nil {
-		return fmt.Errorf("diff-so-fancy is not installed or not in PATH. Please install it first")
-	}
-
 	if _, err := exec.LookPath("less"); err != nil {
 		return fmt.Errorf("less is not installed or not in PATH")
 	}
 
-	diffSoFancyCmd := exec.Command("diff-so-fancy")
-	diffSoFancyCmd.Stdin = strings.NewReader(diff)
+	coloredDiff := utils.FormatDiff(diff, true)
 
-	lessCmd := exec.Command("less", "--tabs=2", "-RF")
-	
-	pipe, err := diffSoFancyCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create pipe: %w", err)
-	}
-	lessCmd.Stdin = pipe
-
-	lessCmd.Stdout = os.Stdout
-	lessCmd.Stderr = os.Stderr
-
-	if err := lessCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start less: %w", err)
+	hasDiffSoFancy := false
+	if _, err := exec.LookPath("diff-so-fancy"); err == nil {
+		hasDiffSoFancy = true
 	}
 
-	if err := diffSoFancyCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start diff-so-fancy: %w", err)
-	}
+	if hasDiffSoFancy {
+		diffSoFancyCmd := exec.Command("diff-so-fancy")
+		diffSoFancyCmd.Stdin = strings.NewReader(coloredDiff)
+		diffSoFancyCmd.Env = append(os.Environ(), "FORCE_COLOR=1")
 
-	if err := diffSoFancyCmd.Wait(); err != nil {
-		return fmt.Errorf("diff-so-fancy failed: %w", err)
-	}
-
-	pipe.Close()
-
-	if err := lessCmd.Wait(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			if exitError.ExitCode() == 1 {
-				return nil
-			}
+		lessCmd := exec.Command("less", "--tabs=2", "-RFX")
+		
+		pipe, err := diffSoFancyCmd.StdoutPipe()
+		if err != nil {
+			return fmt.Errorf("failed to create pipe: %w", err)
 		}
-		return fmt.Errorf("less failed: %w", err)
+		lessCmd.Stdin = pipe
+
+		lessCmd.Stdout = os.Stdout
+		lessCmd.Stderr = os.Stderr
+
+		if err := lessCmd.Start(); err != nil {
+			return fmt.Errorf("failed to start less: %w", err)
+		}
+
+		if err := diffSoFancyCmd.Start(); err != nil {
+			return fmt.Errorf("failed to start diff-so-fancy: %w", err)
+		}
+
+		if err := diffSoFancyCmd.Wait(); err != nil {
+			return fmt.Errorf("diff-so-fancy failed: %w", err)
+		}
+
+		pipe.Close()
+
+		if err := lessCmd.Wait(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				if exitError.ExitCode() == 1 {
+					return nil
+				}
+			}
+			return fmt.Errorf("less failed: %w", err)
+		}
+	} else {
+		lessCmd := exec.Command("less", "--tabs=2", "-RFX")
+		lessCmd.Stdin = strings.NewReader(coloredDiff)
+		lessCmd.Stdout = os.Stdout
+		lessCmd.Stderr = os.Stderr
+
+		if err := lessCmd.Run(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				if exitError.ExitCode() == 1 {
+					return nil
+				}
+			}
+			return fmt.Errorf("less failed: %w", err)
+		}
 	}
 
 	return nil
+}
+
+func (cmd *DiffCmd) filterTestFiles(diff string) string {
+	var result strings.Builder
+	lines := strings.Split(diff, "\n")
+	inTestFile := false
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "diff --git") {
+			parts := strings.Fields(line)
+			if len(parts) >= 4 {
+				filename := strings.TrimPrefix(parts[3], "b/")
+				
+				inTestFile = isTestFile(filename)
+			}
+		}
+
+		if !inTestFile {
+			if result.Len() > 0 && !strings.HasSuffix(result.String(), "\n") {
+				result.WriteString("\n")
+			}
+			result.WriteString(line)
+		}
+	}
+
+	return strings.TrimSpace(result.String())
+}
+
+func isTestFile(filename string) bool {
+	testPatterns := []string{
+		"_test.go",
+		".test.js",
+		".test.ts",
+		".test.jsx",
+		".test.tsx",
+		".spec.js",
+		".spec.ts",
+		".spec.jsx",
+		".spec.tsx",
+		"_spec.rb",
+		"test_",
+		"Test.java",
+		".test.py",
+		"_test.py",
+		"test/",
+		"tests/",
+		"__tests__/",
+		"spec/",
+		"specs/",
+	}
+
+	lowerFilename := strings.ToLower(filename)
+	
+	for _, pattern := range testPatterns {
+		lowerPattern := strings.ToLower(pattern)
+		if strings.HasSuffix(lowerFilename, lowerPattern) || 
+		   strings.Contains(lowerFilename, lowerPattern) ||
+		   strings.HasPrefix(lowerFilename, lowerPattern) {
+			return true
+		}
+	}
+
+	return false
 }
