@@ -119,6 +119,7 @@ type RunViewCmd struct {
 	Tests      bool   `short:"t" help:"Show test results and failures"`
 	Step       string `help:"View specific step only"`
 	Web        bool   `help:"Open pipeline in browser"`
+	URL        bool   `help:"Print pipeline URL instead of opening in browser (use with --web)"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
@@ -141,6 +142,7 @@ func (r *RunViewCmd) Run(ctx context.Context) error {
 		Tests:      r.Tests,
 		Step:       r.Step,
 		Web:        r.Web,
+		URL:        r.URL,
 		Workspace:  r.Workspace,
 		Repository: r.Repository,
 	}

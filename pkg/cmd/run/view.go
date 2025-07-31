@@ -26,6 +26,7 @@ type ViewCmd struct {
 	Tests      bool   `short:"t" help:"Show test results and failures"`
 	Step       string `help:"View specific step only"`
 	Web        bool   `help:"Open pipeline in browser"`
+	URL        bool   `help:"Print pipeline URL instead of opening in browser (use with --web)"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
@@ -69,7 +70,7 @@ func (cmd *ViewCmd) Run(ctx context.Context) error {
 
 	// Handle different view modes based on flags
 	if cmd.Web {
-		return cmd.openInBrowser(runCtx, pipelineUUID)
+		return cmd.openInBrowser(ctx, runCtx, pipelineUUID)
 	}
 	
 	if cmd.Log || cmd.LogFailed || cmd.Tests {
@@ -418,30 +419,43 @@ func (cmd *ViewCmd) getStatusIcon(status string) string {
 	}
 }
 
-// openInBrowser opens the pipeline in the web browser
-func (cmd *ViewCmd) openInBrowser(runCtx *RunContext, pipelineUUID string) error {
-	url := fmt.Sprintf("https://bitbucket.org/%s/%s/pipelines/results/%s", 
-		runCtx.Workspace, runCtx.Repository, pipelineUUID)
+func (cmd *ViewCmd) openInBrowser(ctx context.Context, runCtx *RunContext, pipelineUUID string) error {
+	pipeline, err := runCtx.Client.Pipelines.GetPipeline(ctx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
+	if err != nil {
+		return handlePipelineAPIError(err)
+	}
+
+	url := fmt.Sprintf("https://bitbucket.org/%s/%s/addon/pipelines/home#!/results/%d", 
+		runCtx.Workspace, runCtx.Repository, pipeline.BuildNumber)
 	
-	fmt.Printf("Opening pipeline in browser: %s\n", url)
+	if cmd.URL {
+		fmt.Println(url)
+		return nil
+	}
 	
-	var err error
+	return cmd.launchBrowser(url)
+}
+
+func (cmd *ViewCmd) launchBrowser(url string) error {
+	var cmdName string
+	var args []string
+
 	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		cmdName = "cmd"
+		args = []string{"/c", "start", url}
 	case "darwin":
-		err = exec.Command("open", url).Start()
+		cmdName = "open"
+		args = []string{url}
+	case "linux":
+		cmdName = "xdg-open"
+		args = []string{url}
 	default:
 		return fmt.Errorf("unsupported platform")
 	}
-	
-	if err != nil {
-		return fmt.Errorf("failed to open browser: %w", err)
-	}
-	
-	return nil
+
+	execCmd := exec.Command(cmdName, args...)
+	return execCmd.Start()
 }
 
 // viewLogs displays logs and test results for pipeline steps
