@@ -23,7 +23,7 @@ This document provides a systematic manual testing checklist for validating MILE
 
 ### Baseline Verification
 - [ ] **Command Availability**: `./build/bt --help` shows all commands
-- [ ] **Version Check**: `./build/bt version` shows correct version (0.0.3)
+- [ ] **Version Check**: `./build/bt version` shows correct version (0.0.12)
 - [ ] **Initial State**: `./build/bt auth status` indicates not authenticated
 
 ---
