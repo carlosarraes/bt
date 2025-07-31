@@ -559,3 +559,23 @@ func (p *PullRequestService) UnlockPullRequestConversation(ctx context.Context, 
 
 	return pr, nil
 }
+
+func (p *PullRequestService) GetDiffstat(ctx context.Context, workspace, repoSlug string, id int) (*PullRequestDiffStat, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+	
+	if id <= 0 {
+		return nil, NewValidationError("pull request ID must be positive", "")
+	}
+
+	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diffstat", workspace, repoSlug, id)
+	
+	var result PullRequestDiffStat
+	err := p.client.GetJSON(ctx, endpoint, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
