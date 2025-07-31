@@ -287,8 +287,10 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		return nil
 	}
 
-	headers := []string{"Repository", "ID", "Title", "Source", "Target", "State", "Approved", "Updated"}
+	headers := []string{"Repository", "ID", "Title", "Source", "Target", "State", "Approved", "Mergeable", "Updated"}
 	rows := make([][]string, len(prs))
+	
+	mergeableResults := cmd.checkMergeableStatusConcurrently(prCtx, prs)
 	
 	for i, prWithRepo := range prs {
 		pr := prWithRepo.PullRequest
@@ -333,6 +335,12 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 			approvedStatus = "✓"
 		}
 
+		mergeable := mergeableResults[i]
+		mergeableStatus := "✓"
+		if !mergeable {
+			mergeableStatus = "✗"
+		}
+
 		rows[i] = []string{
 			repoName,
 			fmt.Sprintf("#%d", pr.ID),
@@ -341,6 +349,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 			targetBranch,
 			state,
 			approvedStatus,
+			mergeableStatus,
 			updatedTime,
 		}
 	}
@@ -448,4 +457,68 @@ func (cmd *ListAllCmd) isPRApproved(pr *api.PullRequest) bool {
 	}
 	
 	return false
+}
+
+func (cmd *ListAllCmd) checkMergeableStatusConcurrently(prCtx *PRContext, prs []*PRWithRepo) []bool {
+	results := make([]bool, len(prs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	
+	semaphore := make(chan struct{}, 10)
+	
+	for i, prWithRepo := range prs {
+		wg.Add(1)
+		go func(index int, pr *PRWithRepo) {
+			defer wg.Done()
+			
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			
+			mergeable := cmd.isPRMergeable(prCtx, pr)
+			
+			mu.Lock()
+			results[index] = mergeable
+			mu.Unlock()
+		}(i, prWithRepo)
+	}
+	
+	wg.Wait()
+	return results
+}
+
+func (cmd *ListAllCmd) isPRMergeable(prCtx *PRContext, prWithRepo *PRWithRepo) bool {
+	if prWithRepo.PullRequest.State != "OPEN" {
+		return true
+	}
+
+	repo := prWithRepo.Repository
+	repoSlug := repo.Name
+	if repo.FullName != "" {
+		parts := strings.Split(repo.FullName, "/")
+		if len(parts) == 2 {
+			repoSlug = parts[1]
+		}
+	}
+
+	diffstat, err := prCtx.Client.PullRequests.GetDiffstat(context.Background(), prWithRepo.Workspace, repoSlug, prWithRepo.PullRequest.ID)
+	if err != nil {
+		if cmd.Debug {
+			fmt.Fprintf(os.Stderr, "DEBUG: Failed to get diffstat for PR #%d: %v\n", prWithRepo.PullRequest.ID, err)
+		}
+		return true
+	}
+
+	if strings.Contains(strings.ToLower(diffstat.Status), "conflict") {
+		return false
+	}
+
+	if diffstat.Files != nil {
+		for _, file := range diffstat.Files {
+			if strings.Contains(strings.ToLower(file.Status), "conflict") {
+				return false
+			}
+		}
+	}
+
+	return true
 }
