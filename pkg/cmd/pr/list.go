@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/config"
@@ -176,8 +177,10 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 		return nil
 	}
 
-	headers := []string{"ID", "Title", "Branch", "Author", "State", "Approved", "Updated"}
+	headers := []string{"ID", "Title", "Branch", "Author", "State", "Approved", "Mergeable", "Updated"}
 	rows := make([][]string, len(pullRequests))
+	
+	mergeableResults := cmd.checkMergeableStatusConcurrently(prCtx, pullRequests)
 	
 	for i, pr := range pullRequests {
 		title := pr.Title
@@ -218,6 +221,12 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 			approvedStatus = "✓"
 		}
 
+		mergeable := mergeableResults[i]
+		mergeableStatus := "✓"
+		if !mergeable {
+			mergeableStatus = "✗"
+		}
+
 		rows[i] = []string{
 			fmt.Sprintf("#%d", pr.ID),
 			title,
@@ -225,6 +234,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 			author,
 			state,
 			approvedStatus,
+			mergeableStatus,
 			updatedTime,
 		}
 	}
@@ -378,6 +388,33 @@ func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat strin
 	}, nil
 }
 
+func (cmd *ListCmd) checkMergeableStatusConcurrently(prCtx *PRContext, pullRequests []*api.PullRequest) []bool {
+	results := make([]bool, len(pullRequests))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	
+	semaphore := make(chan struct{}, 10)
+	
+	for i, pr := range pullRequests {
+		wg.Add(1)
+		go func(index int, pullRequest *api.PullRequest) {
+			defer wg.Done()
+			
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+			
+			mergeable := cmd.isPRMergeable(prCtx, pullRequest)
+			
+			mu.Lock()
+			results[index] = mergeable
+			mu.Unlock()
+		}(i, pr)
+	}
+	
+	wg.Wait()
+	return results
+}
+
 func (cmd *ListCmd) isPRApproved(pr *api.PullRequest) bool {
 	if pr.Reviewers != nil {
 		for _, reviewer := range pr.Reviewers {
@@ -396,4 +433,32 @@ func (cmd *ListCmd) isPRApproved(pr *api.PullRequest) bool {
 	}
 	
 	return false
+}
+
+func (cmd *ListCmd) isPRMergeable(prCtx *PRContext, pr *api.PullRequest) bool {
+	if pr.State != "OPEN" {
+		return true
+	}
+
+	diffstat, err := prCtx.Client.PullRequests.GetDiffstat(context.Background(), prCtx.Workspace, prCtx.Repository, pr.ID)
+	if err != nil {
+		if cmd.Debug {
+			fmt.Fprintf(os.Stderr, "DEBUG: Failed to get diffstat for PR #%d: %v\n", pr.ID, err)
+		}
+		return true
+	}
+
+	if strings.Contains(strings.ToLower(diffstat.Status), "conflict") {
+		return false
+	}
+
+	if diffstat.Files != nil {
+		for _, file := range diffstat.Files {
+			if strings.Contains(strings.ToLower(file.Status), "conflict") {
+				return false
+			}
+		}
+	}
+
+	return true
 }
