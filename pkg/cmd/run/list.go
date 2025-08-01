@@ -111,7 +111,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 	}
 
 	// Custom table rendering for better control
-	headers := []string{"ID", "Status", "Branch", "Started By", "Duration", "Started"}
+	headers := []string{"ID", "Status", "Ref", "Started By", "Duration", "Started"}
 	rows := make([][]string, len(pipelines))
 	
 	for i, pipeline := range pipelines {
@@ -133,11 +133,21 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 			duration = FormatDuration(pipeline.BuildSecondsUsed)
 		}
 
-		branch := "-"
-		if pipeline.Target != nil && pipeline.Target.RefName != "" {
-			branch = pipeline.Target.RefName
-			if len(branch) > 15 {
-				branch = branch[:12] + "..."
+		ref := "-"
+		if pipeline.Target != nil {
+			// Check if this is a PR-triggered pipeline
+			if pipeline.Target.Type == "pipeline_pullrequest_target" {
+				ref = "PR"
+			} else if pipeline.Target.PullRequestId != nil {
+				ref = fmt.Sprintf("PR #%d", *pipeline.Target.PullRequestId)
+			} else if pipeline.Target.RefName != "" {
+				ref = pipeline.Target.RefName
+				if len(ref) > 15 {
+					ref = ref[:12] + "..."
+				}
+			} else if pipeline.Target.Type == "pipeline_branch_target" {
+				// This is a branch pipeline but no ref_name, try to infer from trigger
+				ref = "branch"
 			}
 		}
 
@@ -157,7 +167,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 		rows[i] = []string{
 			fmt.Sprintf("#%d", pipeline.BuildNumber),
 			status,
-			branch,
+			ref,
 			startedBy,
 			duration,
 			startedTime,
