@@ -77,6 +77,7 @@ type RunCmd struct {
 	Logs   RunLogsCmd   `cmd:""`
 	Cancel RunCancelCmd `cmd:""`
 	Rerun  RunRerunCmd  `cmd:""`
+	Report RunReportCmd `cmd:""`
 }
 
 // RunListCmd handles run list
@@ -265,6 +266,63 @@ func (r *RunRerunCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
+type RunReportCmd struct {
+	PipelineID        string   `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Coverage          bool     `help:"Show only coverage-related information"`
+	Issues            bool     `help:"Show only code quality issues"`
+	Web               bool     `help:"Open SonarCloud dashboard in browser"`
+	URL               bool     `help:"Print SonarCloud URL instead of opening browser"`
+	CoverageThreshold int      `name:"coverage-threshold" help:"Show only files below N% coverage"`
+	Limit             int      `help:"Limit number of files/issues shown" default:"10"`
+	NewCodeOnly       bool     `name:"new-code-only" help:"Focus on new code analysis"`
+	Severity          []string `help:"Filter issues by severity level (BLOCKER,CRITICAL,MAJOR,MINOR,INFO)"`
+	ShowAllLines      bool     `name:"show-all-lines" help:"Show all uncovered lines (not just top 5 per file)"`
+	LinesPerFile      int      `name:"lines-per-file" help:"Max lines to show per file" default:"5"`
+	NewLinesOnly      bool     `name:"new-lines-only" help:"Only show NEW uncovered lines from this PR"`
+	MinUncoveredLines int      `name:"min-uncovered-lines" help:"Only show files with N+ uncovered lines"`
+	MaxUncoveredLines int      `name:"max-uncovered-lines" help:"Only show files with ≤N uncovered lines (quick wins)"`
+	FilePattern       string   `name:"file" help:"Filter to specific files (glob pattern)"`
+	NoLineDetails     bool     `name:"no-line-details" help:"Skip line-by-line breakdown (performance)"`
+	TruncateLines     int      `name:"truncate-lines" help:"Truncate code lines after N characters" default:"80"`
+	Debug             bool     `help:"Enable debug output for troubleshooting"`
+	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository        string   `help:"Repository name (defaults to git remote)"`
+}
+
+func (r *RunReportCmd) Run(ctx context.Context) error {
+	noColor := false
+	if v := ctx.Value("no-color"); v != nil {
+		noColor = v.(bool)
+	}
+	
+	cmd := &run.ReportCmd{
+		PipelineID:        r.PipelineID,
+		Output:            r.Output,
+		NoColor:           noColor,
+		Coverage:          r.Coverage,
+		Issues:            r.Issues,
+		Web:               r.Web,
+		URL:               r.URL,
+		CoverageThreshold: r.CoverageThreshold,
+		Limit:             r.Limit,
+		NewCodeOnly:       r.NewCodeOnly,
+		Severity:          r.Severity,
+		ShowAllLines:      r.ShowAllLines,
+		LinesPerFile:      r.LinesPerFile,
+		NewLinesOnly:      r.NewLinesOnly,
+		MinUncoveredLines: r.MinUncoveredLines,
+		MaxUncoveredLines: r.MaxUncoveredLines,
+		FilePattern:       r.FilePattern,
+		NoLineDetails:     r.NoLineDetails,
+		TruncateLines:     r.TruncateLines,
+		Debug:             r.Debug,
+		Workspace:         r.Workspace,
+		Repository:        r.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
 // RepoCmd represents the repo command group
 type RepoCmd struct{}
 
@@ -294,6 +352,7 @@ type PRCmd struct {
 	UpdateBranch PRUpdateBranchCmd `cmd:"update-branch"`
 	Lock         PRLockCmd         `cmd:""`
 	Unlock       PRUnlockCmd       `cmd:""`
+	Report       PRReportCmd       `cmd:""`
 }
 
 type PRCreateCmd struct {
@@ -893,6 +952,59 @@ func (p *PRUnlockCmd) Run(ctx context.Context) error {
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRReportCmd struct {
+	PRID              string   `arg:"" help:"Pull request ID (number)"`
+	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Coverage          bool     `help:"Show only coverage-related information"`
+	Issues            bool     `help:"Show only code quality issues"`
+	Web               bool     `help:"Open SonarCloud dashboard in browser"`
+	URL               bool     `help:"Print SonarCloud URL instead of opening browser"`
+	CoverageThreshold int      `name:"coverage-threshold" help:"Show only files below N% coverage"`
+	Limit             int      `help:"Limit number of files/issues shown" default:"10"`
+	NewCodeOnly       bool     `name:"new-code-only" help:"Focus on new code analysis"`
+	Severity          []string `help:"Filter issues by severity level (BLOCKER,CRITICAL,MAJOR,MINOR,INFO)"`
+	ShowAllLines      bool     `name:"show-all-lines" help:"Show all uncovered lines (not just top 5 per file)"`
+	LinesPerFile      int      `name:"lines-per-file" help:"Max lines to show per file" default:"5"`
+	NewLinesOnly      bool     `name:"new-lines-only" help:"Only show NEW uncovered lines from this PR"`
+	MinUncoveredLines int      `name:"min-uncovered-lines" help:"Only show files with N+ uncovered lines"`
+	MaxUncoveredLines int      `name:"max-uncovered-lines" help:"Only show files with ≤N uncovered lines (quick wins)"`
+	FilePattern       string   `name:"file" help:"Filter to specific files (glob pattern)"`
+	NoLineDetails     bool     `name:"no-line-details" help:"Skip line-by-line breakdown (performance)"`
+	TruncateLines     int      `name:"truncate-lines" help:"Truncate code lines after N characters" default:"80"`
+	Context           int      `name:"context" help:"Show N lines of context around each uncovered line"`
+	Debug             bool     `help:"Enable debug output for troubleshooting"`
+	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository        string   `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRReportCmd) Run(ctx context.Context) error {
+	cmd := &pr.ReportCmd{
+		PRID:              p.PRID,
+		Output:            p.Output,
+		Coverage:          p.Coverage,
+		Issues:            p.Issues,
+		Web:               p.Web,
+		URL:               p.URL,
+		CoverageThreshold: p.CoverageThreshold,
+		Limit:             p.Limit,
+		NewCodeOnly:       p.NewCodeOnly,
+		Severity:          p.Severity,
+		ShowAllLines:      p.ShowAllLines,
+		LinesPerFile:      p.LinesPerFile,
+		NewLinesOnly:      p.NewLinesOnly,
+		MinUncoveredLines: p.MinUncoveredLines,
+		MaxUncoveredLines: p.MaxUncoveredLines,
+		FilePattern:       p.FilePattern,
+		NoLineDetails:     p.NoLineDetails,
+		TruncateLines:     p.TruncateLines,
+		Context:           p.Context,
+		Debug:             p.Debug,
+		Workspace:         p.Workspace,
+		Repository:        p.Repository,
 	}
 	return cmd.Run(ctx)
 }
