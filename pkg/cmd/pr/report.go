@@ -86,6 +86,14 @@ func (cmd *ReportCmd) Run(ctx context.Context) error {
 		fmt.Printf("DEBUG: About to generate SonarCloud report for PR %d\n", prID)
 	}
 
+	// Check branch compatibility for context feature
+	if cmd.Context > 0 {
+		if err := cmd.checkBranchCompatibility(ctx, prCtx, prID); err != nil {
+			// Don't fail, just warn
+			fmt.Printf("⚠️  %s\n\n", err.Error())
+		}
+	}
+
 	return cmd.generateReport(ctx, prCtx, sonarCloudService, prID)
 }
 
@@ -700,4 +708,55 @@ func (cmd *ReportCmd) formatLinksSection(report *sonarcloud.Report) {
 	}
 
 	fmt.Printf("🔗 Full Analysis: %s\n", url)
+}
+
+func (cmd *ReportCmd) checkBranchCompatibility(ctx context.Context, prCtx *PRContext, prID int) error {
+	// Get current git branch
+	currentBranch, err := cmd.getCurrentGitBranch()
+	if err != nil {
+		if cmd.Debug {
+			fmt.Printf("DEBUG: Could not get current git branch: %v\n", err)
+		}
+		return nil // Don't warn if we can't detect branches
+	}
+
+	// Get PR source branch
+	prBranch, err := cmd.getPRSourceBranch(ctx, prCtx, prID)
+	if err != nil {
+		if cmd.Debug {
+			fmt.Printf("DEBUG: Could not get PR source branch: %v\n", err)
+		}
+		return nil // Don't warn if we can't detect PR branch
+	}
+
+	// Compare branches
+	if currentBranch != prBranch {
+		return fmt.Errorf("Context may be inaccurate: You're on branch '%s' but PR #%d is from branch '%s'.\n"+
+			"   Run: git checkout %s", currentBranch, prID, prBranch, prBranch)
+	}
+
+	return nil
+}
+
+func (cmd *ReportCmd) getCurrentGitBranch() (string, error) {
+	gitCmd := exec.Command("git", "branch", "--show-current")
+	output, err := gitCmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func (cmd *ReportCmd) getPRSourceBranch(ctx context.Context, prCtx *PRContext, prID int) (string, error) {
+	// Use the PR API to get the source branch
+	pr, err := prCtx.Client.PullRequests.GetPullRequest(ctx, prCtx.Workspace, prCtx.Repository, prID)
+	if err != nil {
+		return "", err
+	}
+
+	if pr.Source != nil && pr.Source.Branch != nil && pr.Source.Branch.Name != "" {
+		return pr.Source.Branch.Name, nil
+	}
+
+	return "", fmt.Errorf("could not determine PR source branch")
 }
