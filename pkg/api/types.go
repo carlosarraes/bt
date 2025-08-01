@@ -49,7 +49,7 @@ type PipelineTarget struct {
 	RefName        string     `json:"ref_name,omitempty"`
 	Selector       *Selector  `json:"selector,omitempty"`
 	Commit         *Commit    `json:"commit,omitempty"`
-	PullRequestId  *int       `json:"pullRequestId,omitempty"`
+	PullRequestId  *int       `json:"pull_request_id,omitempty"`
 }
 
 // PipelineTrigger represents what triggered the pipeline
