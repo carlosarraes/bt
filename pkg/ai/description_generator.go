@@ -89,7 +89,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 
 	if g.openaiClient != nil {
 		if opts.Verbose {
-			g.logStep("🤖 Generating description with OpenAI o4-mini...")
+			g.logStep(fmt.Sprintf("🤖 Generating description with OpenAI %s...", g.openaiClient.GetModel()))
 		}
 		
 		result, err := g.generateWithOpenAI(ctx, opts, branchContext, diffData, jiraContext)

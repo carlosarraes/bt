@@ -15,6 +15,7 @@ import (
 type OpenAIClient struct {
 	client *openai.Client
 	cache  *CacheManager
+	model  string
 }
 
 type CacheManager struct {
@@ -43,6 +44,11 @@ func NewOpenAIClient() (*OpenAIClient, error) {
 		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is required")
 	}
 
+	model := os.Getenv("OPENAI_MODEL")
+	if model == "" {
+		model = "gpt-5-mini"
+	}
+
 	client := openai.NewClient(apiKey)
 	
 	cache, err := NewCacheManager()
@@ -53,6 +59,7 @@ func NewOpenAIClient() (*OpenAIClient, error) {
 	return &OpenAIClient{
 		client: client,
 		cache:  cache,
+		model:  model,
 	}, nil
 }
 
@@ -136,7 +143,7 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 	}
 
 	req := openai.ChatCompletionRequest{
-		Model: "o4-mini",
+		Model: c.model,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
@@ -172,6 +179,10 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 	}
 
 	return &result, nil
+}
+
+func (c *OpenAIClient) GetModel() string {
+	return c.model
 }
 
 func (c *OpenAIClient) getSystemPrompt(language string) string {
@@ -249,7 +260,7 @@ CRITICAL INSTRUCTIONS FOR GIT DIFF ANALYSIS:
 		input.TargetBranch,
 		formatCommits(input.CommitMessages),
 		formatFiles(input.ChangedFiles),
-		truncateString(input.GitDiff, 3000),
+		truncateString(input.GitDiff, 1500),
 		input.FilesChanged,
 		input.LinesAdded,
 		input.LinesRemoved,
@@ -274,7 +285,7 @@ func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput, language string)
 		input.TargetBranch,
 		formatCommits(input.CommitMessages),
 		formatFiles(input.ChangedFiles),
-		truncateString(input.GitDiff, 1000),
+		truncateString(input.GitDiff, 500),
 		input.FilesChanged,
 		input.LinesAdded,
 		input.LinesRemoved,
@@ -332,7 +343,15 @@ func formatCommits(commits []string) string {
 		return "No commits"
 	}
 	result := ""
+	maxCommits := 10
+	if len(commits) > maxCommits {
+		commits = commits[:maxCommits]
+		result += fmt.Sprintf("- ... showing first %d of %d commits\n", maxCommits, len(commits)+maxCommits)
+	}
 	for _, commit := range commits {
+		if len(commit) > 100 {
+			commit = commit[:100] + "..."
+		}
 		result += "- " + commit + "\n"
 	}
 	return result
@@ -343,6 +362,11 @@ func formatFiles(files []string) string {
 		return "No files"
 	}
 	result := ""
+	maxFiles := 20
+	if len(files) > maxFiles {
+		result += fmt.Sprintf("- ... showing first %d of %d files\n", maxFiles, len(files))
+		files = files[:maxFiles]
+	}
 	for _, file := range files {
 		result += "- " + file + "\n"
 	}
