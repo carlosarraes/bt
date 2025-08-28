@@ -8,7 +8,8 @@ Work seamlessly with Bitbucket from the command line. `bt` provides the same com
 
 - **🔄 Drop-in replacement** for GitHub CLI - same commands, same patterns
 - **🔐 Secure API token authentication** - Uses Atlassian API tokens for secure access
-- **🤖 AI-powered PR descriptions** - OpenAI o4-mini integration with structured output and 24-hour caching
+- **🤖 AI-powered PR descriptions** - OpenAI gpt-5-mini integration with structured output and 24-hour caching
+- **📊 SonarCloud Integration** - Deep code quality and coverage analysis for pipelines and pull requests
 - **⚙️ Advanced configuration** - Comprehensive CLI config management with validation
 - **📊 Complete pull request workflow** - Create, review, merge, edit, comment, and manage PRs
 - **🌐 Workspace-wide PR operations** - List and manage all your PRs across all repositories
@@ -98,7 +99,7 @@ bt run watch 1234567890abcdef
 
 `bt` uses secure Atlassian API tokens for authentication:
 
-1. Go to [Atlassian Account Security](https://id.atlassian.com/manage-profile/security/api-tokens)
+1. Go to [Atlassian Account Security - API Tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
 2. Create a new API token with a descriptive label
 3. Run `bt auth login` - it will guide you through the setup
 
@@ -150,7 +151,7 @@ export BITBUCKET_PASSWORD="your_api_token_here"
 **✨ Complete PR workflow with AI-powered descriptions**
 
 ```bash
-# Create pull requests with AI assistance (OpenAI o4-mini)
+# Create pull requests with AI assistance (OpenAI gpt-5-mini)
 bt pr create --ai                          # AI-generated description (Portuguese)
 bt pr create --ai --template english      # English AI description
 bt pr create --ai --jira context.md       # Include JIRA context for better descriptions
@@ -265,6 +266,82 @@ bt run view 3808 --log-failed --full-output  # Get full context if needed
 # ================================================================================
 ```
 
+### SonarCloud Integration
+
+**📊 Advanced code quality and coverage analysis for your pipelines and pull requests**
+
+`bt` provides deep integration with SonarCloud for comprehensive code quality insights:
+
+```bash
+# SonarCloud reports for pipeline runs
+bt run report 1234                     # Complete quality report for pipeline
+bt run report 1234 --coverage          # Focus on coverage analysis
+bt run report 1234 --issues            # Focus on code quality issues
+bt run report 1234 --web               # Open SonarCloud dashboard in browser
+bt run report 1234 --url               # Get SonarCloud project URL
+
+# SonarCloud reports for pull requests  
+bt pr report 42                         # Complete quality report for PR
+bt pr report 42 --coverage             # Coverage analysis for PR changes
+bt pr report 42 --issues               # Quality issues in PR changes
+bt pr report 42 --new-code-only        # Focus only on new code in PR
+bt pr report 42 --web                  # Open PR analysis in SonarCloud
+
+# Advanced filtering options
+bt run report 1234 --coverage-threshold 80        # Files below 80% coverage
+bt pr report 42 --severity BLOCKER CRITICAL       # High-severity issues only  
+bt run report 1234 --file "src/**/*.go"          # Specific file patterns
+bt pr report 42 --context 5                       # Show 5 lines context around issues
+
+# Performance and debugging
+bt run report 1234 --limit 5                      # Limit results for quick overview
+bt pr report 42 --no-line-details                # Skip line-by-line breakdown
+bt run report 1234 --debug                       # Enable debug output
+```
+
+#### Setup Requirements
+
+To use SonarCloud integration, you need:
+
+1. **SonarCloud API Token**: Create at [SonarCloud Account Security](https://sonarcloud.io/account/security)
+2. **Environment Variable**: Set `SONARCLOUD_TOKEN=your_token_here`
+3. **SonarCloud Project**: Your repository must have SonarCloud analysis configured
+
+#### Key Features
+
+- **📈 Coverage Analysis**: Line-by-line coverage details with uncovered code snippets
+- **🐛 Issue Detection**: Code quality issues with severity levels and descriptions  
+- **🆕 New Code Focus**: Filter analysis to only new/changed code in PRs
+- **🎯 Smart Filtering**: Filter by coverage thresholds, file patterns, severity levels
+- **🌐 Browser Integration**: Open SonarCloud dashboard directly from CLI
+- **⚡ Performance**: Efficient API usage with intelligent caching
+
+#### Example Output
+
+```bash
+bt pr report 123 --coverage --new-code-only
+
+=== SonarCloud Quality Report: Pull Request #123 ===
+
+📊 Overview
+  Overall Coverage: 85.2%
+  New Code Coverage: 78.5% ⚠️  
+  Quality Gate: PASSED ✅
+  Total Issues: 3 (2 Major, 1 Minor)
+
+📈 Coverage Analysis (New Code Only)
+  Files with coverage gaps:
+  
+  src/handlers/auth.go (67.3% coverage)
+    Lines 45-52: Authentication validation logic
+    45  │ if user.Token == "" {
+    46  │     return errors.New("missing token")  ← Not covered
+    47  │ }
+    
+🔗 Links
+  SonarCloud PR: https://sonarcloud.io/project/pull-requests/123
+  Quality Gate: PASSED ✅
+```
 
 ### Configuration
 
@@ -318,6 +395,9 @@ pr:
 # Authentication (Recommended)
 export BITBUCKET_EMAIL="your.email@company.com"      # Your Atlassian account email
 export BITBUCKET_API_TOKEN="your_api_token_here"     # API token from Atlassian
+
+# SonarCloud Integration
+export SONARCLOUD_TOKEN="your_sonarcloud_token_here" # SonarCloud API token for quality reports
 
 # Alternative format (still supported)
 export BITBUCKET_USERNAME="your.email@company.com"   # Your Atlassian account email
