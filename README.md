@@ -1,6 +1,6 @@
 # bt
 
-A CLI for Bitbucket Cloud with the same command structure as GitHub CLI (`gh`).
+A CLI for Bitbucket Cloud inspired by GitHub CLI (`gh`).
 
 ## Installation
 
@@ -44,6 +44,7 @@ bt pr merge 123               # Merge a PR
 bt run list                   # List recent runs
 bt run view 1234 --log-failed # View failed step logs
 bt run watch 1234             # Watch running pipeline
+bt run report 1234 --coverage # SonarCloud coverage summary
 ```
 
 ## Commands
@@ -85,7 +86,9 @@ bt run watch 1234             # Watch running pipeline
 | `run list` | List pipeline runs |
 | `run view <id>` | View run details (`--log-failed`, `--tests`) |
 | `run watch <id>` | Watch running pipeline |
+| `run logs <id>` | Show logs (supports `--errors-only`) |
 | `run cancel <id>` | Cancel running pipeline |
+| `run rerun <id>` | Rerun a pipeline (`--failed`, `--step`) (in progress) |
 | `run report <id>` | SonarCloud quality report |
 
 ### Configuration
@@ -118,7 +121,7 @@ pr:
 |----------|-------------|
 | `BITBUCKET_EMAIL` | Atlassian account email |
 | `BITBUCKET_API_TOKEN` | API token |
-| `SONARCLOUD_TOKEN` | SonarCloud token (for reports) |
+| `SONARCLOUD_TOKEN` | SonarCloud token (required for reports) |
 | `BT_OUTPUT_FORMAT` | Default output format |
 | `BT_NO_COLOR` | Disable colors |
 
