@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/carlosarraes/bt/pkg/config"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -51,6 +52,37 @@ func NewOpenAIClient() (*OpenAIClient, error) {
 
 	client := openai.NewClient(apiKey)
 	
+	cache, err := NewCacheManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create cache manager: %w", err)
+	}
+
+	return &OpenAIClient{
+		client: client,
+		cache:  cache,
+		model:  model,
+	}, nil
+}
+
+func NewOpenAIClientWithConfig(cfg *config.Config) (*OpenAIClient, error) {
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is required")
+	}
+
+	model := os.Getenv("BT_LLM_MODEL")
+	if model == "" {
+		model = os.Getenv("OPENAI_MODEL")
+	}
+	if model == "" && cfg != nil {
+		model = cfg.LLM.Model
+	}
+	if model == "" {
+		model = "gpt-5-mini"
+	}
+
+	client := openai.NewClient(apiKey)
+
 	cache, err := NewCacheManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cache manager: %w", err)

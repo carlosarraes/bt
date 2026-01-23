@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/config"
 	"github.com/carlosarraes/bt/pkg/git"
 	"github.com/carlosarraes/bt/pkg/utils"
 )
@@ -21,9 +22,9 @@ type DescriptionGenerator struct {
 	openaiClient *OpenAIClient
 }
 
-func NewDescriptionGenerator(client *api.Client, repo *git.Repository, workspace, repository string, noColor bool) *DescriptionGenerator {
-	openaiClient, _ := NewOpenAIClient()
-	
+func NewDescriptionGenerator(client *api.Client, repo *git.Repository, workspace, repository string, noColor bool, cfg *config.Config) *DescriptionGenerator {
+	openaiClient, _ := NewOpenAIClientWithConfig(cfg)
+
 	return &DescriptionGenerator{
 		client:       client,
 		repo:         repo,

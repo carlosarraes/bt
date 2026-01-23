@@ -393,7 +393,7 @@ func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext,
 		return nil, fmt.Errorf("failed to get git repository: %w", err)
 	}
 
-	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor)
+	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor, prCtx.Config)
 	
 	sourceBranch := "unknown"
 	targetBranch := "unknown"

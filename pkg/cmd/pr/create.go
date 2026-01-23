@@ -403,7 +403,7 @@ func (cmd *CreateCmd) validateAIOptions() error {
 }
 
 func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContext, repo *git.Repository, sourceBranch, targetBranch string) (*ai.PRDescriptionResult, error) {
-	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor)
+	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor, prCtx.Config)
 	
 	opts := &ai.GenerateOptions{
 		SourceBranch: sourceBranch,
