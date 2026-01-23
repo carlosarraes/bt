@@ -142,6 +142,8 @@ func (l *Loader) transformEnvKey(key string) string {
 		return "auth.default_workspace"
 	case "DEFAULTS_OUTPUT_FORMAT":
 		return "defaults.output_format"
+	case "LLM_MODEL":
+		return "llm.model"
 	default:
 		return key
 	}
@@ -149,10 +151,11 @@ func (l *Loader) transformEnvKey(key string) string {
 
 // Environment variable names for easy reference
 const (
-	EnvConfigPath         = "BT_CONFIG_PATH"
-	EnvAPIBaseURL         = "BT_API_BASE_URL"
-	EnvAPITimeout         = "BT_API_TIMEOUT"
-	EnvAuthMethod         = "BT_AUTH_METHOD"
-	EnvDefaultWorkspace   = "BT_AUTH_DEFAULT_WORKSPACE"
+	EnvConfigPath          = "BT_CONFIG_PATH"
+	EnvAPIBaseURL          = "BT_API_BASE_URL"
+	EnvAPITimeout          = "BT_API_TIMEOUT"
+	EnvAuthMethod          = "BT_AUTH_METHOD"
+	EnvDefaultWorkspace    = "BT_AUTH_DEFAULT_WORKSPACE"
 	EnvDefaultOutputFormat = "BT_DEFAULTS_OUTPUT_FORMAT"
+	EnvLLMModel            = "BT_LLM_MODEL"
 )

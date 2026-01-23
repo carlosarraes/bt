@@ -149,18 +149,20 @@ func (cm *ConfigManager) Save() error {
 // GetAllValues returns all configuration as a map for listing
 func (cm *ConfigManager) GetAllValues() map[string]interface{} {
 	result := make(map[string]interface{})
-	
+
 	// Auth section
 	result["auth.method"] = cm.config.Auth.Method
 	result["auth.default_workspace"] = cm.config.Auth.DefaultWorkspace
-	
+
 	// API section
 	result["api.base_url"] = cm.config.API.BaseURL
 	result["api.timeout"] = cm.config.API.Timeout.String()
-	
+
 	// Defaults section
 	result["defaults.output_format"] = cm.config.Defaults.OutputFormat
-	
+
+	result["llm.model"] = cm.config.LLM.Model
+
 	// Version
 	result["version"] = cm.config.Version
 
@@ -206,7 +208,7 @@ func toCamelCase(s string) string {
 	case "api":
 		return "API"
 	case "auth":
-		return "Auth" 
+		return "Auth"
 	case "defaults":
 		return "Defaults"
 	case "version":
@@ -221,6 +223,10 @@ func toCamelCase(s string) string {
 		return "Timeout"
 	case "output_format":
 		return "OutputFormat"
+	case "llm":
+		return "LLM"
+	case "model":
+		return "Model"
 	}
 	
 	// Generic conversion for other cases

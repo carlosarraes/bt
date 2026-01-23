@@ -11,6 +11,7 @@ type Config struct {
 	API      APIConfig     `koanf:"api" yaml:"api"`
 	Defaults DefaultConfig `koanf:"defaults" yaml:"defaults"`
 	PR       PRConfig      `koanf:"pr" yaml:"pr"`
+	LLM      LLMConfig     `koanf:"llm" yaml:"llm"`
 }
 
 // AuthConfig holds authentication-related configuration
@@ -34,6 +35,10 @@ type PRConfig struct {
 	BranchSuffixMapping map[string]string `koanf:"branch_suffix_mapping" yaml:"branch_suffix_mapping"`
 }
 
+type LLMConfig struct {
+	Model string `koanf:"model" yaml:"model"`
+}
+
 // NewDefaultConfig returns a new Config with sensible defaults
 func NewDefaultConfig() *Config {
 	return &Config{
@@ -54,6 +59,9 @@ func NewDefaultConfig() *Config {
 				"hml": "homolog",
 				"prd": "main",
 			},
+		},
+		LLM: LLMConfig{
+			Model: "gpt-5-mini",
 		},
 	}
 }
