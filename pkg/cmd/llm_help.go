@@ -25,21 +25,19 @@ func showGlobalLLMHelp() {
 	help := `# Bitbucket CLI (bt) - LLM Guide
 
 ## Overview
-bt is a 1:1 replacement for GitHub CLI that works with Bitbucket Cloud.
-- **Purpose**: Provide identical command structure and user experience as GitHub CLI (gh) for Bitbucket
-- **Key Strength**: 5x faster pipeline debugging compared to Bitbucket web UI + AI-powered PR descriptions  
-- **AI Innovation**: OpenAI o4-mini integration with structured output, 24-hour caching, and JIRA context
-- **LLM-Friendly**: All commands support structured JSON output for automation
+bt is a GitHub CLI-inspired Bitbucket Cloud CLI.
+- **Purpose**: Familiar gh-style commands for Bitbucket workflows
+- **Key Strength**: Fast pipeline debugging + SonarCloud coverage/issues reports
+- **AI PRs**: Optional AI-assisted PR descriptions with templates
+- **LLM-Friendly**: Most commands support structured JSON/YAML output (run, pr, config)
 
 ## GitHub CLI Mapping
 bt commands map directly to GitHub CLI equivalents:
 ` + "```" + `
 gh auth login    → bt auth login
-gh repo clone    → bt repo clone  
 gh pr list       → bt pr list
 gh run list      → bt run list      # Main differentiator: enhanced pipeline debugging
 gh run view      → bt run view      # Enhanced with log analysis
-gh api           → bt api
 gh config        → bt config        # Advanced configuration management
 ` + "```" + `
 
@@ -86,6 +84,24 @@ bt run view 3808 --log-failed --output json
 }
 ` + "```" + `
 
+### SonarCloud Coverage & Issues (bt run report)
+` + "```bash" + `
+# Coverage summary for a pipeline
+bt run report 3808 --coverage
+
+# Issues only (code quality)
+bt run report 3808 --issues
+
+# Focus on new code only, JSON output
+bt run report 3808 --new-code-only --output json
+
+# Open or print the SonarCloud dashboard URL
+bt run report 3808 --web
+bt run report 3808 --url
+` + "```" + `
+
+Requires ` + "`SONARCLOUD_TOKEN`" + ` in the environment.
+
 ## Common Use Cases
 
 ### Authentication Setup
@@ -94,13 +110,6 @@ bt auth login                    # Interactive setup (API token recommended)
 bt auth status                   # Check current authentication
 export BITBUCKET_EMAIL="user@company.com"      # Environment variable auth
 export BITBUCKET_API_TOKEN="your_token"        # Recommended method
-` + "```" + `
-
-### Repository Operations
-` + "```bash" + `
-bt repo clone workspace/repo     # Clone repository
-bt repo list                     # List accessible repositories
-bt repo view workspace/repo      # Repository details
 ` + "```" + `
 
 ### Pull Request Management with AI
@@ -133,7 +142,7 @@ bt run cancel <id>              # Cancel running pipeline ✅ AVAILABLE
 ` + "```" + `
 
 ## Output Formats
-All commands support multiple output formats for different use cases:
+Most commands support multiple output formats for different use cases:
 - **table** (default): Human-readable terminal output
 - **json**: Structured data for automation and LLM analysis
 - **yaml**: Alternative structured format
@@ -159,6 +168,9 @@ BITBUCKET_TOKEN="access_token"
 BT_OUTPUT_FORMAT="json"         # Default output format
 BT_NO_COLOR="1"                 # Disable colors for automation
 BT_VERBOSE="1"                  # Enable verbose output
+
+# SonarCloud reports
+SONARCLOUD_TOKEN="your_token"   # Required for bt run report
 ` + "```" + `
 
 ## Error Analysis Capabilities
@@ -179,9 +191,9 @@ Error patterns are automatically highlighted and extracted for faster diagnosis.
 5. **Use --log-failed flag** for fastest error identification
 
 ## Command Categories by Priority
-1. **Critical**: auth, run (pipeline debugging)
-2. **Important**: repo, pr (standard Git operations)  
-3. **Utility**: config, api, browse (configuration and advanced features)
+1. **Critical**: run (pipeline view + SonarCloud report)
+2. **Important**: pr, auth (standard Git operations)
+3. **Utility**: config (configuration management)
 
 bt excels at pipeline debugging and provides 5x faster error diagnosis compared to web UI navigation.
 `
@@ -212,7 +224,7 @@ func showRunLLMHelp() {
 	help := `# bt run - Pipeline Debugging (LLM Guide)
 
 ## Primary Use Case
-bt run commands provide 5x faster pipeline debugging compared to Bitbucket web UI.
+bt run commands provide fast pipeline debugging and SonarCloud coverage/issues reporting.
 
 ## Quick Debugging Workflow
 ` + "```bash" + `
@@ -228,6 +240,9 @@ bt run view <pipeline-id> --log-failed --full-output
 # Step 4: Specific analysis
 bt run view <pipeline-id> --tests        # Test focus
 bt run view <pipeline-id> --step "name"  # Specific step
+
+# Step 5: SonarCloud coverage/issues (if enabled)
+bt run report <pipeline-id> --coverage
 ` + "```" + `
 
 ## Command Details
@@ -256,6 +271,34 @@ bt run view <id> --output json   # Structured data for analysis
 bt run watch <id>                # Real-time monitoring (dedicated command)
 bt run view <id> --watch         # Live updates (alternative method)
 ` + "```" + `
+
+### bt run report (SonarCloud Coverage & Issues)
+Generate a SonarCloud report tied to a pipeline (coverage + code quality):
+` + "```bash" + `
+# Coverage summary
+bt run report <id> --coverage
+
+# Issues only (code quality)
+bt run report <id> --issues
+
+# Focus on new code only
+bt run report <id> --new-code-only
+
+# Filter coverage findings
+bt run report <id> --coverage-threshold 80
+bt run report <id> --min-uncovered-lines 5
+bt run report <id> --max-uncovered-lines 10
+bt run report <id> --file "src/**"
+
+# Output for automation
+bt run report <id> --output json
+
+# Open or print SonarCloud dashboard
+bt run report <id> --web
+bt run report <id> --url
+` + "```" + `
+
+Requires ` + "`SONARCLOUD_TOKEN`" + ` in the environment.
 
 ### bt run watch (NEW - Real-time Monitoring)
 Dedicated command for monitoring running pipelines:
@@ -497,27 +540,8 @@ Note: bt pr create --ai provides intelligent PR descriptions while maintaining p
 func showRepoLLMHelp() {
 	help := `# bt repo - Repository Operations (LLM Guide)
 
-## Overview
-Repository management with GitHub CLI compatibility.
-
-## Common Commands
-` + "```bash" + `
-bt repo clone workspace/repo     # Clone repository
-bt repo list                     # List repositories
-bt repo list workspace          # List workspace repositories
-bt repo create workspace/name   # Create repository
-bt repo view workspace/repo     # Repository details
-` + "```" + `
-
-## GitHub CLI Mapping
-` + "```bash" + `
-gh repo clone    → bt repo clone
-gh repo list     → bt repo list  
-gh repo create   → bt repo create
-gh repo view     → bt repo view
-` + "```" + `
-
-Note: Repository commands maintain GitHub CLI compatibility for easy migration.
+## Status
+Repository commands are not yet implemented in this build.
 `
 
 	fmt.Print(help)
@@ -616,8 +640,8 @@ Note: Configuration is automatically saved to ~/.config/bt/config.yml with secur
 // GetLLMHelpContent returns structured help content for programmatic access
 func GetLLMHelpContent() map[string]interface{} {
 	return map[string]interface{}{
-		"overview": "bt is a 1:1 replacement for GitHub CLI that works with Bitbucket Cloud",
-		"key_strength": "5x faster pipeline debugging compared to Bitbucket web UI",
+		"overview": "bt is a GitHub CLI-inspired Bitbucket Cloud CLI",
+		"key_strength": "fast pipeline debugging plus SonarCloud coverage/issues reporting",
 		"primary_workflow": []string{
 			"bt run list --status failed",
 			"bt run view <id> --log-failed",
@@ -627,11 +651,10 @@ func GetLLMHelpContent() map[string]interface{} {
 		},
 		"command_mapping": map[string]string{
 			"gh auth login": "bt auth login",
-			"gh repo clone": "bt repo clone",
 			"gh pr list":    "bt pr list",
 			"gh run list":   "bt run list",
 			"gh run view":   "bt run view",
-			"gh api":        "bt api",
+			"gh config":     "bt config",
 		},
 		"output_formats": []string{"table", "json", "yaml"},
 		"auth_env_vars": []string{

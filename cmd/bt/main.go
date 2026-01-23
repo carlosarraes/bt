@@ -135,7 +135,7 @@ USAGE
 CORE COMMANDS
   auth:          Authenticate bt and git with Bitbucket
   pr:            Manage pull requests
-  repo:          Manage repositories
+  repo:          Manage repositories (not yet implemented)
   run:           View and manage pipeline runs
 
 ADDITIONAL COMMANDS
@@ -146,8 +146,7 @@ FLAGS
   --help              Show help for command
   --version           Show bt version
   -v, --verbose       Enable verbose output
-  --config=PATH       Config file path
-  -o, --output=FORMAT Output format (table, json, yaml)
+  --config-file=PATH  Config file path
   --no-color          Disable colored output
   --llm               Show LLM-optimized usage guide and examples
 
@@ -181,7 +180,7 @@ FLAGS
 EXAMPLES
   $ bt auth login
   $ bt auth status
-  $ bt auth login --with-token
+  $ bt auth login --with-token YOUR_TOKEN
 
 LEARN MORE
   Use 'bt auth <command> --help' for more information about a command.
@@ -200,6 +199,8 @@ AVAILABLE COMMANDS
   watch:         Watch a pipeline run in real-time
   logs:          View logs for a pipeline run
   cancel:        Cancel a running pipeline
+  rerun:         Rerun a pipeline (optionally failed steps only)
+  report:        SonarCloud coverage/issues report for a pipeline
 
 FLAGS
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
@@ -212,6 +213,7 @@ INHERITED FLAGS
 EXAMPLES
   $ bt run list
   $ bt run view 123
+  $ bt run report 123 --coverage
   $ bt run logs 123 --errors-only
   $ bt run watch 123
 
@@ -229,7 +231,10 @@ USAGE
 GENERAL COMMANDS
   create:        Create a pull request
   list:          List pull requests in a repository
+  list-all:      List pull requests across repositories in a workspace
   status:        Show status of relevant pull requests
+  open:          Open pull requests in a browser
+  report:        Pull request report
 
 TARGETED COMMANDS
   checkout:      Check out a pull request in git
