@@ -188,16 +188,16 @@ func TestReviewCmd_ValidateReviewAction(t *testing.T) {
 
 func TestReviewCmd_GetCommentBody(t *testing.T) {
 	tests := []struct {
-		name       string
-		body       string
-		bodyFile   string
-		action     reviewAction
-		force      bool
-		fileExists bool
+		name        string
+		body        string
+		bodyFile    string
+		action      reviewAction
+		force       bool
+		fileExists  bool
 		fileContent string
-		expected   string
-		expectErr  bool
-		errMsg     string
+		expected    string
+		expectErr   bool
+		errMsg      string
 	}{
 		{
 			name:      "body from command line",
@@ -324,7 +324,7 @@ func TestReviewCmd_ConfirmReviewAction(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ReviewCmd{}
-			
+
 			pr := &api.PullRequest{
 				ID:    tt.prID,
 				Title: tt.prTitle,
@@ -382,7 +382,7 @@ func TestReviewCmd_Structure(t *testing.T) {
 
 func BenchmarkReviewCmd_ParsePRID(b *testing.B) {
 	cmd := &ReviewCmd{PRID: "12345"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = cmd.ParsePRID()
@@ -391,7 +391,7 @@ func BenchmarkReviewCmd_ParsePRID(b *testing.B) {
 
 func BenchmarkReviewCmd_ValidateReviewAction(b *testing.B) {
 	cmd := &ReviewCmd{Approve: true}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = cmd.validateReviewAction()

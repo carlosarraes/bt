@@ -162,7 +162,7 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 					repoSlug = parts[1]
 				}
 			}
-			
+
 			result, err := prCtx.Client.PullRequests.ListPullRequests(ctx, workspace, repoSlug, options)
 			if err != nil {
 				if cmd.Debug {
@@ -212,7 +212,7 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 	sort.Slice(allPRs, func(i, j int) bool {
 		prI := allPRs[i].PullRequest
 		prJ := allPRs[j].PullRequest
-		
+
 		targetI := ""
 		if prI.Destination != nil && prI.Destination.Branch != nil {
 			targetI = prI.Destination.Branch.Name
@@ -221,17 +221,17 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 		if prJ.Destination != nil && prJ.Destination.Branch != nil {
 			targetJ = prJ.Destination.Branch.Name
 		}
-		
+
 		isHomologI := strings.Contains(strings.ToLower(targetI), "homolog")
 		isHomologJ := strings.Contains(strings.ToLower(targetJ), "homolog")
-		
+
 		if isHomologI && !isHomologJ {
 			return true
 		}
 		if !isHomologI && isHomologJ {
 			return false
 		}
-		
+
 		if prI.UpdatedOn == nil && prJ.UpdatedOn == nil {
 			return false
 		}
@@ -241,7 +241,7 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 		if prJ.UpdatedOn == nil {
 			return true
 		}
-		
+
 		return prI.UpdatedOn.After(*prJ.UpdatedOn)
 	})
 
@@ -257,7 +257,7 @@ func (cmd *ListAllCmd) Run(ctx context.Context) error {
 			}
 		}
 		allPRs = approvedPRs
-		
+
 		if cmd.Debug {
 			fmt.Fprintf(os.Stderr, "DEBUG: Filtered to %d approved PRs\n", len(allPRs))
 		}
@@ -270,7 +270,7 @@ func (cmd *ListAllCmd) formatOutput(prCtx *PRContext, prs []*PRWithRepo) error {
 	if cmd.URL {
 		return cmd.formatURL(prCtx, prs)
 	}
-	
+
 	switch cmd.Output {
 	case "table":
 		return cmd.formatTable(prCtx, prs)
@@ -291,13 +291,13 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 
 	headers := []string{"Repository", "ID", "Title", "Source", "Target", "State", "Approved", "Mergeable", "Updated"}
 	rows := make([][]string, len(prs))
-	
+
 	mergeableResults := cmd.checkMergeableStatusConcurrently(prCtx, prs)
-	
+
 	for i, prWithRepo := range prs {
 		pr := prWithRepo.PullRequest
 		repo := prWithRepo.Repository
-		
+
 		repoName := repo.Name
 		if len(repoName) > 15 {
 			repoName = repoName[:12] + "..."
@@ -330,7 +330,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		}
 
 		updatedTime := output.FormatRelativeTime(pr.UpdatedOn)
-		
+
 		approved := cmd.isPRApproved(pr)
 		approvedStatus := "✗"
 		if approved {
@@ -361,8 +361,8 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 
 func (cmd *ListAllCmd) formatJSON(prCtx *PRContext, prs []*PRWithRepo) error {
 	output := map[string]interface{}{
-		"total_count":     len(prs),
-		"pull_requests":   prs,
+		"total_count":   len(prs),
+		"pull_requests": prs,
 	}
 
 	return prCtx.Formatter.Format(output)
@@ -370,8 +370,8 @@ func (cmd *ListAllCmd) formatJSON(prCtx *PRContext, prs []*PRWithRepo) error {
 
 func (cmd *ListAllCmd) formatYAML(prCtx *PRContext, prs []*PRWithRepo) error {
 	output := map[string]interface{}{
-		"total_count":     len(prs),
-		"pull_requests":   prs,
+		"total_count":   len(prs),
+		"pull_requests": prs,
 	}
 
 	return prCtx.Formatter.Format(output)
@@ -449,7 +449,7 @@ func (cmd *ListAllCmd) isPRApproved(pr *api.PullRequest) bool {
 			}
 		}
 	}
-	
+
 	if pr.Participants != nil {
 		for _, participant := range pr.Participants {
 			if participant.Approved {
@@ -457,7 +457,7 @@ func (cmd *ListAllCmd) isPRApproved(pr *api.PullRequest) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -465,25 +465,25 @@ func (cmd *ListAllCmd) checkMergeableStatusConcurrently(prCtx *PRContext, prs []
 	results := make([]bool, len(prs))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	
+
 	semaphore := make(chan struct{}, 10)
-	
+
 	for i, prWithRepo := range prs {
 		wg.Add(1)
 		go func(index int, pr *PRWithRepo) {
 			defer wg.Done()
-			
+
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			mergeable := cmd.isPRMergeable(prCtx, pr)
-			
+
 			mu.Lock()
 			results[index] = mergeable
 			mu.Unlock()
 		}(i, prWithRepo)
 	}
-	
+
 	wg.Wait()
 	return results
 }

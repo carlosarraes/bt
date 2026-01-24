@@ -180,9 +180,9 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 
 	headers := []string{"ID", "Title", "Branch", "Author", "State", "Approved", "Mergeable", "Updated"}
 	rows := make([][]string, len(pullRequests))
-	
+
 	mergeableResults := cmd.checkMergeableStatusConcurrently(prCtx, pullRequests)
-	
+
 	for i, pr := range pullRequests {
 		title := pr.Title
 		if len(title) > 50 {
@@ -215,7 +215,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 		}
 
 		updatedTime := output.FormatRelativeTime(pr.UpdatedOn)
-		
+
 		approved := cmd.isPRApproved(pr)
 		approvedStatus := "✗"
 		if approved {
@@ -245,8 +245,8 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 
 func (cmd *ListCmd) formatJSON(prCtx *PRContext, pullRequests []*api.PullRequest) error {
 	output := map[string]interface{}{
-		"total_count":     len(pullRequests),
-		"pull_requests":   pullRequests,
+		"total_count":   len(pullRequests),
+		"pull_requests": pullRequests,
 	}
 
 	return prCtx.Formatter.Format(output)
@@ -254,8 +254,8 @@ func (cmd *ListCmd) formatJSON(prCtx *PRContext, pullRequests []*api.PullRequest
 
 func (cmd *ListCmd) formatYAML(prCtx *PRContext, pullRequests []*api.PullRequest) error {
 	output := map[string]interface{}{
-		"total_count":     len(pullRequests),
-		"pull_requests":   pullRequests,
+		"total_count":   len(pullRequests),
+		"pull_requests": pullRequests,
 	}
 
 	return prCtx.Formatter.Format(output)
@@ -295,10 +295,9 @@ func validateState(state string) error {
 		}
 	}
 
-	return fmt.Errorf("invalid state '%s'. Valid states are: %s", 
+	return fmt.Errorf("invalid state '%s'. Valid states are: %s",
 		state, strings.Join(validStates, ", "))
 }
-
 
 func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
 	loader := config.NewLoader()
@@ -324,7 +323,7 @@ func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat strin
 	formatterOpts := &output.FormatterOptions{
 		NoColor: noColor,
 	}
-	
+
 	formatter, err := output.NewFormatter(output.Format(outputFormat), formatterOpts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create output formatter: %w", err)
@@ -344,25 +343,25 @@ func (cmd *ListCmd) checkMergeableStatusConcurrently(prCtx *PRContext, pullReque
 	results := make([]bool, len(pullRequests))
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	
+
 	semaphore := make(chan struct{}, 10)
-	
+
 	for i, pr := range pullRequests {
 		wg.Add(1)
 		go func(index int, pullRequest *api.PullRequest) {
 			defer wg.Done()
-			
+
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			mergeable := cmd.isPRMergeable(prCtx, pullRequest)
-			
+
 			mu.Lock()
 			results[index] = mergeable
 			mu.Unlock()
 		}(i, pr)
 	}
-	
+
 	wg.Wait()
 	return results
 }
@@ -375,7 +374,7 @@ func (cmd *ListCmd) isPRApproved(pr *api.PullRequest) bool {
 			}
 		}
 	}
-	
+
 	if pr.Participants != nil {
 		for _, participant := range pr.Participants {
 			if participant.Approved {
@@ -383,7 +382,7 @@ func (cmd *ListCmd) isPRApproved(pr *api.PullRequest) bool {
 			}
 		}
 	}
-	
+
 	return false
 }
 

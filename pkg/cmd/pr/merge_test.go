@@ -8,7 +8,6 @@ import (
 	"github.com/carlosarraes/bt/pkg/api"
 )
 
-
 func TestMergeCmd_validateMergeability(t *testing.T) {
 	cmd := &MergeCmd{}
 

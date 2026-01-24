@@ -20,11 +20,11 @@ import (
 
 const (
 	DefaultBaseURL = "https://sonarcloud.io/api"
-	
+
 	DefaultTimeout = 30 * time.Second
-	
+
 	DefaultRetryAttempts = 3
-	
+
 	DefaultCacheTTL = 1 * time.Hour
 )
 
@@ -251,7 +251,7 @@ func (c *Client) Request(ctx context.Context, method, endpoint string, params ma
 		cacheKey := c.buildCacheKey(endpoint, params, apiContext)
 		ttl := c.calculateCacheTTL(apiContext)
 		c.cache.Set(cacheKey, body, ttl)
-		
+
 		if c.config.EnableLogging {
 			fmt.Printf("SonarCloud cache set: %s (TTL: %v)\n", cacheKey, ttl)
 		}
@@ -291,7 +291,7 @@ func (c *Client) doRequestWithRetry(req *http.Request) (*http.Response, error) {
 			}
 
 			if c.config.EnableLogging {
-				fmt.Printf("SonarCloud request failed (attempt %d/%d): %v\n", 
+				fmt.Printf("SonarCloud request failed (attempt %d/%d): %v\n",
 					attempt+1, c.config.RetryAttempts+1, err)
 			}
 
@@ -306,7 +306,7 @@ func (c *Client) doRequestWithRetry(req *http.Request) (*http.Response, error) {
 			resp.Body.Close()
 
 			if c.config.EnableLogging {
-				fmt.Printf("SonarCloud API retry %d/%d after status %d\n", 
+				fmt.Printf("SonarCloud API retry %d/%d after status %d\n",
 					attempt+1, c.config.RetryAttempts, resp.StatusCode)
 			}
 
@@ -371,8 +371,8 @@ func (c *Client) parseError(statusCode int, body []byte) error {
 	switch statusCode {
 	case 401:
 		return &SonarCloudError{
-			StatusCode:     statusCode,
-			UserMessage:    "SonarCloud authentication failed",
+			StatusCode:       statusCode,
+			UserMessage:      "SonarCloud authentication failed",
 			TechnicalDetails: "Your token may be expired or invalid",
 			SuggestedActions: []string{
 				"Generate a new token at https://sonarcloud.io/account/security/",
@@ -384,8 +384,8 @@ func (c *Client) parseError(statusCode int, body []byte) error {
 		}
 	case 403:
 		return &SonarCloudError{
-			StatusCode:     statusCode,
-			UserMessage:    "Access denied to SonarCloud project",
+			StatusCode:       statusCode,
+			UserMessage:      "Access denied to SonarCloud project",
 			TechnicalDetails: "Insufficient permissions for the requested resource",
 			SuggestedActions: []string{
 				"Ensure your token has access to this project",
@@ -394,8 +394,8 @@ func (c *Client) parseError(statusCode int, body []byte) error {
 		}
 	case 404:
 		return &SonarCloudError{
-			StatusCode:     statusCode,
-			UserMessage:    "SonarCloud project not found",
+			StatusCode:       statusCode,
+			UserMessage:      "SonarCloud project not found",
 			TechnicalDetails: "The project key may be incorrect or project doesn't exist",
 			SuggestedActions: []string{
 				"Verify project exists at https://sonarcloud.io/projects",
@@ -405,8 +405,8 @@ func (c *Client) parseError(statusCode int, body []byte) error {
 		}
 	case 429:
 		return &SonarCloudError{
-			StatusCode:     statusCode,
-			UserMessage:    "SonarCloud API rate limit exceeded",
+			StatusCode:       statusCode,
+			UserMessage:      "SonarCloud API rate limit exceeded",
 			TechnicalDetails: "Too many requests sent in a short time",
 			SuggestedActions: []string{
 				"Wait a few minutes before retrying",

@@ -95,12 +95,12 @@ func TestLogsCmd_MatchesStepName(t *testing.T) {
 		{"build", "build", true},
 		{"test", "test", true},
 		{"deploy", "deploy", true},
-		{"build", "BUILD", true}, // Case insensitive
-		{"test-unit", "test", true}, // Contains match
+		{"build", "BUILD", true},           // Case insensitive
+		{"test-unit", "test", true},        // Contains match
 		{"integration-test", "test", true}, // Contains match
-		{"build-app", "build", true}, // Prefix match
-		{"deploy", "test", false}, // No match
-		{"compile", "build", false}, // No match
+		{"build-app", "build", true},       // Prefix match
+		{"deploy", "test", false},          // No match
+		{"compile", "build", false},        // No match
 	}
 
 	for _, tt := range tests {
@@ -123,28 +123,28 @@ func TestLogsCmd_FilterStepsByName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		stepFilter   string
+		name          string
+		stepFilter    string
 		expectedUUIDs []string
 	}{
 		{
-			name:         "exact match",
-			stepFilter:   "build",
+			name:          "exact match",
+			stepFilter:    "build",
 			expectedUUIDs: []string{"step1"},
 		},
 		{
-			name:         "contains match",
-			stepFilter:   "test",
+			name:          "contains match",
+			stepFilter:    "test",
 			expectedUUIDs: []string{"step2", "step3"},
 		},
 		{
-			name:         "no match",
-			stepFilter:   "missing",
+			name:          "no match",
+			stepFilter:    "missing",
 			expectedUUIDs: []string{},
 		},
 		{
-			name:         "case insensitive",
-			stepFilter:   "BUILD",
+			name:          "case insensitive",
+			stepFilter:    "BUILD",
 			expectedUUIDs: []string{"step1"},
 		},
 	}
@@ -152,9 +152,9 @@ func TestLogsCmd_FilterStepsByName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			filtered := cmd.filterStepsByName(steps, tt.stepFilter)
-			
+
 			assert.Equal(t, len(tt.expectedUUIDs), len(filtered), "Filtered step count mismatch")
-			
+
 			for i, expectedUUID := range tt.expectedUUIDs {
 				if i < len(filtered) {
 					assert.Equal(t, expectedUUID, filtered[i].UUID, "Step UUID mismatch at index %d", i)
@@ -175,7 +175,7 @@ func TestLogsCmd_GetAvailableStepNames(t *testing.T) {
 
 	result := cmd.getAvailableStepNames(steps)
 	expected := "build, test, deploy"
-	
+
 	assert.Equal(t, expected, result)
 }
 
@@ -336,7 +336,7 @@ func TestLogsCmd_ResolvePipelineUUID(t *testing.T) {
 				pipelineID := strings.TrimSpace(cmd.PipelineID)
 				isUUID := strings.Contains(pipelineID, "-")
 				assert.True(t, isUUID, "Should be detected as UUID format")
-				
+
 				// UUID should be returned as-is
 				assert.Equal(t, tt.expected, pipelineID)
 			} else {
@@ -345,7 +345,7 @@ func TestLogsCmd_ResolvePipelineUUID(t *testing.T) {
 				if strings.HasPrefix(pipelineID, "#") {
 					pipelineID = pipelineID[1:]
 				}
-				
+
 				_, err := strconv.Atoi(pipelineID)
 				assert.NoError(t, err, "Should parse as build number")
 			}
@@ -446,24 +446,24 @@ func TestLogsCmd_Integration(t *testing.T) {
 	// This test would require setting up a real Bitbucket API connection
 	// and having test pipelines available. For now, we'll skip this.
 	t.Skip("Integration tests require real Bitbucket API access")
-	
+
 	// Example of what an integration test might look like:
 	/*
-	ctx := context.Background()
-	
-	// Create real RunContext with authentication
-	runCtx, err := NewRunContext(ctx, "json", true)
-	require.NoError(t, err)
-	
-	// Test with a known pipeline ID
-	cmd := &LogsCmd{
-		PipelineID: "123",
-		Output:     "json",
-		NoColor:    true,
-	}
-	
-	err = cmd.Run(ctx)
-	assert.NoError(t, err)
+		ctx := context.Background()
+
+		// Create real RunContext with authentication
+		runCtx, err := NewRunContext(ctx, "json", true)
+		require.NoError(t, err)
+
+		// Test with a known pipeline ID
+		cmd := &LogsCmd{
+			PipelineID: "123",
+			Output:     "json",
+			NoColor:    true,
+		}
+
+		err = cmd.Run(ctx)
+		assert.NoError(t, err)
 	*/
 }
 
@@ -472,7 +472,7 @@ func BenchmarkLogsCmd_MatchesStepName(b *testing.B) {
 	cmd := &LogsCmd{}
 	stepNames := []string{"build", "test-unit", "test-integration", "deploy", "cleanup"}
 	requestedNames := []string{"build", "test", "deploy", "missing"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		stepName := stepNames[i%len(stepNames)]
@@ -483,7 +483,7 @@ func BenchmarkLogsCmd_MatchesStepName(b *testing.B) {
 
 func BenchmarkLogsCmd_FilterStepsByName(b *testing.B) {
 	cmd := &LogsCmd{}
-	
+
 	// Create a large set of steps
 	steps := make([]*api.PipelineStep, 100)
 	for i := 0; i < 100; i++ {
@@ -492,7 +492,7 @@ func BenchmarkLogsCmd_FilterStepsByName(b *testing.B) {
 			UUID: fmt.Sprintf("uuid-%d", i),
 		}
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cmd.filterStepsByName(steps, "step")
@@ -502,7 +502,7 @@ func BenchmarkLogsCmd_FilterStepsByName(b *testing.B) {
 func BenchmarkLogsCmd_ContainsError(b *testing.B) {
 	cmd := &LogsCmd{}
 	parser := utils.NewLogParser()
-	
+
 	logLines := []string{
 		"INFO: Starting process",
 		"error: compilation failed",
@@ -511,7 +511,7 @@ func BenchmarkLogsCmd_ContainsError(b *testing.B) {
 		"panic: runtime error",
 		"DEBUG: Configuration loaded",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		line := logLines[i%len(logLines)]

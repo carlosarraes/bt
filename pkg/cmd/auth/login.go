@@ -136,4 +136,3 @@ func (cmd *LoginCmd) setupAPIToken(ctx context.Context) error {
 
 	return cmd.authenticateWithAPIToken(ctx, email, token, "interactive input")
 }
-

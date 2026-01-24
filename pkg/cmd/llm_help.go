@@ -640,7 +640,7 @@ Note: Configuration is automatically saved to ~/.config/bt/config.yml with secur
 // GetLLMHelpContent returns structured help content for programmatic access
 func GetLLMHelpContent() map[string]interface{} {
 	return map[string]interface{}{
-		"overview": "bt is a GitHub CLI-inspired Bitbucket Cloud CLI",
+		"overview":     "bt is a GitHub CLI-inspired Bitbucket Cloud CLI",
 		"key_strength": "fast pipeline debugging plus SonarCloud coverage/issues reporting",
 		"primary_workflow": []string{
 			"bt run list --status failed",

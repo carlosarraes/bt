@@ -44,11 +44,11 @@ func (cm *ConfigManager) GetValue(key string) (interface{}, error) {
 		// Convert part to proper field name (camelCase)
 		fieldName := toCamelCase(part)
 		field := value.FieldByName(fieldName)
-		
+
 		if !field.IsValid() {
 			return nil, fmt.Errorf("configuration key not found: %s", key)
 		}
-		
+
 		value = field
 	}
 
@@ -63,27 +63,27 @@ func (cm *ConfigManager) GetValue(key string) (interface{}, error) {
 func (cm *ConfigManager) SetValue(key, valueStr string) error {
 	parts := strings.Split(key, ".")
 	value := reflect.ValueOf(cm.config).Elem()
-	
+
 	// Navigate to the parent of the target field
 	for i, part := range parts[:len(parts)-1] {
 		fieldName := toCamelCase(part)
 		field := value.FieldByName(fieldName)
-		
+
 		if !field.IsValid() {
 			return fmt.Errorf("invalid configuration path: %s", strings.Join(parts[:i+1], "."))
 		}
-		
+
 		value = field
 	}
 
 	// Set the final field
 	finalFieldName := toCamelCase(parts[len(parts)-1])
 	field := value.FieldByName(finalFieldName)
-	
+
 	if !field.IsValid() {
 		return fmt.Errorf("configuration key not found: %s", key)
 	}
-	
+
 	if !field.CanSet() {
 		return fmt.Errorf("configuration key is read-only: %s", key)
 	}
@@ -105,27 +105,27 @@ func (cm *ConfigManager) SetValue(key, valueStr string) error {
 func (cm *ConfigManager) UnsetValue(key string) error {
 	parts := strings.Split(key, ".")
 	value := reflect.ValueOf(cm.config).Elem()
-	
+
 	// Navigate to the parent of the target field
 	for i, part := range parts[:len(parts)-1] {
 		fieldName := toCamelCase(part)
 		field := value.FieldByName(fieldName)
-		
+
 		if !field.IsValid() {
 			return fmt.Errorf("invalid configuration path: %s", strings.Join(parts[:i+1], "."))
 		}
-		
+
 		value = field
 	}
 
 	// Unset the final field
 	finalFieldName := toCamelCase(parts[len(parts)-1])
 	field := value.FieldByName(finalFieldName)
-	
+
 	if !field.IsValid() {
 		return fmt.Errorf("configuration key not found: %s", key)
 	}
-	
+
 	if !field.CanSet() {
 		return fmt.Errorf("configuration key is read-only: %s", key)
 	}
@@ -228,7 +228,7 @@ func toCamelCase(s string) string {
 	case "model":
 		return "Model"
 	}
-	
+
 	// Generic conversion for other cases
 	parts := strings.Split(s, "_")
 	result := ""

@@ -77,7 +77,7 @@ func (s *M2PipelineDebugValidationSuite) setupTestEnvironment() {
 	s.client, err = api.NewClient(authManager, apiConfig)
 	require.NoError(s.t, err, "Failed to create API client")
 
-	s.t.Logf("Test environment setup complete - workspace: %s, repository: %s", 
+	s.t.Logf("Test environment setup complete - workspace: %s, repository: %s",
 		s.testWorkspace, s.testRepository)
 }
 
@@ -250,7 +250,7 @@ func (s *M2PipelineDebugValidationSuite) testPipelineLogsAnalysis(t *testing.T) 
 		if len(steps) > 0 {
 			stepUUID := steps[0].UUID
 			logs, err := s.client.Pipelines.GetStepLogs(s.ctx, s.testWorkspace, s.testRepository, s.testPipelineID, stepUUID)
-			
+
 			// Don't require logs to exist - some steps might not have logs
 			if err == nil && logs != nil {
 				logs.Close() // Make sure to close the ReadCloser
@@ -275,7 +275,7 @@ func (s *M2PipelineDebugValidationSuite) testPerformanceBenchmarks(t *testing.T)
 			PageLen: 10,
 		})
 		duration := time.Since(start)
-		
+
 		require.NoError(t, err, "Pipeline list should succeed")
 		assert.Less(t, duration, 500*time.Millisecond, "Pipeline list should complete in <500ms")
 		t.Logf("Pipeline list completed in %v", duration)
@@ -287,7 +287,7 @@ func (s *M2PipelineDebugValidationSuite) testPerformanceBenchmarks(t *testing.T)
 			start := time.Now()
 			_, err := s.client.Pipelines.GetPipeline(s.ctx, s.testWorkspace, s.testRepository, s.testPipelineID)
 			duration := time.Since(start)
-			
+
 			require.NoError(t, err, "Pipeline details should succeed")
 			assert.Less(t, duration, 500*time.Millisecond, "Pipeline details should complete in <500ms")
 			t.Logf("Pipeline details completed in %v", duration)
@@ -316,7 +316,7 @@ func (s *M2PipelineDebugValidationSuite) testJSONOutputValidation(t *testing.T) 
 		var parsed map[string]interface{}
 		err = json.Unmarshal(jsonData, &parsed)
 		require.NoError(t, err, "JSON should be valid")
-		
+
 		assert.Contains(t, parsed, "values", "JSON should contain values field")
 		assert.Contains(t, parsed, "size", "JSON should contain size field")
 	})
@@ -347,7 +347,7 @@ func (s *M2PipelineDebugValidationSuite) testJSONOutputValidation(t *testing.T) 
 func BenchmarkPipelineOperations(b *testing.B) {
 	workspace := os.Getenv("BITBUCKET_TEST_WORKSPACE")
 	repository := os.Getenv("BITBUCKET_TEST_REPOSITORY")
-	
+
 	if workspace == "" || repository == "" {
 		b.Skip("Benchmark requires BITBUCKET_TEST_WORKSPACE and BITBUCKET_TEST_REPOSITORY")
 		return
@@ -375,17 +375,17 @@ func BenchmarkPipelineOperations(b *testing.B) {
 	if err != nil || pipelines.Values == nil {
 		return
 	}
-	
+
 	var pipelineValues []json.RawMessage
 	if err := json.Unmarshal(pipelines.Values, &pipelineValues); err != nil || len(pipelineValues) == 0 {
 		return
 	}
-	
+
 	var pipeline api.Pipeline
 	if err := json.Unmarshal(pipelineValues[0], &pipeline); err != nil {
 		return
 	}
-	
+
 	pipelineID := pipeline.UUID
 
 	b.Run("GetPipelineDetails", func(b *testing.B) {

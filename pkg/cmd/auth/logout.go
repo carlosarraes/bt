@@ -75,16 +75,16 @@ func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, err
 // confirmLogout prompts the user to confirm logout
 func (cmd *LogoutCmd) confirmLogout() bool {
 	reader := bufio.NewReader(os.Stdin)
-	
+
 	for {
 		fmt.Print("🤔 Are you sure you want to log out? This will remove all stored credentials [y/N]: ")
-		
+
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Printf("❌ Failed to read input: %v\n", err)
 			return false
 		}
-		
+
 		response := strings.ToLower(strings.TrimSpace(input))
 		switch response {
 		case "y", "yes":

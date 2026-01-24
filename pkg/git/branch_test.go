@@ -132,7 +132,7 @@ func TestValidateBranchName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateBranchName(tt.branchName)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ValidateBranchName() expected error but got none")
@@ -256,7 +256,7 @@ func TestBranchStatus(t *testing.T) {
 // Test default branch detection logic
 func TestDefaultBranchNames(t *testing.T) {
 	defaultBranches := []string{"main", "master", "develop", "dev"}
-	
+
 	// Test that all expected default branch names are present
 	expectedBranches := map[string]bool{
 		"main":    true,

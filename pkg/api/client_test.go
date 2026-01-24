@@ -89,10 +89,10 @@ type APIClientTestSuite struct {
 
 func (suite *APIClientTestSuite) SetupTest() {
 	suite.mockAuth = &MockAuthManager{}
-	
+
 	// Create test server
 	suite.server = httptest.NewServer(http.HandlerFunc(suite.testHandler))
-	
+
 	// Create client with test server URL
 	config := &ClientConfig{
 		BaseURL:       suite.server.URL,
@@ -101,7 +101,7 @@ func (suite *APIClientTestSuite) SetupTest() {
 		EnableLogging: false,
 		UserAgent:     "bt/test",
 	}
-	
+
 	var err error
 	suite.client, err = NewClient(suite.mockAuth, config)
 	require.NoError(suite.T(), err)
@@ -116,10 +116,10 @@ func (suite *APIClientTestSuite) TearDownTest() {
 func (suite *APIClientTestSuite) testHandler(w http.ResponseWriter, r *http.Request) {
 	// Set content type
 	w.Header().Set("Content-Type", "application/json")
-	
+
 	path := r.URL.Path
 	method := r.Method
-	
+
 	switch {
 	case method == "GET" && path == "/test":
 		suite.handleGetTest(w, r)
@@ -150,7 +150,7 @@ func (suite *APIClientTestSuite) handleGetTest(w http.ResponseWriter, r *http.Re
 func (suite *APIClientTestSuite) handlePostTest(w http.ResponseWriter, r *http.Request) {
 	var body map[string]interface{}
 	json.NewDecoder(r.Body).Decode(&body)
-	
+
 	response := map[string]interface{}{
 		"message": "created",
 		"body":    body,
@@ -216,7 +216,7 @@ func (suite *APIClientTestSuite) handlePaginated(w http.ResponseWriter, r *http.
 func (suite *APIClientTestSuite) TestNewClient() {
 	config := DefaultClientConfig()
 	client, err := NewClient(suite.mockAuth, config)
-	
+
 	assert.NoError(suite.T(), err)
 	assert.NotNil(suite.T(), client)
 	assert.Equal(suite.T(), DefaultBaseURL, client.BaseURL())
@@ -226,85 +226,85 @@ func (suite *APIClientTestSuite) TestNewClient() {
 func (suite *APIClientTestSuite) TestGetRequest() {
 	// Setup mock auth
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Make GET request
 	ctx := context.Background()
 	resp, err := suite.client.Get(ctx, "/test")
-	
+
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), resp)
 	assert.Equal(suite.T(), 200, resp.StatusCode)
-	
+
 	// Verify response
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(suite.T(), err)
 	resp.Body.Close()
-	
+
 	assert.Equal(suite.T(), "success", result["message"])
 	assert.Equal(suite.T(), "GET", result["method"])
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
 func (suite *APIClientTestSuite) TestPostRequest() {
 	// Setup mock auth
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Make POST request with body
 	ctx := context.Background()
 	body := map[string]string{"test": "data"}
 	resp, err := suite.client.Post(ctx, "/test", body)
-	
+
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), resp)
 	assert.Equal(suite.T(), 200, resp.StatusCode)
-	
+
 	// Verify response
 	var result map[string]interface{}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(suite.T(), err)
 	resp.Body.Close()
-	
+
 	assert.Equal(suite.T(), "created", result["message"])
 	assert.Equal(suite.T(), "data", result["body"].(map[string]interface{})["test"])
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
 func (suite *APIClientTestSuite) TestGetJSON() {
 	// Setup mock auth
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Make GET request with JSON unmarshaling
 	ctx := context.Background()
 	var result map[string]interface{}
 	err := suite.client.GetJSON(ctx, "/test", &result)
-	
+
 	require.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "success", result["message"])
 	assert.Equal(suite.T(), "GET", result["method"])
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
 func (suite *APIClientTestSuite) TestErrorHandling() {
 	// Setup mock auth
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Make request that returns an error
 	ctx := context.Background()
 	_, err := suite.client.Get(ctx, "/error")
-	
+
 	require.Error(suite.T(), err)
-	
+
 	// Check that it's a BitbucketError
 	bbErr, ok := err.(*BitbucketError)
 	require.True(suite.T(), ok)
 	assert.Equal(suite.T(), ErrorTypeValidation, bbErr.Type)
 	assert.Equal(suite.T(), "Bad request", bbErr.Message)
 	assert.Equal(suite.T(), 400, bbErr.StatusCode)
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
@@ -314,15 +314,15 @@ func (suite *APIClientTestSuite) TestAuthenticationIntegration() {
 		req.Header.Set("Authorization", "Bearer test-token")
 		return true
 	})).Return(nil)
-	
+
 	// Make request
 	ctx := context.Background()
 	resp, err := suite.client.Get(ctx, "/test")
-	
+
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), resp)
 	resp.Body.Close()
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
@@ -348,7 +348,7 @@ func (suite *APIClientTestSuite) TestBuildURL() {
 			expected: suite.server.URL + "/repositories?q=test",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		suite.T().Run(tt.name, func(t *testing.T) {
 			url, err := suite.client.buildURL(tt.endpoint)
@@ -365,18 +365,18 @@ func (suite *APIClientTestSuite) TestUserAgent() {
 		capturedReq = req
 		return true
 	})).Return(nil)
-	
+
 	// Make request
 	ctx := context.Background()
 	resp, err := suite.client.Get(ctx, "/test")
 	require.NoError(suite.T(), err)
 	resp.Body.Close()
-	
+
 	// Check User-Agent header
 	userAgent := capturedReq.Header.Get("User-Agent")
 	suite.T().Logf("User-Agent: %s", userAgent)
 	assert.True(suite.T(), strings.HasPrefix(userAgent, "bt/"), "User-Agent should start with 'bt/', got: %s", userAgent)
-	
+
 	suite.mockAuth.AssertExpectations(suite.T())
 }
 
@@ -386,27 +386,27 @@ func (suite *APIClientTestSuite) TestTimeout() {
 		BaseURL: suite.server.URL,
 		Timeout: 10 * time.Millisecond, // Short timeout but not too short
 	}
-	
+
 	client, err := NewClient(suite.mockAuth, config)
 	require.NoError(suite.T(), err)
-	
+
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Create a slow server that will cause timeout
 	slowServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(50 * time.Millisecond) // Sleep longer than timeout
 		w.WriteHeader(200)
 	}))
 	defer slowServer.Close()
-	
+
 	// Update client to use slow server
 	client.config.BaseURL = slowServer.URL
 	client.baseURL, _ = url.Parse(slowServer.URL)
-	
+
 	// Request should timeout
 	ctx := context.Background()
 	_, err = client.Get(ctx, "/test")
-	
+
 	// Should get a timeout or context error
 	assert.Error(suite.T(), err)
 }
@@ -414,25 +414,25 @@ func (suite *APIClientTestSuite) TestTimeout() {
 func (suite *APIClientTestSuite) TestPagination() {
 	// Setup mock auth
 	suite.mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	// Create paginator
 	paginator := suite.client.Paginate("/paginated", DefaultPageOptions())
-	
+
 	// Get first page
 	ctx := context.Background()
 	page1, err := paginator.NextPage(ctx)
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), page1)
-	
+
 	assert.Equal(suite.T(), 1, page1.Page)
 	assert.Equal(suite.T(), 2, page1.Size)
 	assert.True(suite.T(), paginator.HasNextPage())
-	
+
 	// Get second page
 	page2, err := paginator.NextPage(ctx)
 	require.NoError(suite.T(), err)
 	require.NotNil(suite.T(), page2)
-	
+
 	assert.Equal(suite.T(), 2, page2.Page)
 	assert.Equal(suite.T(), 1, page2.Size)
 	assert.False(suite.T(), paginator.HasNextPage())
@@ -448,23 +448,23 @@ func BenchmarkClientGet(b *testing.B) {
 	// Setup
 	mockAuth := &MockAuthManager{}
 	mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"message": "success"}`)
 	}))
 	defer server.Close()
-	
+
 	config := &ClientConfig{
 		BaseURL: server.URL,
 		Timeout: 5 * time.Second,
 	}
-	
+
 	client, err := NewClient(mockAuth, config)
 	require.NoError(b, err)
-	
+
 	ctx := context.Background()
-	
+
 	// Benchmark
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

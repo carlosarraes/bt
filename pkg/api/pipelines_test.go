@@ -49,11 +49,11 @@ func TestGetStepLogsValidation(t *testing.T) {
 func TestGetStepLogsEndpointTrying(t *testing.T) {
 	// Track which endpoints were called
 	var calledEndpoints []string
-	
+
 	// Create test server that tracks endpoints
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calledEndpoints = append(calledEndpoints, r.URL.Path)
-		
+
 		// Return 404 for all requests to test fallback behavior
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"error": {"message": "Not found"}}`))
@@ -63,7 +63,7 @@ func TestGetStepLogsEndpointTrying(t *testing.T) {
 	// Create client with test server
 	mockAuth := &MockAuthManager{}
 	mockAuth.On("SetHTTPHeaders", mock.AnythingOfType("*http.Request")).Return(nil)
-	
+
 	config := &ClientConfig{
 		BaseURL:       server.URL,
 		Timeout:       5 * time.Second,
@@ -78,13 +78,13 @@ func TestGetStepLogsEndpointTrying(t *testing.T) {
 
 	// This should fail but we want to verify which endpoints were tried
 	_, err = client.Pipelines.GetStepLogs(ctx, "workspace", "repo", "pipeline-uuid", "step-uuid")
-	
+
 	// Should get an error (expected since all endpoints return 404)
 	assert.Error(t, err)
 
 	// Verify that both direct endpoints were tried before falling back
 	assert.GreaterOrEqual(t, len(calledEndpoints), 2, "Should try at least the two direct endpoints")
-	
+
 	// Check that both direct endpoints were tried
 	found := 0
 	for _, endpoint := range calledEndpoints {

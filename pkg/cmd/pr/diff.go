@@ -13,7 +13,6 @@ import (
 	"github.com/carlosarraes/bt/pkg/utils"
 )
 
-
 type DiffCmd struct {
 	PRID         string `arg:"" help:"Pull request ID (number)"`
 	NameOnly     bool   `name:"name-only" help:"Show only names of changed files"`
@@ -28,14 +27,12 @@ type DiffCmd struct {
 	Repository   string `help:"Repository name (defaults to git remote)"`
 }
 
-
 func (cmd *DiffCmd) Run(ctx context.Context) error {
 
-prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
 	if err != nil {
 		return err
 	}
-
 
 	if cmd.Workspace != "" {
 		prCtx.Workspace = cmd.Workspace
@@ -44,23 +41,19 @@ prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
 		prCtx.Repository = cmd.Repository
 	}
 
-
 	if err := prCtx.ValidateWorkspaceAndRepo(); err != nil {
 		return err
 	}
-
 
 	prID, err := cmd.ParsePRID()
 	if err != nil {
 		return err
 	}
 
-
 	diff, err := prCtx.Client.PullRequests.GetPullRequestDiff(ctx, prCtx.Workspace, prCtx.Repository, prID)
 	if err != nil {
 		return handlePullRequestAPIError(err)
 	}
-
 
 	if diff == "" {
 		fmt.Println("No differences found in this pull request.")
@@ -74,7 +67,6 @@ prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
 			return nil
 		}
 	}
-
 
 	switch {
 	case cmd.NameOnly:
@@ -92,12 +84,10 @@ prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
 	}
 }
 
-
 func (cmd *DiffCmd) ParsePRID() (int, error) {
 	if cmd.PRID == "" {
 		return 0, fmt.Errorf("pull request ID is required")
 	}
-
 
 	prIDStr := strings.TrimPrefix(cmd.PRID, "#")
 
@@ -113,10 +103,8 @@ func (cmd *DiffCmd) ParsePRID() (int, error) {
 	return prID, nil
 }
 
-
 func (cmd *DiffCmd) outputNameOnly(diff string) error {
 	files := utils.ExtractChangedFiles(diff)
-	
 
 	if cmd.File != "" {
 		filteredFiles := make([]string, 0)
@@ -134,19 +122,16 @@ func (cmd *DiffCmd) outputNameOnly(diff string) error {
 	return nil
 }
 
-
 func (cmd *DiffCmd) outputPatch(diff string) error {
 
 	if cmd.File != "" {
 		diff = utils.FilterDiffByFile(diff, cmd.File)
 	}
 
-
 	cleanDiff := utils.CleanDiffForPatch(diff)
 	fmt.Print(cleanDiff)
 	return nil
 }
-
 
 func (cmd *DiffCmd) outputColoredDiff(diff string) error {
 
@@ -158,15 +143,12 @@ func (cmd *DiffCmd) outputColoredDiff(diff string) error {
 		}
 	}
 
-
 	useColors := cmd.shouldUseColors()
-
 
 	formattedDiff := utils.FormatDiff(diff, useColors)
 	fmt.Print(formattedDiff)
 	return nil
 }
-
 
 func (cmd *DiffCmd) outputJSON(prCtx *PRContext, diff string, prID int) error {
 
@@ -190,9 +172,7 @@ func (cmd *DiffCmd) outputJSON(prCtx *PRContext, diff string, prID int) error {
 	return prCtx.Formatter.Format(diffData)
 }
 
-
 func (cmd *DiffCmd) outputYAML(prCtx *PRContext, diff string, prID int) error {
-
 
 	yamlFormatter, err := output.NewFormatter(output.FormatYAML, &output.FormatterOptions{
 		NoColor: cmd.NoColor,
@@ -200,7 +180,6 @@ func (cmd *DiffCmd) outputYAML(prCtx *PRContext, diff string, prID int) error {
 	if err != nil {
 		return fmt.Errorf("failed to create YAML formatter: %w", err)
 	}
-
 
 	if cmd.File != "" {
 		diff = utils.FilterDiffByFile(diff, cmd.File)
@@ -221,7 +200,6 @@ func (cmd *DiffCmd) outputYAML(prCtx *PRContext, diff string, prID int) error {
 
 	return yamlFormatter.Format(diffData)
 }
-
 
 func (cmd *DiffCmd) shouldUseColors() bool {
 	switch cmd.Color {
@@ -263,7 +241,7 @@ func (cmd *DiffCmd) outputWithPager(diff string) error {
 		diffSoFancyCmd.Env = append(os.Environ(), "FORCE_COLOR=1")
 
 		lessCmd := exec.Command("less", "--tabs=2", "-RFX")
-		
+
 		pipe, err := diffSoFancyCmd.StdoutPipe()
 		if err != nil {
 			return fmt.Errorf("failed to create pipe: %w", err)
@@ -324,7 +302,7 @@ func (cmd *DiffCmd) filterTestFiles(diff string) string {
 			parts := strings.Fields(line)
 			if len(parts) >= 4 {
 				filename := strings.TrimPrefix(parts[3], "b/")
-				
+
 				inTestFile = isTestFile(filename)
 			}
 		}
@@ -364,12 +342,12 @@ func isTestFile(filename string) bool {
 	}
 
 	lowerFilename := strings.ToLower(filename)
-	
+
 	for _, pattern := range testPatterns {
 		lowerPattern := strings.ToLower(pattern)
-		if strings.HasSuffix(lowerFilename, lowerPattern) || 
-		   strings.Contains(lowerFilename, lowerPattern) ||
-		   strings.HasPrefix(lowerFilename, lowerPattern) {
+		if strings.HasSuffix(lowerFilename, lowerPattern) ||
+			strings.Contains(lowerFilename, lowerPattern) ||
+			strings.HasPrefix(lowerFilename, lowerPattern) {
 			return true
 		}
 	}

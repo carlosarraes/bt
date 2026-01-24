@@ -137,11 +137,11 @@ func TestParseErrorWithRequestID(t *testing.T) {
 
 func TestBitbucketErrorMethods(t *testing.T) {
 	tests := []struct {
-		name        string
-		errorType   ErrorType
-		statusCode  int
-		retryable   bool
-		rateLimit   bool
+		name       string
+		errorType  ErrorType
+		statusCode int
+		retryable  bool
+		rateLimit  bool
 	}{
 		{
 			name:       "Authentication error",

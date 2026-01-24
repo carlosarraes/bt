@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 const sampleDiff = `diff --git a/src/main.go b/src/main.go
 index 1234567..abcdefg 100644
 --- a/src/main.go
@@ -129,10 +128,8 @@ func TestDiffCmd_outputNameOnly(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-
-
 			files := extractChangedFilesForTest(tt.diff)
-			
+
 			if tt.file != "" {
 				filteredFiles := make([]string, 0)
 				for _, file := range files {
@@ -148,18 +145,17 @@ func TestDiffCmd_outputNameOnly(t *testing.T) {
 	}
 }
 
-
 func extractChangedFilesForTest(diff string) []string {
 	files := make([]string, 0)
 	lines := strings.Split(diff, "\n")
-	
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "diff --git") {
 			parts := strings.Fields(line)
 			if len(parts) >= 4 {
 				fileA := strings.TrimPrefix(parts[2], "a/")
 				fileB := strings.TrimPrefix(parts[3], "b/")
-				
+
 				if fileB != "/dev/null" {
 					files = append(files, fileB)
 				} else if fileA != "/dev/null" {
@@ -168,7 +164,7 @@ func extractChangedFilesForTest(diff string) []string {
 			}
 		}
 	}
-	
+
 	return files
 }
 
@@ -198,7 +194,7 @@ func TestDiffCmd_shouldUseColors(t *testing.T) {
 		{
 			name:  "auto without no color flag",
 			color: "auto",
-want:  false,
+			want:  false,
 		},
 		{
 			name:  "invalid color setting",
@@ -266,7 +262,7 @@ func TestDiffCmd_validateFlags(t *testing.T) {
 				NameOnly: true,
 				Patch:    true,
 			},
-wantErr: false,
+			wantErr: false,
 		},
 	}
 
@@ -274,7 +270,7 @@ wantErr: false,
 		t.Run(tt.name, func(t *testing.T) {
 
 			_, err := tt.cmd.ParsePRID()
-			
+
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errorMsg != "" {
@@ -287,17 +283,8 @@ wantErr: false,
 	}
 }
 
-
 func TestDiffCmd_Integration(t *testing.T) {
 	t.Skip("Integration test - requires real Bitbucket API")
-
-
-
-
-
-
-
-
 
 }
 
@@ -343,10 +330,9 @@ func TestDiffCmd_ErrorHandling(t *testing.T) {
 	}
 }
 
-
 func BenchmarkDiffCmd_ParsePRID(b *testing.B) {
 	cmd := &DiffCmd{PRID: "12345"}
-	
+
 	for i := 0; i < b.N; i++ {
 		_, _ = cmd.ParsePRID()
 	}
@@ -357,7 +343,6 @@ func BenchmarkExtractChangedFiles(b *testing.B) {
 		_ = extractChangedFilesForTest(sampleDiff)
 	}
 }
-
 
 func TestDiffCmd_CommandStructure(t *testing.T) {
 	cmd := &DiffCmd{
@@ -372,7 +357,6 @@ func TestDiffCmd_CommandStructure(t *testing.T) {
 		Repository: "",
 	}
 
-
 	assert.Equal(t, "123", cmd.PRID)
 	assert.Equal(t, "auto", cmd.Color)
 	assert.Equal(t, "diff", cmd.Output)
@@ -380,7 +364,6 @@ func TestDiffCmd_CommandStructure(t *testing.T) {
 	assert.False(t, cmd.Patch)
 	assert.False(t, cmd.NoColor)
 }
-
 
 func TestDiffCmd_OutputModeSelection(t *testing.T) {
 	tests := []struct {
@@ -424,7 +407,6 @@ func TestDiffCmd_OutputModeSelection(t *testing.T) {
 				Patch:    tt.patch,
 				Output:   tt.output,
 			}
-
 
 			var selectedMode string
 			switch {

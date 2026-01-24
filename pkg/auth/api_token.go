@@ -27,7 +27,7 @@ func NewAPITokenAuth(config *Config, storage CredentialStorage) (Authenticator, 
 	if storage == nil {
 		return nil, fmt.Errorf("storage cannot be nil")
 	}
-	
+
 	auth := &APITokenAuth{
 		config:  config,
 		storage: storage,
@@ -35,7 +35,7 @@ func NewAPITokenAuth(config *Config, storage CredentialStorage) (Authenticator, 
 			Timeout: time.Duration(config.Timeout) * time.Second,
 		},
 	}
-	
+
 	// Try to load existing credentials
 	var creds StoredCredentials
 	if storage.Exists("auth") {
@@ -43,7 +43,7 @@ func NewAPITokenAuth(config *Config, storage CredentialStorage) (Authenticator, 
 			auth.credentials = &creds
 		}
 	}
-	
+
 	return auth, nil
 }
 
@@ -51,7 +51,7 @@ func (a *APITokenAuth) Authenticate(ctx context.Context) error {
 	// Check for environment variables first
 	email := os.Getenv("BITBUCKET_EMAIL")
 	token := os.Getenv("BITBUCKET_API_TOKEN")
-	
+
 	// Also check legacy environment variables for backward compatibility
 	if email == "" {
 		email = os.Getenv("BITBUCKET_USERNAME")
@@ -59,7 +59,7 @@ func (a *APITokenAuth) Authenticate(ctx context.Context) error {
 	if token == "" {
 		token = os.Getenv("BITBUCKET_PASSWORD")
 	}
-	
+
 	if email == "" || token == "" {
 		// Check if we have stored credentials
 		if a.credentials != nil && a.credentials.Username != "" && a.credentials.Password != "" {
@@ -69,12 +69,12 @@ func (a *APITokenAuth) Authenticate(ctx context.Context) error {
 			return fmt.Errorf("no API token credentials found - set BITBUCKET_EMAIL and BITBUCKET_API_TOKEN environment variables or use 'bt auth login'")
 		}
 	}
-	
+
 	// Validate credentials by making a test API call
 	if err := a.validateCredentials(ctx, email, token); err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
-	
+
 	// Store credentials after successful authentication
 	a.credentials = &StoredCredentials{
 		Method:    AuthMethodAPIToken,
@@ -83,11 +83,11 @@ func (a *APITokenAuth) Authenticate(ctx context.Context) error {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	
+
 	if err := a.storage.Store("auth", a.credentials); err != nil {
 		return fmt.Errorf("failed to store credentials: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -95,10 +95,10 @@ func (a *APITokenAuth) SetHTTPHeaders(req *http.Request) error {
 	if a.credentials == nil {
 		return fmt.Errorf("not authenticated")
 	}
-	
+
 	email := a.credentials.Username
 	token := a.credentials.Password
-	
+
 	// Check environment variables for runtime override
 	if envEmail := os.Getenv("BITBUCKET_EMAIL"); envEmail != "" {
 		email = envEmail
@@ -106,7 +106,7 @@ func (a *APITokenAuth) SetHTTPHeaders(req *http.Request) error {
 	if envToken := os.Getenv("BITBUCKET_API_TOKEN"); envToken != "" {
 		token = envToken
 	}
-	
+
 	// Also check legacy environment variables for backward compatibility
 	if email == "" {
 		if envEmail := os.Getenv("BITBUCKET_USERNAME"); envEmail != "" {
@@ -118,16 +118,16 @@ func (a *APITokenAuth) SetHTTPHeaders(req *http.Request) error {
 			token = envToken
 		}
 	}
-	
+
 	if email == "" || token == "" {
 		return fmt.Errorf("missing email or API token")
 	}
-	
+
 	// Create Basic Auth header (email:token)
 	auth := base64.StdEncoding.EncodeToString([]byte(email + ":" + token))
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("User-Agent", "bt-cli/1.0")
-	
+
 	return nil
 }
 
@@ -135,10 +135,10 @@ func (a *APITokenAuth) IsValid(ctx context.Context) (bool, error) {
 	if a.credentials == nil {
 		return false, nil
 	}
-	
+
 	email := a.credentials.Username
 	token := a.credentials.Password
-	
+
 	// Check environment variables for runtime override
 	if envEmail := os.Getenv("BITBUCKET_EMAIL"); envEmail != "" {
 		email = envEmail
@@ -146,7 +146,7 @@ func (a *APITokenAuth) IsValid(ctx context.Context) (bool, error) {
 	if envToken := os.Getenv("BITBUCKET_API_TOKEN"); envToken != "" {
 		token = envToken
 	}
-	
+
 	// Also check legacy environment variables for backward compatibility
 	if email == "" {
 		if envEmail := os.Getenv("BITBUCKET_USERNAME"); envEmail != "" {
@@ -158,11 +158,11 @@ func (a *APITokenAuth) IsValid(ctx context.Context) (bool, error) {
 			token = envToken
 		}
 	}
-	
+
 	if email == "" || token == "" {
 		return false, nil
 	}
-	
+
 	// Validate by making a test API call
 	err := a.validateCredentials(ctx, email, token)
 	return err == nil, nil
@@ -177,10 +177,10 @@ func (a *APITokenAuth) GetUser(ctx context.Context) (*User, error) {
 	if a.credentials == nil {
 		return nil, fmt.Errorf("not authenticated")
 	}
-	
+
 	email := a.credentials.Username
 	token := a.credentials.Password
-	
+
 	// Check environment variables for runtime override
 	if envEmail := os.Getenv("BITBUCKET_EMAIL"); envEmail != "" {
 		email = envEmail
@@ -188,7 +188,7 @@ func (a *APITokenAuth) GetUser(ctx context.Context) (*User, error) {
 	if envToken := os.Getenv("BITBUCKET_API_TOKEN"); envToken != "" {
 		token = envToken
 	}
-	
+
 	// Also check legacy environment variables for backward compatibility
 	if email == "" {
 		if envEmail := os.Getenv("BITBUCKET_USERNAME"); envEmail != "" {
@@ -200,7 +200,7 @@ func (a *APITokenAuth) GetUser(ctx context.Context) (*User, error) {
 			token = envToken
 		}
 	}
-	
+
 	return a.fetchUser(ctx, email, token)
 }
 
@@ -208,7 +208,7 @@ func (a *APITokenAuth) Clear() error {
 	if err := a.storage.Delete("auth"); err != nil {
 		return fmt.Errorf("failed to clear stored credentials: %w", err)
 	}
-	
+
 	a.credentials = nil
 	return nil
 }
@@ -219,26 +219,26 @@ func (a *APITokenAuth) validateCredentials(ctx context.Context, email, token str
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set Basic Auth header (email:token)
 	auth := base64.StdEncoding.EncodeToString([]byte(email + ":" + token))
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("User-Agent", "bt-cli/1.0")
-	
+
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to make API request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("invalid email or API token")
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API request failed with status %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
 
@@ -248,22 +248,22 @@ func (a *APITokenAuth) fetchUser(ctx context.Context, email, token string) (*Use
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set Basic Auth header (email:token)
 	auth := base64.StdEncoding.EncodeToString([]byte(email + ":" + token))
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("User-Agent", "bt-cli/1.0")
-	
+
 	resp, err := a.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make API request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get user info: status %d", resp.StatusCode)
 	}
-	
+
 	var apiResponse struct {
 		Username    string `json:"username"`
 		DisplayName string `json:"display_name"`
@@ -271,11 +271,11 @@ func (a *APITokenAuth) fetchUser(ctx context.Context, email, token string) (*Use
 		UUID        string `json:"uuid"`
 		Email       string `json:"email"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode API response: %w", err)
 	}
-	
+
 	return &User{
 		Username:    apiResponse.Username,
 		DisplayName: apiResponse.DisplayName,

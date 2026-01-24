@@ -169,10 +169,10 @@ func TestRerunCmd_resolvePipelineUUID(t *testing.T) {
 
 func TestRerunCmd_validateRerunnable(t *testing.T) {
 	tests := []struct {
-		name        string
+		name          string
 		pipelineState string
-		expectError bool
-		errorMsg    string
+		expectError   bool
+		errorMsg      string
 	}{
 		{
 			name:          "successful pipeline",

@@ -147,7 +147,7 @@ func TestReadyCmd_isPRDraft(t *testing.T) {
 }
 
 func TestReadyCmd_Run_ValidationErrors(t *testing.T) {
-	
+
 	tests := []struct {
 		name    string
 		prID    string

@@ -28,14 +28,14 @@ type ErrorPattern struct {
 
 // ExtractedError represents an error found in log output
 type ExtractedError struct {
-	Line        int       `json:"line"`        // Line number where error was found
-	Content     string    `json:"content"`     // The actual error line content
-	Pattern     string    `json:"pattern"`     // Name of the pattern that matched
-	Category    string    `json:"category"`    // Error category
-	Severity    string    `json:"severity"`    // Error severity
-	Context     []string  `json:"context"`     // Surrounding lines for context
-	Timestamp   time.Time `json:"timestamp"`   // When the error was extracted
-	StepName    string    `json:"step_name"`   // Pipeline step where error occurred
+	Line      int       `json:"line"`      // Line number where error was found
+	Content   string    `json:"content"`   // The actual error line content
+	Pattern   string    `json:"pattern"`   // Name of the pattern that matched
+	Category  string    `json:"category"`  // Error category
+	Severity  string    `json:"severity"`  // Error severity
+	Context   []string  `json:"context"`   // Surrounding lines for context
+	Timestamp time.Time `json:"timestamp"` // When the error was extracted
+	StepName  string    `json:"step_name"` // Pipeline step where error occurred
 }
 
 // LogAnalysisResult contains the complete analysis of a log stream
@@ -295,21 +295,21 @@ func (lp *LogParser) AnalyzeLog(reader io.Reader, stepName string) (*LogAnalysis
 	// Process each line for error patterns
 	for i, line := range lines {
 		lineNumber = i + 1
-		
+
 		for _, pattern := range lp.ErrorPatterns {
 			if lp.matchesPattern(line, pattern.Regex) {
 				// Extract context lines around the error
 				context := lp.extractContext(lines, i, lp.ContextLines)
-				
+
 				error := ExtractedError{
-					Line:        lineNumber,
-					Content:     strings.TrimSpace(line),
-					Pattern:     pattern.Name,
-					Category:    pattern.Category,
-					Severity:    pattern.Severity,
-					Context:     context,
-					Timestamp:   time.Now(),
-					StepName:    stepName,
+					Line:      lineNumber,
+					Content:   strings.TrimSpace(line),
+					Pattern:   pattern.Name,
+					Category:  pattern.Category,
+					Severity:  pattern.Severity,
+					Context:   context,
+					Timestamp: time.Now(),
+					StepName:  stepName,
 				}
 
 				result.Errors = append(result.Errors, error)

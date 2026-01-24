@@ -14,11 +14,11 @@ import (
 )
 
 type DescriptionGenerator struct {
-	client     *api.Client
-	repo       *git.Repository
-	workspace  string
-	repository string
-	noColor    bool
+	client       *api.Client
+	repo         *git.Repository
+	workspace    string
+	repository   string
+	noColor      bool
 	openaiClient *OpenAIClient
 }
 
@@ -65,14 +65,14 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 	if opts.Verbose {
 		g.logStep("📊 Analyzing code changes...")
 	}
-	
+
 	diffData, err := g.getGitDiff(opts.SourceBranch, opts.TargetBranch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get git diff: %w", err)
 	}
 
 	if opts.Verbose {
-		g.logStep(fmt.Sprintf("🏷️  Categorizing changes: %d files changed (+%d -%d lines)", 
+		g.logStep(fmt.Sprintf("🏷️  Categorizing changes: %d files changed (+%d -%d lines)",
 			diffData.Stats.FilesChanged, diffData.Stats.LinesAdded, diffData.Stats.LinesRemoved))
 	}
 
@@ -81,7 +81,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 		if opts.Verbose {
 			g.logStep("📋 Reading JIRA context...")
 		}
-		
+
 		jiraContext, err = g.readJiraContext(opts.JiraFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read JIRA context: %w", err)
@@ -92,7 +92,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 		if opts.Verbose {
 			g.logStep(fmt.Sprintf("🤖 Generating description with OpenAI %s...", g.openaiClient.GetModel()))
 		}
-		
+
 		result, err := g.generateWithOpenAI(ctx, opts, branchContext, diffData, jiraContext)
 		if err == nil {
 			if opts.Verbose {
@@ -100,7 +100,7 @@ func (g *DescriptionGenerator) GenerateDescription(ctx context.Context, opts *Ge
 			}
 			return result, nil
 		}
-		
+
 		if opts.Verbose {
 			g.logStep(fmt.Sprintf("⚠️  OpenAI generation failed: %v", err))
 			g.logStep("🔄 Falling back to local template generation...")
@@ -170,7 +170,7 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 	if strings.TrimSpace(checklist) == "" {
 		checklist = "✅ Testado localmente\n\n✅ Código revisado"
 	}
-	
+
 	evidencePlaceholders := strings.Join(schema.EvidencePlaceholders, "\n\n")
 	if strings.TrimSpace(evidencePlaceholders) == "" {
 		evidencePlaceholders = "- [ ] Evidências de teste\n\n- [ ] Documentação relevante"
@@ -201,14 +201,14 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 		Description: description,
 		Stats:       diffData.Stats,
 		Metadata: map[string]interface{}{
-			"branch_name":    opts.SourceBranch,
-			"target_branch":  opts.TargetBranch,
-			"template":       opts.Template,
-			"has_jira":       opts.JiraFile != "",
-			"openai_used":    true,
-			"files_changed":  diffData.Stats.FilesChanged,
-			"lines_added":    diffData.Stats.LinesAdded,
-			"lines_removed":  diffData.Stats.LinesRemoved,
+			"branch_name":   opts.SourceBranch,
+			"target_branch": opts.TargetBranch,
+			"template":      opts.Template,
+			"has_jira":      opts.JiraFile != "",
+			"openai_used":   true,
+			"files_changed": diffData.Stats.FilesChanged,
+			"lines_added":   diffData.Stats.LinesAdded,
+			"lines_removed": diffData.Stats.LinesRemoved,
 		},
 		Generated: time.Now(),
 	}, nil
@@ -225,7 +225,7 @@ func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, o
 	}
 
 	templateVars := g.buildTemplateVariables(branchContext, analysis, jiraContext, diffData.Stats)
-	
+
 	if opts.Verbose {
 		g.logStep("📝 Creating checklist based on change types...")
 	}
@@ -256,15 +256,15 @@ func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, o
 		Description: description,
 		Stats:       diffData.Stats,
 		Metadata: map[string]interface{}{
-			"branch_name":    opts.SourceBranch,
-			"target_branch":  opts.TargetBranch,
-			"template":       opts.Template,
-			"has_jira":       opts.JiraFile != "",
-			"change_types":   analysis.ChangeTypes,
-			"openai_used":    false,
-			"files_changed":  diffData.Stats.FilesChanged,
-			"lines_added":    diffData.Stats.LinesAdded,
-			"lines_removed":  diffData.Stats.LinesRemoved,
+			"branch_name":   opts.SourceBranch,
+			"target_branch": opts.TargetBranch,
+			"template":      opts.Template,
+			"has_jira":      opts.JiraFile != "",
+			"change_types":  analysis.ChangeTypes,
+			"openai_used":   false,
+			"files_changed": diffData.Stats.FilesChanged,
+			"lines_added":   diffData.Stats.LinesAdded,
+			"lines_removed": diffData.Stats.LinesRemoved,
 		},
 		Generated: time.Now(),
 	}
@@ -335,31 +335,31 @@ func (g *DescriptionGenerator) getCommitMessages(sourceBranch, targetBranch stri
 
 func (g *DescriptionGenerator) calculateDiffStats(diffContent string) (*utils.DiffStats, error) {
 	lines := strings.Split(diffContent, "\n")
-	
+
 	var filesChanged int
 	var linesAdded int
 	var linesRemoved int
-	
+
 	currentFileChanges := false
-	
+
 	for _, line := range lines {
 		if strings.HasPrefix(line, "diff --git") {
 			filesChanged++
 			currentFileChanges = true
 			continue
 		}
-		
+
 		if !currentFileChanges {
 			continue
 		}
-		
+
 		if strings.HasPrefix(line, "+") && !strings.HasPrefix(line, "+++") {
 			linesAdded++
 		} else if strings.HasPrefix(line, "-") && !strings.HasPrefix(line, "---") {
 			linesRemoved++
 		}
 	}
-	
+
 	return &utils.DiffStats{
 		FilesChanged: filesChanged,
 		LinesAdded:   linesAdded,
@@ -413,16 +413,16 @@ func (g *DescriptionGenerator) buildTemplateVariables(branchContext *BranchConte
 
 func (g *DescriptionGenerator) generateTitle(branchContext *BranchContext, analysis *DiffAnalysis) string {
 	branchName := branchContext.SourceBranch
-	
+
 	title := strings.TrimPrefix(branchName, "feature/")
 	title = strings.TrimPrefix(title, "fix/")
 	title = strings.TrimPrefix(title, "hotfix/")
 	title = strings.TrimPrefix(title, "bugfix/")
 	title = strings.TrimPrefix(title, "feat/")
-	
+
 	title = strings.ReplaceAll(title, "-", " ")
 	title = strings.ReplaceAll(title, "_", " ")
-	
+
 	if len(title) > 0 {
 		title = strings.ToUpper(title[:1]) + title[1:]
 	}
@@ -518,7 +518,7 @@ func (g *DescriptionGenerator) extractClientSpecific(jiraContext string) string 
 
 func (g *DescriptionGenerator) generateContextFromBranch(branchContext *BranchContext, analysis *DiffAnalysis) string {
 	branchName := branchContext.SourceBranch
-	
+
 	if strings.Contains(branchName, "feature") {
 		return "Implementação de nova funcionalidade"
 	} else if strings.Contains(branchName, "fix") || strings.Contains(branchName, "bug") {
@@ -528,13 +528,13 @@ func (g *DescriptionGenerator) generateContextFromBranch(branchContext *BranchCo
 	} else if strings.Contains(branchName, "refactor") {
 		return "Refatoração de código existente"
 	}
-	
+
 	return "Desenvolvimento de melhorias no sistema"
 }
 
 func (g *DescriptionGenerator) generateChanges(analysis *DiffAnalysis) string {
 	var changes []string
-	
+
 	for _, changeType := range analysis.ChangeTypes {
 		switch changeType {
 		case "backend":
@@ -553,17 +553,17 @@ func (g *DescriptionGenerator) generateChanges(analysis *DiffAnalysis) string {
 			changes = append(changes, "• Adição/atualização de testes")
 		}
 	}
-	
+
 	if len(changes) == 0 {
 		changes = append(changes, "• Implementação de melhorias no código")
 	}
-	
+
 	return strings.Join(changes, "\n")
 }
 
 func (g *DescriptionGenerator) generateEvidencePlaceholders(analysis *DiffAnalysis) string {
 	var placeholders []string
-	
+
 	for _, changeType := range analysis.ChangeTypes {
 		switch changeType {
 		case "frontend":
@@ -580,12 +580,12 @@ func (g *DescriptionGenerator) generateEvidencePlaceholders(analysis *DiffAnalys
 			placeholders = append(placeholders, "- [ ] Testes de integração")
 		}
 	}
-	
+
 	if len(placeholders) == 0 {
 		placeholders = append(placeholders, "- [ ] Evidências de teste")
 		placeholders = append(placeholders, "- [ ] Documentação relevante")
 	}
-	
+
 	return strings.Join(placeholders, "\n")
 }
 

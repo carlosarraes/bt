@@ -20,9 +20,9 @@ func TestTableFormatter_Format(t *testing.T) {
 			contains: []string{},
 		},
 		{
-			name: "empty slice",
-			data: []map[string]interface{}{},
-			noColor: true,
+			name:     "empty slice",
+			data:     []map[string]interface{}{},
+			noColor:  true,
 			contains: []string{"No data to display"},
 		},
 		{
@@ -34,7 +34,7 @@ func TestTableFormatter_Format(t *testing.T) {
 			noColor: true,
 			contains: []string{
 				"id", "status", "branch", // headers
-				"1", "SUCCESS", "main",   // first row
+				"1", "SUCCESS", "main", // first row
 				"2", "FAILED", "develop", // second row
 			},
 		},
@@ -56,9 +56,9 @@ func TestTableFormatter_Format(t *testing.T) {
 			},
 		},
 		{
-			name: "empty map",
-			data: map[string]interface{}{},
-			noColor: true,
+			name:     "empty map",
+			data:     map[string]interface{}{},
+			noColor:  true,
 			contains: []string{"No data to display"},
 		},
 	}
@@ -78,11 +78,11 @@ func TestTableFormatter_Format(t *testing.T) {
 			}
 
 			result := buf.String()
-			
+
 			// Remove extra whitespace and newlines for easier testing
 			normalizedResult := strings.ReplaceAll(result, "\n", " ")
 			normalizedResult = strings.Join(strings.Fields(normalizedResult), " ")
-			
+
 			for _, expected := range tt.contains {
 				// Check if the expected text appears anywhere in the result
 				// This accounts for lipgloss word wrapping
@@ -130,7 +130,7 @@ func TestTableFormatter_FormatStruct(t *testing.T) {
 	result := buf.String()
 	normalizedResult := strings.ReplaceAll(result, "\n", " ")
 	normalizedResult = strings.Join(strings.Fields(normalizedResult), " ")
-	
+
 	expectedParts := []string{
 		"Key", "Value", // headers
 		"id", "123",
@@ -174,7 +174,7 @@ func TestTableFormatter_FormatInterfaceSlice(t *testing.T) {
 	result := buf.String()
 	normalizedResult := strings.ReplaceAll(result, "\n", " ")
 	normalizedResult = strings.Join(strings.Fields(normalizedResult), " ")
-	
+
 	expectedParts := []string{
 		"id", "name", // headers
 		"1", "First",
@@ -224,7 +224,7 @@ func TestTableFormatter_ColorHandling(t *testing.T) {
 			}
 
 			result := buf.String()
-			
+
 			// Basic check that output is generated
 			if len(result) == 0 {
 				t.Error("TableFormatter should generate output")
@@ -263,7 +263,7 @@ func TestTableFormatter_SetNoColor(t *testing.T) {
 	result := buf.String()
 	normalizedResult := strings.ReplaceAll(result, "\n", " ")
 	normalizedResult = strings.Join(strings.Fields(normalizedResult), " ")
-	
+
 	// Should still generate proper output
 	if !strings.Contains(normalizedResult, "id") || !strings.Contains(normalizedResult, "statu") {
 		t.Errorf("TableFormatter with SetNoColor should still generate proper output, got:\n%s", result)
@@ -280,7 +280,7 @@ func TestTableFormatter_MissingDataHandling(t *testing.T) {
 	// Test with maps that have missing keys
 	data := []map[string]interface{}{
 		{"id": "1", "status": "SUCCESS", "branch": "main"},
-		{"id": "2", "status": "FAILED"}, // missing branch
+		{"id": "2", "status": "FAILED"},  // missing branch
 		{"id": "3", "branch": "develop"}, // missing status
 	}
 
@@ -293,7 +293,7 @@ func TestTableFormatter_MissingDataHandling(t *testing.T) {
 	result := buf.String()
 	normalizedResult := strings.ReplaceAll(result, "\n", " ")
 	normalizedResult = strings.Join(strings.Fields(normalizedResult), " ")
-	
+
 	// Should contain all headers from the first row
 	expectedHeaders := []string{"id", "statu", "branc"} // Use prefixes that won't be broken
 	for _, header := range expectedHeaders {

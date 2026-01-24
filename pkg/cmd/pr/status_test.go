@@ -70,7 +70,7 @@ func TestStatusCmd_getPRsCreatedByUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &StatusCmd{}
 			ctx := context.Background()
-			
+
 			prCtx := &PRContext{
 				Workspace:  "test-workspace",
 				Repository: "test-repo",
@@ -133,10 +133,10 @@ func TestStatusCmd_getStatusIcon(t *testing.T) {
 
 func TestStatusCmd_formatOutput(t *testing.T) {
 	tests := []struct {
-		name       string
-		output     string
-		result     *PRStatusResult
-		wantErr    bool
+		name    string
+		output  string
+		result  *PRStatusResult
+		wantErr bool
 	}{
 		{
 			name:   "table format",
@@ -166,9 +166,9 @@ func TestStatusCmd_formatOutput(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "invalid format",
-			output: "xml",
-			result: &PRStatusResult{},
+			name:    "invalid format",
+			output:  "xml",
+			result:  &PRStatusResult{},
 			wantErr: true,
 		},
 	}
@@ -179,8 +179,7 @@ func TestStatusCmd_formatOutput(t *testing.T) {
 				Output: tt.output,
 			}
 
-			prCtx := &PRContext{
-			}
+			prCtx := &PRContext{}
 
 			if prCtx.Formatter == nil {
 				t.Skip("no formatter available for testing")
@@ -196,7 +195,7 @@ func TestStatusCmd_formatOutput(t *testing.T) {
 
 func TestGetCurrentBranch(t *testing.T) {
 	branch, err := getCurrentBranch()
-	
+
 	if err != nil && branch == "" {
 		t.Log("Not in git repository, skipping branch test")
 		return

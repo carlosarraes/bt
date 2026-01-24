@@ -58,7 +58,7 @@ func TestCheckoutCmd_ParsePRID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := ParsePRID(tt.input)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ParsePRID(%q) expected error but got none", tt.input)
@@ -76,7 +76,6 @@ func TestCheckoutCmd_ParsePRID(t *testing.T) {
 }
 
 func TestIsSameBranch(t *testing.T) {
-	
+
 	t.Skip("Skipping nil repository test - requires valid git repository for testing")
 }
-

@@ -6,7 +6,7 @@ import (
 
 func TestSanitizeProjectKey(t *testing.T) {
 	discovery := &ProjectKeyDiscovery{}
-	
+
 	tests := []struct {
 		input    string
 		expected string
@@ -21,7 +21,7 @@ func TestSanitizeProjectKey(t *testing.T) {
 		{"", ""},
 		{"a", "a"},
 	}
-	
+
 	for _, test := range tests {
 		result := discovery.sanitizeProjectKey(test.input)
 		if result != test.expected {
@@ -32,7 +32,7 @@ func TestSanitizeProjectKey(t *testing.T) {
 
 func TestIsValidProjectKey(t *testing.T) {
 	discovery := &ProjectKeyDiscovery{}
-	
+
 	tests := []struct {
 		key   string
 		valid bool
@@ -47,7 +47,7 @@ func TestIsValidProjectKey(t *testing.T) {
 		{"workspace#repo", false},
 		{"very_long_" + string(make([]byte, 400)), false},
 	}
-	
+
 	for _, test := range tests {
 		result := discovery.isValidProjectKey(test.key)
 		if result != test.valid {
@@ -58,7 +58,7 @@ func TestIsValidProjectKey(t *testing.T) {
 
 func TestExtractProjectKeyFromURL(t *testing.T) {
 	discovery := &ProjectKeyDiscovery{}
-	
+
 	tests := []struct {
 		url      string
 		expected string
@@ -70,7 +70,7 @@ func TestExtractProjectKeyFromURL(t *testing.T) {
 		{"https://example.com/no-match", ""},
 		{"", ""},
 	}
-	
+
 	for _, test := range tests {
 		result := discovery.extractProjectKeyFromURL(test.url)
 		if result != test.expected {
@@ -81,20 +81,20 @@ func TestExtractProjectKeyFromURL(t *testing.T) {
 
 func TestGetProjectKeyStrategies(t *testing.T) {
 	discovery := &ProjectKeyDiscovery{}
-	
+
 	strategies := discovery.GetProjectKeyStrategies()
 	if len(strategies) != 5 {
 		t.Errorf("Expected 5 strategies, got %d", len(strategies))
 	}
-	
+
 	expectedStrategies := []string{
 		"Bitbucket Reports API",
-		"Environment Variable", 
+		"Environment Variable",
 		"Configuration File",
 		"Git Repository",
 		"Heuristic Naming",
 	}
-	
+
 	for i, expected := range expectedStrategies {
 		if !containsSubstring(strategies[i], expected) {
 			t.Errorf("Strategy %d should contain %q, got %q", i, expected, strategies[i])

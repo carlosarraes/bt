@@ -14,8 +14,8 @@ import (
 )
 
 type ReportCmd struct {
-	PipelineID        string   `arg:"" help:"Pipeline ID (build number or UUID)"`
-	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	PipelineID        string `arg:"" help:"Pipeline ID (build number or UUID)"`
+	Output            string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor           bool
 	Coverage          bool     `help:"Show only coverage-related information"`
 	Issues            bool     `help:"Show only code quality issues"`
@@ -148,8 +148,8 @@ func (cmd *ReportCmd) createSonarCloudService(ctx context.Context, runCtx *RunCo
 	sonarConfig := sonarcloud.DefaultClientConfig()
 	if sonarConfig.Token == "" {
 		return nil, &sonarcloud.SonarCloudError{
-			StatusCode:   0,
-			UserMessage:  "SonarCloud access denied. Set SONARCLOUD_TOKEN environment variable.",
+			StatusCode:  0,
+			UserMessage: "SonarCloud access denied. Set SONARCLOUD_TOKEN environment variable.",
 			SuggestedActions: []string{
 				"Go to https://sonarcloud.io/account/security/",
 				"Generate a new token with a descriptive name",
@@ -197,7 +197,7 @@ func (cmd *ReportCmd) openSonarCloudDashboard(ctx context.Context, runCtx *RunCo
 
 	var url string
 	if report.PullRequestID != nil {
-		url = fmt.Sprintf("https://sonarcloud.io/dashboard?id=%s&pullRequest=%d", 
+		url = fmt.Sprintf("https://sonarcloud.io/dashboard?id=%s&pullRequest=%d",
 			report.ProjectKey, *report.PullRequestID)
 	} else {
 		url = fmt.Sprintf("https://sonarcloud.io/project/overview?id=%s", report.ProjectKey)
@@ -235,22 +235,22 @@ func (cmd *ReportCmd) launchBrowser(url string) error {
 
 func (cmd *ReportCmd) generateReport(ctx context.Context, runCtx *RunContext, service *sonarcloud.Service, pipeline *api.Pipeline) error {
 	filters := sonarcloud.FilterOptions{
-		IncludeCoverage:     !cmd.Issues || cmd.Coverage,
-		IncludeIssues:       !cmd.Coverage || cmd.Issues,
-		CoverageThreshold:   float64(cmd.CoverageThreshold),
-		Limit:               cmd.Limit,
-		NewCodeOnly:         cmd.NewCodeOnly,
-		SeverityFilter:      cmd.Severity,
-		ShowWorstFirst:      true,
-		ShowAllLines:        cmd.ShowAllLines,
-		LinesPerFile:        cmd.LinesPerFile,
-		NewLinesOnly:        cmd.NewLinesOnly,
-		MinUncoveredLines:   cmd.MinUncoveredLines,
-		MaxUncoveredLines:   cmd.MaxUncoveredLines,
-		FilePattern:         cmd.FilePattern,
-		NoLineDetails:       cmd.NoLineDetails,
-		TruncateLines:       cmd.TruncateLines,
-		Debug:               cmd.Debug,
+		IncludeCoverage:   !cmd.Issues || cmd.Coverage,
+		IncludeIssues:     !cmd.Coverage || cmd.Issues,
+		CoverageThreshold: float64(cmd.CoverageThreshold),
+		Limit:             cmd.Limit,
+		NewCodeOnly:       cmd.NewCodeOnly,
+		SeverityFilter:    cmd.Severity,
+		ShowWorstFirst:    true,
+		ShowAllLines:      cmd.ShowAllLines,
+		LinesPerFile:      cmd.LinesPerFile,
+		NewLinesOnly:      cmd.NewLinesOnly,
+		MinUncoveredLines: cmd.MinUncoveredLines,
+		MaxUncoveredLines: cmd.MaxUncoveredLines,
+		FilePattern:       cmd.FilePattern,
+		NoLineDetails:     cmd.NoLineDetails,
+		TruncateLines:     cmd.TruncateLines,
+		Debug:             cmd.Debug,
 	}
 
 	if !cmd.Coverage && !cmd.Issues {
@@ -306,8 +306,8 @@ func (cmd *ReportCmd) formatTable(runCtx *RunContext, report *sonarcloud.Report,
 		if len(report.QualityGate.FailedConditions) > 0 {
 			fmt.Printf("❌ Quality Gate Failures:\n")
 			for _, condition := range report.QualityGate.FailedConditions {
-				fmt.Printf("  • %s: %s (required %s %s)\n", 
-					condition.MetricName, condition.ActualValue, 
+				fmt.Printf("  • %s: %s (required %s %s)\n",
+					condition.MetricName, condition.ActualValue,
 					condition.Comparator, condition.Threshold)
 			}
 			fmt.Println()
@@ -361,11 +361,11 @@ func (cmd *ReportCmd) formatCoverageSection(coverage *sonarcloud.CoverageData, f
 
 		newCovStr := "-"
 		if file.NewUncoveredLines > 0 || file.NewCoverage > 0 {
-			newCovStr = fmt.Sprintf("%.1f%% (%d/%d)", 
+			newCovStr = fmt.Sprintf("%.1f%% (%d/%d)",
 				file.NewCoverage, file.NewUncoveredLines, file.NewUncoveredLines)
 		}
 
-		fmt.Printf("│ %-39s │ %7.1f%% │ %15d │ %12s │\n", 
+		fmt.Printf("│ %-39s │ %7.1f%% │ %15d │ %12s │\n",
 			fileName, file.Coverage, file.UncoveredLines, newCovStr)
 		displayedFiles++
 	}
@@ -377,7 +377,7 @@ func (cmd *ReportCmd) formatCoverageSection(coverage *sonarcloud.CoverageData, f
 	}
 
 	fmt.Printf("🎯 Coverage Goals:\n")
-	
+
 	if coverage.NewCodeCoverage > 0 {
 		fmt.Printf("  • New Code (PR): %.1f%%", coverage.NewCodeCoverage)
 		if coverage.NewCodeCoverage >= 90 {
@@ -386,7 +386,7 @@ func (cmd *ReportCmd) formatCoverageSection(coverage *sonarcloud.CoverageData, f
 			fmt.Printf(" → Required: 90%% ❌")
 		}
 		fmt.Println()
-		
+
 		fmt.Printf("  • Overall Project: %.1f%% (for context)", coverage.OverallCoverage)
 		fmt.Println()
 	} else {
@@ -403,56 +403,56 @@ func (cmd *ReportCmd) formatCoverageSection(coverage *sonarcloud.CoverageData, f
 
 func (cmd *ReportCmd) displayUncoveredLinesDetails(coverageDetails []sonarcloud.CoverageDetails, filters sonarcloud.FilterOptions) {
 	fmt.Printf("🔍 Uncovered Lines Details:\n\n")
-	
+
 	displayedFiles := 0
 	maxFilesToShow := filters.Limit
 	if maxFilesToShow <= 0 {
 		maxFilesToShow = 10
 	}
-	
+
 	for _, details := range coverageDetails {
 		if displayedFiles >= maxFilesToShow {
 			break
 		}
-		
+
 		if len(details.UncoveredLines) == 0 {
 			continue
 		}
-		
+
 		fmt.Printf("%s (%.1f%% coverage):\n", details.FilePath, details.CoveragePercent)
-		
+
 		linesToShow := details.UncoveredLines
 		if !cmd.ShowAllLines && len(linesToShow) > cmd.LinesPerFile {
 			linesToShow = linesToShow[:cmd.LinesPerFile]
 		}
-		
+
 		for _, line := range linesToShow {
 			marker := ""
 			if line.IsNew {
 				marker = " [NEW]"
 			}
-			
+
 			code := line.Code
 			if cmd.TruncateLines > 0 && len(code) > cmd.TruncateLines {
 				code = code[:cmd.TruncateLines-3] + "..."
 			}
-			
+
 			fmt.Printf("  Line %d: %s%s\n", line.Line, code, marker)
 		}
-		
+
 		remaining := len(details.UncoveredLines) - len(linesToShow)
 		if remaining > 0 {
 			fmt.Printf("  ... (%d more uncovered lines) Use --show-all-lines to see complete list\n", remaining)
 		}
-		
+
 		fmt.Println()
 		displayedFiles++
 	}
-	
+
 	totalNewLines := 0
 	totalFiles := 0
 	quickWins := 0
-	
+
 	for _, details := range coverageDetails {
 		totalFiles++
 		totalNewLines += details.NewUncovered
@@ -460,7 +460,7 @@ func (cmd *ReportCmd) displayUncoveredLinesDetails(coverageDetails []sonarcloud.
 			quickWins++
 		}
 	}
-	
+
 	if totalNewLines > 0 || quickWins > 0 {
 		fmt.Printf("🎯 Focus Areas:\n")
 		if totalNewLines > 0 {
@@ -470,7 +470,7 @@ func (cmd *ReportCmd) displayUncoveredLinesDetails(coverageDetails []sonarcloud.
 			fmt.Printf("  • Quick wins: %d files need <10 lines of coverage to reach 80%%\n", quickWins)
 		}
 		if totalFiles > maxFilesToShow {
-			fmt.Printf("  • %d more files have uncovered lines (use --limit %d to see more)\n", 
+			fmt.Printf("  • %d more files have uncovered lines (use --limit %d to see more)\n",
 				totalFiles-maxFilesToShow, totalFiles)
 		}
 		fmt.Println()
@@ -482,7 +482,7 @@ func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters
 	fmt.Printf("┌──────────────┬───────┬─────────────────┐\n")
 	fmt.Printf("│ Type         │ Count │ New in PR       │\n")
 	fmt.Printf("├──────────────┼───────┼─────────────────┤\n")
-	
+
 	fmt.Printf("│ Bugs         │ %5d │ %15d │\n", issues.Bugs, issues.NewIssues)
 	fmt.Printf("│ Vulnerabilities │ %2d │ %15d │\n", issues.Vulnerabilities, 0)
 	fmt.Printf("│ Code Smells  │ %5d │ %15d │\n", issues.CodeSmells, 0)
@@ -530,7 +530,7 @@ func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters
 				severityIcon = issue.Severity
 			}
 
-			fmt.Printf("│ %-12s │ %-39s │ %4s │ %-51s │\n", 
+			fmt.Printf("│ %-12s │ %-39s │ %4s │ %-51s │\n",
 				severityIcon, fileName, lineStr, description)
 			displayedIssues++
 		}
@@ -548,7 +548,7 @@ func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters
 		}
 
 		fmt.Printf("💰 Technical Debt: %s\n", totalDebt)
-		
+
 		fmt.Printf("📈 Maintainability Rating: B (target: A) ❌\n\n")
 	}
 }
@@ -563,7 +563,7 @@ func (cmd *ReportCmd) formatOverviewSection(report *sonarcloud.Report, pipeline 
 		overallCov := fmt.Sprintf("%.1f%%", report.Coverage.OverallCoverage)
 		newCov := "-"
 		if report.Coverage.NewCodeCoverage > 0 {
-			newCov = fmt.Sprintf("%.1f%%", report.Coverage.NewCodeCoverage) 
+			newCov = fmt.Sprintf("%.1f%%", report.Coverage.NewCodeCoverage)
 		}
 		status := "✅"
 		if report.Coverage.OverallCoverage < 80 || report.Coverage.NewCodeCoverage < 90 {
@@ -573,18 +573,18 @@ func (cmd *ReportCmd) formatOverviewSection(report *sonarcloud.Report, pipeline 
 	}
 
 	if report.Issues != nil {
-		fmt.Printf("│ Bugs                │ %7d │ %-11d │ %6s │\n", 
+		fmt.Printf("│ Bugs                │ %7d │ %-11d │ %6s │\n",
 			report.Issues.Bugs, 0, "✅")
-		fmt.Printf("│ Vulnerabilities     │ %7d │ %-11d │ %6s │\n", 
+		fmt.Printf("│ Vulnerabilities     │ %7d │ %-11d │ %6s │\n",
 			report.Issues.Vulnerabilities, 0, "✅")
-		fmt.Printf("│ Code Smells         │ %7d │ %-11d │ %6s │\n", 
+		fmt.Printf("│ Code Smells         │ %7d │ %-11d │ %6s │\n",
 			report.Issues.CodeSmells, 0, "❌")
-		fmt.Printf("│ Security Hotspots   │ %7d │ %-11d │ %6s │\n", 
+		fmt.Printf("│ Security Hotspots   │ %7d │ %-11d │ %6s │\n",
 			report.Issues.SecurityHotspots, 0, "✅")
 	}
 
 	if report.Metrics != nil {
-		fmt.Printf("│ Duplications        │ %6.1f%% │ %-11s │ %6s │\n", 
+		fmt.Printf("│ Duplications        │ %6.1f%% │ %-11s │ %6s │\n",
 			report.Metrics.Duplication, "0.0%", "✅")
 	}
 
@@ -594,7 +594,7 @@ func (cmd *ReportCmd) formatOverviewSection(report *sonarcloud.Report, pipeline 
 func (cmd *ReportCmd) formatLinksSection(report *sonarcloud.Report) {
 	var url string
 	if report.PullRequestID != nil {
-		url = fmt.Sprintf("https://sonarcloud.io/dashboard?id=%s&pullRequest=%d", 
+		url = fmt.Sprintf("https://sonarcloud.io/dashboard?id=%s&pullRequest=%d",
 			report.ProjectKey, *report.PullRequestID)
 	} else {
 		url = fmt.Sprintf("https://sonarcloud.io/project/overview?id=%s", report.ProjectKey)

@@ -7,9 +7,9 @@ import (
 
 // GetCmd handles the config get command
 type GetCmd struct {
-	Key    string `arg:"" help:"Configuration key to retrieve (e.g., auth.default_workspace)"`
-	Output string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
-	NoColor bool  // Passed from global flag
+	Key     string `arg:"" help:"Configuration key to retrieve (e.g., auth.default_workspace)"`
+	Output  string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	NoColor bool   // Passed from global flag
 }
 
 // Run executes the config get command

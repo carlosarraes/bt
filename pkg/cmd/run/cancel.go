@@ -81,7 +81,7 @@ func (cmd *CancelCmd) Run(ctx context.Context) error {
 // resolvePipelineUUID converts build number to UUID or validates UUID
 func (cmd *CancelCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
 	pipelineID := strings.TrimSpace(cmd.PipelineID)
-	
+
 	// If it's already a UUID (contains hyphens), return as-is
 	if strings.Contains(pipelineID, "-") {
 		return pipelineID, nil
@@ -102,7 +102,7 @@ func (cmd *CancelCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContex
 	options := &api.PipelineListOptions{
 		PageLen: 50, // Search recent pipelines
 	}
-	
+
 	resp, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
 	if err != nil {
 		return "", fmt.Errorf("failed to search for pipeline: %w", err)
@@ -156,26 +156,26 @@ func (cmd *CancelCmd) validateCancellable(pipeline *api.Pipeline) error {
 		// These states are cancellable
 		return nil
 	case "SUCCESSFUL", "FAILED", "ERROR", "STOPPED":
-		return fmt.Errorf("pipeline #%d is already completed (state: %s) and cannot be cancelled", 
+		return fmt.Errorf("pipeline #%d is already completed (state: %s) and cannot be cancelled",
 			pipeline.BuildNumber, pipeline.State.Name)
 	default:
-		return fmt.Errorf("pipeline #%d is in an unknown state (%s) and may not be cancellable", 
+		return fmt.Errorf("pipeline #%d is in an unknown state (%s) and may not be cancellable",
 			pipeline.BuildNumber, pipeline.State.Name)
 	}
 }
 
 // confirmCancellation prompts the user for confirmation
 func (cmd *CancelCmd) confirmCancellation(pipeline *api.Pipeline) bool {
-	fmt.Printf("Are you sure you want to cancel pipeline #%d (%s)? This action cannot be undone.\n", 
+	fmt.Printf("Are you sure you want to cancel pipeline #%d (%s)? This action cannot be undone.\n",
 		pipeline.BuildNumber, pipeline.State.Name)
 	fmt.Print("Type 'yes' to confirm: ")
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return false
 	}
-	
+
 	input = strings.TrimSpace(strings.ToLower(input))
 	return input == "yes"
 }
@@ -213,58 +213,58 @@ func (cmd *CancelCmd) outputJSON(runCtx *RunContext, pipeline *api.Pipeline) err
 		"build_number": pipeline.BuildNumber,
 		"uuid":         pipeline.UUID,
 	}
-	
+
 	if pipeline.State != nil {
 		pipelineData["state"] = pipeline.State.Name
 	}
-	
+
 	if pipeline.Repository != nil {
 		pipelineData["repository"] = pipeline.Repository.FullName
 	}
-	
+
 	if pipeline.Target != nil {
 		pipelineData["branch"] = pipeline.Target.RefName
 		if pipeline.Target.Commit != nil {
 			pipelineData["commit"] = pipeline.Target.Commit.Hash
 		}
 	}
-	
+
 	result := map[string]interface{}{
 		"success":  true,
 		"message":  "Pipeline cancelled successfully",
 		"pipeline": pipelineData,
 	}
-	
+
 	return runCtx.Formatter.Format(result)
 }
 
-// outputYAML outputs success in YAML format  
+// outputYAML outputs success in YAML format
 func (cmd *CancelCmd) outputYAML(runCtx *RunContext, pipeline *api.Pipeline) error {
 	pipelineData := map[string]interface{}{
 		"build_number": pipeline.BuildNumber,
 		"uuid":         pipeline.UUID,
 	}
-	
+
 	if pipeline.State != nil {
 		pipelineData["state"] = pipeline.State.Name
 	}
-	
+
 	if pipeline.Repository != nil {
 		pipelineData["repository"] = pipeline.Repository.FullName
 	}
-	
+
 	if pipeline.Target != nil {
 		pipelineData["branch"] = pipeline.Target.RefName
 		if pipeline.Target.Commit != nil {
 			pipelineData["commit"] = pipeline.Target.Commit.Hash
 		}
 	}
-	
+
 	result := map[string]interface{}{
 		"success":  true,
 		"message":  "Pipeline cancelled successfully",
 		"pipeline": pipelineData,
 	}
-	
+
 	return runCtx.Formatter.Format(result)
 }

@@ -12,11 +12,11 @@ import (
 
 // PaginatedResponse represents a paginated response from the Bitbucket API
 type PaginatedResponse struct {
-	Size     int    `json:"size"`
-	Page     int    `json:"page"`
-	PageLen  int    `json:"pagelen"`
-	Next     string `json:"next,omitempty"`
-	Previous string `json:"previous,omitempty"`
+	Size     int             `json:"size"`
+	Page     int             `json:"page"`
+	PageLen  int             `json:"pagelen"`
+	Next     string          `json:"next,omitempty"`
+	Previous string          `json:"previous,omitempty"`
 	Values   json.RawMessage `json:"values"`
 }
 
@@ -50,10 +50,10 @@ func DefaultPageOptions() *PageOptions {
 
 // Paginator handles paginated API requests
 type Paginator struct {
-	client     *Client
-	baseURL    string
-	options    *PageOptions
-	pageInfo   *PageInfo
+	client       *Client
+	baseURL      string
+	options      *PageOptions
+	pageInfo     *PageInfo
 	totalFetched int
 }
 
@@ -80,7 +80,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 	if p.options.Limit > 0 && p.totalFetched >= p.options.Limit {
 		return nil, nil // No more pages to fetch
 	}
-	
+
 	// Check if we have no more pages to fetch
 	if p.totalFetched > 0 && !p.pageInfo.HasNext {
 		return nil, nil // No more pages available
@@ -99,7 +99,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 			endpoint += "&"
 		}
 		endpoint += fmt.Sprintf("page=%d&pagelen=%d", p.pageInfo.Page, p.pageInfo.PageLen)
-		
+
 		var err error
 		fetchURL, err = p.client.buildURL(endpoint)
 		if err != nil {
@@ -108,7 +108,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 	}
 
 	// fmt.Fprintf(os.Stderr, "DEBUG: Full request URL: %s\n", fetchURL)
-	
+
 	// Make the request
 	req, err := http.NewRequestWithContext(ctx, "GET", fetchURL, nil)
 	if err != nil {
@@ -117,7 +117,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "bt/1.0.0")
-	
+
 	if p.client.authManager != nil {
 		if err := p.client.authManager.SetHTTPHeaders(req); err != nil {
 			return nil, fmt.Errorf("failed to set auth headers: %w", err)
@@ -236,8 +236,8 @@ func (p *Paginator) FetchAllTyped(ctx context.Context, result interface{}) error
 
 // Iterator provides an iterator interface for paginated results
 type Iterator struct {
-	paginator  *Paginator
-	currentPage *PaginatedResponse
+	paginator     *Paginator
+	currentPage   *PaginatedResponse
 	currentValues []json.RawMessage
 	currentIndex  int
 	ctx           context.Context

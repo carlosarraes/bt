@@ -10,7 +10,6 @@ import (
 	"github.com/carlosarraes/bt/pkg/api"
 )
 
-
 func TestEditCmd_isInteractiveMode(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -355,10 +354,10 @@ func TestEditCmd_buildReviewersList(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		addReviewers   []string
+		name            string
+		addReviewers    []string
 		removeReviewers []string
-		expectedUsers  []string
+		expectedUsers   []string
 	}{
 		{
 			name:          "No changes",

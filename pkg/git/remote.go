@@ -14,7 +14,7 @@ import (
 var (
 	// SSH format: git@bitbucket.org:workspace/repo.git
 	sshPattern = regexp.MustCompile(`^git@bitbucket\.org:([^/]+)/([^/]+?)(?:\.git)?/?$`)
-	
+
 	// HTTPS formats:
 	// https://bitbucket.org/workspace/repo.git
 	// https://user@bitbucket.org/workspace/repo.git
@@ -166,14 +166,14 @@ func GetRemoteInfo(remoteURL string) (*RemoteInfo, error) {
 	}
 
 	info := &RemoteInfo{
-		URL:       remoteURL,
-		Workspace: remote.Workspace,
-		RepoName:  remote.RepoName,
-		IsSSH:     remote.IsSSH,
-		WebURL:    BuildBitbucketURL(remote.Workspace, remote.RepoName, "web"),
-		CloneSSH:  BuildBitbucketURL(remote.Workspace, remote.RepoName, "ssh"),
+		URL:        remoteURL,
+		Workspace:  remote.Workspace,
+		RepoName:   remote.RepoName,
+		IsSSH:      remote.IsSSH,
+		WebURL:     BuildBitbucketURL(remote.Workspace, remote.RepoName, "web"),
+		CloneSSH:   BuildBitbucketURL(remote.Workspace, remote.RepoName, "ssh"),
 		CloneHTTPS: BuildBitbucketURL(remote.Workspace, remote.RepoName, "https"),
-		APIURL:    BuildBitbucketURL(remote.Workspace, remote.RepoName, "api"),
+		APIURL:     BuildBitbucketURL(remote.Workspace, remote.RepoName, "api"),
 	}
 
 	return info, nil
@@ -269,7 +269,6 @@ func (r *Repository) GetRemote(name string) (*Remote, bool) {
 	remote, exists := r.remotes[name]
 	return remote, exists
 }
-
 
 func (r *Repository) FetchBranch(remoteName, branchName string) error {
 	remote, err := r.repo.Remote(remoteName)

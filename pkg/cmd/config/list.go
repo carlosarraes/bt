@@ -65,7 +65,7 @@ func (cmd *ListCmd) formatTable(values map[string]interface{}) error {
 	// Display configuration
 	fmt.Println("Configuration:")
 	fmt.Println(strings.Repeat("─", maxKeyWidth+20))
-	
+
 	for _, key := range keys {
 		value := values[key]
 		formattedValue := formatValue(value)

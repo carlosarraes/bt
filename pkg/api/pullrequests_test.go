@@ -162,7 +162,7 @@ func TestPullRequestService_ListPullRequests(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
 		assert.Equal(t, "/repositories/test-workspace/test-repo/pullrequests", r.URL.Path)
-		
+
 		// Check query parameters
 		query := r.URL.Query()
 		if state := query.Get("state"); state != "" {
@@ -182,7 +182,7 @@ func TestPullRequestService_ListPullRequests(t *testing.T) {
 	mockAuth := &MockAuthManager{}
 	// Set up mock expectations
 	mockAuth.On("SetHTTPHeaders", mock.Anything).Return(nil)
-	
+
 	config := &ClientConfig{
 		BaseURL:       server.URL,
 		Timeout:       5 * time.Second,
@@ -212,7 +212,7 @@ func TestPullRequestService_ListPullRequests(t *testing.T) {
 	for _, value := range result.Values {
 		prData, err := json.Marshal(value)
 		require.NoError(t, err)
-		
+
 		var pr PullRequest
 		err = json.Unmarshal(prData, &pr)
 		require.NoError(t, err)
@@ -564,7 +564,7 @@ func TestPullRequestService_AddInlineComment(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding inline comment
-	comment, err := client.PullRequests.AddInlineComment(ctx, "test-workspace", "test-repo", 123, 
+	comment, err := client.PullRequests.AddInlineComment(ctx, "test-workspace", "test-repo", 123,
 		"Consider using a constant for minimum password length", "src/auth.go", 15)
 	require.NoError(t, err)
 	assert.NotNil(t, comment)
@@ -578,9 +578,9 @@ func TestPullRequestService_ConvenienceMethods(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "GET", r.Method)
-		
+
 		query := r.URL.Query()
-		
+
 		// Check different convenience method calls
 		if path := r.URL.Path; strings.Contains(path, "pullrequests") {
 			if query.Get("state") == "OPEN" && query.Get("author.username") == "test-author" {
@@ -602,7 +602,7 @@ func TestPullRequestService_ConvenienceMethods(t *testing.T) {
 				return
 			}
 		}
-		
+
 		w.WriteHeader(http.StatusBadRequest)
 	}))
 	defer server.Close()
@@ -678,7 +678,7 @@ func TestPullRequestService_ErrorHandling(t *testing.T) {
 	// Test 404 error
 	_, err = client.PullRequests.GetPullRequest(ctx, "test-workspace", "test-repo", 404)
 	assert.Error(t, err)
-	
+
 	// Test 403 error
 	_, err = client.PullRequests.GetPullRequest(ctx, "test-workspace", "test-repo", 403)
 	assert.Error(t, err)

@@ -31,31 +31,31 @@ func (p *PipelineService) ListPipelines(ctx context.Context, workspace, repoSlug
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
-	
+
 	// Add query parameters if options are provided
 	if options != nil {
 		params := make([]string, 0)
-		
+
 		if options.Status != "" {
 			params = append(params, fmt.Sprintf("state.name=%s", url.QueryEscape(options.Status)))
 		}
-		
+
 		if options.Branch != "" {
 			params = append(params, fmt.Sprintf("target.ref_name=%s", url.QueryEscape(options.Branch)))
 		}
-		
+
 		if options.Sort != "" {
 			params = append(params, fmt.Sprintf("sort=%s", url.QueryEscape(options.Sort)))
 		}
-		
+
 		if options.Page > 0 {
 			params = append(params, fmt.Sprintf("page=%d", options.Page))
 		}
-		
+
 		if options.PageLen > 0 {
 			params = append(params, fmt.Sprintf("pagelen=%d", options.PageLen))
 		}
-		
+
 		if len(params) > 0 {
 			endpoint += "?" + strings.Join(params, "&")
 		}
@@ -76,7 +76,7 @@ func (p *PipelineService) GetPipeline(ctx context.Context, workspace, repoSlug, 
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s", workspace, repoSlug, pipelineUUID)
-	
+
 	var pipeline Pipeline
 	if err := p.client.GetJSON(ctx, endpoint, &pipeline); err != nil {
 		return nil, fmt.Errorf("failed to get pipeline: %w", err)
@@ -92,13 +92,13 @@ func (p *PipelineService) GetPipelineSteps(ctx context.Context, workspace, repoS
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps", workspace, repoSlug, pipelineUUID)
-	
+
 	var result PaginatedResponse
 	if err := p.client.GetJSON(ctx, endpoint, &result); err != nil {
 		return nil, fmt.Errorf("failed to get pipeline steps: %w", err)
 	}
 
-	// Parse the Values field (raw JSON) into PipelineStep structs  
+	// Parse the Values field (raw JSON) into PipelineStep structs
 	steps, err := parsePipelineStepsResults(&result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pipeline steps: %w", err)
@@ -140,25 +140,25 @@ func (p *PipelineService) GetStepLogs(ctx context.Context, workspace, repoSlug, 
 	// Format UUIDs for the endpoint (based on user's successful manual test)
 	formattedPipelineUUID := pipelineUUID
 	formattedStepUUID := stepUUID
-	
+
 	if !strings.HasPrefix(formattedPipelineUUID, "{") {
 		formattedPipelineUUID = "{" + formattedPipelineUUID + "}"
 	}
 	if !strings.HasPrefix(formattedStepUUID, "{") {
 		formattedStepUUID = "{" + formattedStepUUID + "}"
 	}
-	
+
 	// Use the exact working endpoint format from user's successful test
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/log", workspace, repoSlug, formattedPipelineUUID, formattedStepUUID)
-	
+
 	var resp *http.Response
 	resp, err := p.client.getLogsRequest(ctx, endpoint)
 	if err == nil {
 		return resp.Body, nil
 	}
-	
+
 	originalErr := err
-	
+
 	// If direct endpoint fails, try to get step details and use the logs link (use original UUID for this)
 	steps, err := p.GetPipelineSteps(ctx, workspace, repoSlug, pipelineUUID)
 	if err != nil {
@@ -239,7 +239,7 @@ func (p *PipelineService) GetStepLogsWithRange(ctx context.Context, workspace, r
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/log", workspace, repoSlug, pipelineUUID, stepUUID)
-	
+
 	// Build the full URL
 	fullURL, err := p.client.buildURL(endpoint)
 	if err != nil {
@@ -288,8 +288,8 @@ func (p *PipelineService) GetStepLogsWithRange(ctx context.Context, workspace, r
 // StreamStepLogs streams logs for a specific pipeline step line by line
 // Returns a channel that yields log lines
 func (p *PipelineService) StreamStepLogs(ctx context.Context, workspace, repoSlug, pipelineUUID, stepUUID string) (<-chan string, <-chan error) {
-	logChan := make(chan string, 100)  // Buffer for log lines
-	errChan := make(chan error, 1)     // Error channel
+	logChan := make(chan string, 100) // Buffer for log lines
+	errChan := make(chan error, 1)    // Error channel
 
 	go func() {
 		defer close(logChan)
@@ -305,7 +305,7 @@ func (p *PipelineService) StreamStepLogs(ctx context.Context, workspace, repoSlu
 
 		// Create a scanner to read line by line
 		scanner := bufio.NewScanner(logReader)
-		
+
 		for scanner.Scan() {
 			select {
 			case <-ctx.Done():
@@ -331,7 +331,7 @@ func (p *PipelineService) CancelPipeline(ctx context.Context, workspace, repoSlu
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/stopPipeline", workspace, repoSlug, pipelineUUID)
-	
+
 	resp, err := p.client.Post(ctx, endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to cancel pipeline: %w", err)
@@ -357,7 +357,7 @@ func (p *PipelineService) TriggerPipeline(ctx context.Context, workspace, repoSl
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
-	
+
 	var pipeline Pipeline
 	if err := p.client.PostJSON(ctx, endpoint, request, &pipeline); err != nil {
 		return nil, fmt.Errorf("failed to trigger pipeline: %w", err)
@@ -373,7 +373,7 @@ func (p *PipelineService) ListArtifacts(ctx context.Context, workspace, repoSlug
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/downloads", workspace, repoSlug)
-	
+
 	var artifacts []*Artifact
 	paginator := p.client.Paginate(endpoint, nil)
 	if err := paginator.FetchAllTyped(ctx, &artifacts); err != nil {
@@ -390,7 +390,7 @@ func (p *PipelineService) DownloadArtifact(ctx context.Context, workspace, repoS
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/downloads/%s", workspace, repoSlug, artifactUUID)
-	
+
 	resp, err := p.client.Get(ctx, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download artifact: %w", err)
@@ -421,14 +421,14 @@ func (p *PipelineService) GetPipelinesByBranch(ctx context.Context, workspace, r
 	// Parse pipelines from the response
 	var pipelines []*Pipeline
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
-	
+
 	// Build query parameters
 	params := make([]string, 0)
 	if branch != "" {
 		params = append(params, fmt.Sprintf("target.ref_name=%s", url.QueryEscape(branch)))
 	}
 	params = append(params, "sort=-created_on")
-	
+
 	if len(params) > 0 {
 		endpoint += "?" + strings.Join(params, "&")
 	}
@@ -453,7 +453,7 @@ func (p *PipelineService) GetStepTestReports(ctx context.Context, workspace, rep
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/test_reports", workspace, repoSlug, pipelineUUID, stepUUID)
-	
+
 	var result PaginatedResponse
 	if err := p.client.GetJSON(ctx, endpoint, &result); err != nil {
 		return nil, fmt.Errorf("failed to get test reports: %w", err)
@@ -487,7 +487,7 @@ func (p *PipelineService) GetStepTestCases(ctx context.Context, workspace, repoS
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/test_reports/test_cases", workspace, repoSlug, pipelineUUID, stepUUID)
-	
+
 	var result PaginatedResponse
 	if err := p.client.GetJSON(ctx, endpoint, &result); err != nil {
 		return nil, fmt.Errorf("failed to get test cases: %w", err)
@@ -520,9 +520,9 @@ func (p *PipelineService) GetTestCaseReasons(ctx context.Context, workspace, rep
 		return nil, NewValidationError("workspace, repository slug, pipeline UUID, step UUID, and test case UUID are required", "")
 	}
 
-	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/test_reports/test_cases/%s/test_case_reasons", 
+	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines/%s/steps/%s/test_reports/test_cases/%s/test_case_reasons",
 		workspace, repoSlug, pipelineUUID, stepUUID, testCaseUUID)
-	
+
 	var result PaginatedResponse
 	if err := p.client.GetJSON(ctx, endpoint, &result); err != nil {
 		return nil, fmt.Errorf("failed to get test case reasons: %w", err)
@@ -563,7 +563,7 @@ func (p *PipelineService) GetFailedPipelines(ctx context.Context, workspace, rep
 
 	// Use the existing ListPipelines method and parse results
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
-	
+
 	// Build query parameters for failed pipelines
 	params := []string{
 		"sort=-created_on",
@@ -631,7 +631,7 @@ func (p *PipelineService) GetPipelinesByCommit(ctx context.Context, workspace, r
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pipelines", workspace, repoSlug)
-	
+
 	params := []string{
 		fmt.Sprintf("target.commit.hash=%s", url.QueryEscape(commitSHA)),
 		"sort=-created_on",

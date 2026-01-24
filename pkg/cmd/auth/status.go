@@ -42,13 +42,13 @@ func (cmd *StatusCmd) Run(ctx context.Context) error {
 
 // AuthStatus represents the authentication status information
 type AuthStatus struct {
-	Authenticated bool              `json:"authenticated" yaml:"authenticated"`
-	Method        auth.AuthMethod   `json:"method,omitempty" yaml:"method,omitempty"`
-	User          *auth.User        `json:"user,omitempty" yaml:"user,omitempty"`
-	Host          string            `json:"host" yaml:"host"`
-	TokenSource   string            `json:"token_source,omitempty" yaml:"token_source,omitempty"`
-	Error         string            `json:"error,omitempty" yaml:"error,omitempty"`
-	Scopes        []string          `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	Authenticated bool            `json:"authenticated" yaml:"authenticated"`
+	Method        auth.AuthMethod `json:"method,omitempty" yaml:"method,omitempty"`
+	User          *auth.User      `json:"user,omitempty" yaml:"user,omitempty"`
+	Host          string          `json:"host" yaml:"host"`
+	TokenSource   string          `json:"token_source,omitempty" yaml:"token_source,omitempty"`
+	Error         string          `json:"error,omitempty" yaml:"error,omitempty"`
+	Scopes        []string        `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
 // getAuthStatus attempts to get the current authentication status
@@ -128,7 +128,7 @@ func (s *AuthStatus) String() string {
 	}
 	result += fmt.Sprintf("🔐 Method: API Token\n")
 	result += fmt.Sprintf("📍 Source: %s\n", s.TokenSource)
-	
+
 	if len(s.Scopes) > 0 {
 		result += fmt.Sprintf("🔓 Scopes: %v\n", s.Scopes)
 	}

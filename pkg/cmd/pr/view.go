@@ -111,7 +111,7 @@ func (cmd *ViewCmd) ParsePRID() (int, error) {
 // openInBrowser opens the PR in the default browser
 func (cmd *ViewCmd) openInBrowser(prCtx *PRContext, prID int) error {
 	// Construct Bitbucket web URL
-	url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d", 
+	url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d",
 		prCtx.Workspace, prCtx.Repository, prID)
 
 	var err error
@@ -153,7 +153,7 @@ func (cmd *ViewCmd) formatTable(prCtx *PRContext, pr *api.PullRequest, files *ap
 	// PR Header
 	fmt.Printf("#%d • %s\n", pr.ID, pr.Title)
 	fmt.Printf("State: %s\n", pr.State)
-	
+
 	// Author information
 	if pr.Author != nil {
 		authorName := pr.Author.DisplayName
@@ -167,14 +167,14 @@ func (cmd *ViewCmd) formatTable(prCtx *PRContext, pr *api.PullRequest, files *ap
 	if pr.Source != nil && pr.Destination != nil {
 		sourceBranch := "unknown"
 		destBranch := "unknown"
-		
+
 		if pr.Source.Branch != nil {
 			sourceBranch = pr.Source.Branch.Name
 		}
 		if pr.Destination.Branch != nil {
 			destBranch = pr.Destination.Branch.Name
 		}
-		
+
 		fmt.Printf("Branches: %s → %s\n", sourceBranch, destBranch)
 	}
 
@@ -200,14 +200,14 @@ func (cmd *ViewCmd) formatTable(prCtx *PRContext, pr *api.PullRequest, files *ap
 				if name == "" {
 					name = reviewer.User.Username
 				}
-				
+
 				status := "pending"
 				if reviewer.Approved {
 					status = "approved"
 				} else if reviewer.State == "changes_requested" {
 					status = "changes requested"
 				}
-				
+
 				fmt.Printf("  • %s (%s)\n", name, status)
 			}
 		}

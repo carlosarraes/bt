@@ -142,7 +142,7 @@ func TestErrorTypes(t *testing.T) {
 func TestErrorComparison(t *testing.T) {
 	// Test that we can properly compare errors
 	testErr := ErrNotGitRepository
-	
+
 	if !errors.Is(testErr, ErrNotGitRepository) {
 		t.Error("Should be able to compare ErrNotGitRepository with errors.Is")
 	}

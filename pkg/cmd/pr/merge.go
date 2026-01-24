@@ -102,29 +102,29 @@ func (cmd *MergeCmd) showConfirmationPrompt(pr *api.PullRequest) error {
 	fmt.Printf("Author: %s\n", getUserDisplayName(pr.Author))
 	fmt.Printf("Source: %s\n", getBranchName(pr.Source))
 	fmt.Printf("Target: %s\n", getBranchName(pr.Destination))
-	
+
 	if cmd.Squash {
 		fmt.Printf("Merge strategy: squash\n")
 	} else {
 		fmt.Printf("Merge strategy: merge commit\n")
 	}
-	
+
 	if cmd.DeleteBranch {
 		fmt.Printf("Source branch will be deleted after merge\n")
 	}
-	
+
 	fmt.Print("\nContinue? (y/N): ")
-	
+
 	var response string
 	if _, err := fmt.Scanln(&response); err != nil {
 		return fmt.Errorf("failed to read user input: %w", err)
 	}
-	
+
 	response = strings.ToLower(strings.TrimSpace(response))
 	if response != "y" && response != "yes" {
 		return fmt.Errorf("merge cancelled by user")
 	}
-	
+
 	return nil
 }
 
@@ -161,15 +161,15 @@ func (cmd *MergeCmd) formatOutput(prCtx *PRContext, pr *api.PullRequest) error {
 func (cmd *MergeCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 	fmt.Printf("✓ Merged pull request #%d\n", pr.ID)
 	fmt.Printf("Title: %s\n", pr.Title)
-	
+
 	if pr.MergeCommit != nil {
 		fmt.Printf("Merge commit: %s\n", pr.MergeCommit.Hash)
 	}
-	
+
 	if cmd.DeleteBranch {
 		fmt.Printf("Source branch deleted: %s\n", getBranchName(pr.Source))
 	}
-	
+
 	return nil
 }
 

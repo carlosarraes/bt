@@ -113,12 +113,12 @@ func (b *BaseFormatter) ShouldUseColor() bool {
 	if b.noColor {
 		return false
 	}
-	
+
 	// Check if we're writing to a terminal
 	if f, ok := b.writer.(*os.File); ok {
 		return isTerminal(f)
 	}
-	
+
 	return false
 }
 

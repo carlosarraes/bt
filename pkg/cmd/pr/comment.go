@@ -114,7 +114,7 @@ func (cmd *CommentCmd) getCommentBody() (string, error) {
 	if strings.TrimSpace(body) == "" {
 		prompt := "Comment: "
 		fmt.Print(prompt)
-		
+
 		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
 			body = scanner.Text()
@@ -156,7 +156,7 @@ func (cmd *CommentCmd) resolveReplyTo(ctx context.Context, prCtx *PRContext, prI
 		if err := json.Unmarshal(rawComment, &comment); err != nil {
 			continue
 		}
-		
+
 		if comment.ID == replyToID {
 			return &comment, nil
 		}
@@ -198,15 +198,15 @@ func (cmd *CommentCmd) displayResult(prCtx *PRContext, pr *api.PullRequest, comm
 		fmt.Printf("✓ Comment added to pull request #%d\n", pr.ID)
 		fmt.Printf("  Title: %s\n", pr.Title)
 		fmt.Printf("  Comment ID: %d\n", comment.ID)
-		
+
 		if comment.Links != nil && comment.Links.HTML != nil {
 			fmt.Printf("  URL: %s\n", comment.Links.HTML.Href)
 		}
-		
+
 		if comment.CreatedOn != nil {
 			fmt.Printf("  Created: %s\n", output.FormatRelativeTime(comment.CreatedOn))
 		}
-		
+
 		return nil
 	}
 }

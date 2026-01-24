@@ -27,35 +27,35 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests", workspace, repoSlug)
-	
+
 	queryParams := url.Values{}
 	queryParams.Set("fields", "+values.reviewers,+values.participants")
-	
+
 	// Add query parameters if options are provided
 	if options != nil {
 		var filterParts []string
-		
+
 		if options.State != "" {
 			filterParts = append(filterParts, fmt.Sprintf("state=\"%s\"", options.State))
 		}
-		
+
 		if options.Author != "" {
 			filterParts = append(filterParts, fmt.Sprintf("author.username=\"%s\"", options.Author))
 		}
-		
+
 		if options.Reviewer != "" {
 			filterParts = append(filterParts, fmt.Sprintf("reviewers.username=\"%s\"", options.Reviewer))
 		}
-		
+
 		if len(filterParts) > 0 {
 			queryParams.Set("q", strings.Join(filterParts, " AND "))
 		}
-		
+
 		if options.Sort != "" {
 			queryParams.Set("sort", options.Sort)
 		}
 	}
-	
+
 	if encodedParams := queryParams.Encode(); encodedParams != "" {
 		endpoint += "?" + encodedParams
 	}
@@ -65,7 +65,7 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 		Page:    1,
 		PageLen: 50,
 	}
-	
+
 	if options != nil {
 		if options.Page > 0 {
 			pageOptions.Page = options.Page
@@ -74,7 +74,7 @@ func (p *PullRequestService) ListPullRequests(ctx context.Context, workspace, re
 			pageOptions.PageLen = options.PageLen
 		}
 	}
-	
+
 	paginator := p.client.Paginate(endpoint, pageOptions)
 
 	return paginator.NextPage(ctx)
@@ -85,13 +85,13 @@ func (p *PullRequestService) GetPullRequest(ctx context.Context, workspace, repo
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d", workspace, repoSlug, id)
-	
+
 	var pullRequest PullRequest
 	err := p.client.GetJSON(ctx, endpoint, &pullRequest)
 	if err != nil {
@@ -106,13 +106,13 @@ func (p *PullRequestService) GetPullRequestDiff(ctx context.Context, workspace, 
 	if workspace == "" || repoSlug == "" {
 		return "", NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return "", NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diff", workspace, repoSlug, id)
-	
+
 	resp, err := p.client.Get(ctx, endpoint)
 	if err != nil {
 		return "", err
@@ -133,13 +133,13 @@ func (p *PullRequestService) GetPullRequestFiles(ctx context.Context, workspace,
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diffstat", workspace, repoSlug, id)
-	
+
 	var diffStat PullRequestDiffStat
 	err := p.client.GetJSON(ctx, endpoint, &diffStat)
 	if err != nil {
@@ -154,13 +154,13 @@ func (p *PullRequestService) ApprovePullRequest(ctx context.Context, workspace, 
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/approve", workspace, repoSlug, id)
-	
+
 	var approval PullRequestApproval
 	err := p.client.PostJSON(ctx, endpoint, nil, &approval)
 	if err != nil {
@@ -175,13 +175,13 @@ func (p *PullRequestService) UnapprovePullRequest(ctx context.Context, workspace
 	if workspace == "" || repoSlug == "" {
 		return NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/approve", workspace, repoSlug, id)
-	
+
 	resp, err := p.client.Delete(ctx, endpoint)
 	if err != nil {
 		return err
@@ -196,17 +196,17 @@ func (p *PullRequestService) RequestChanges(ctx context.Context, workspace, repo
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
-	
+
 	if comment == "" {
 		return nil, NewValidationError("comment is required when requesting changes", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/request-changes", workspace, repoSlug, id)
-	
+
 	request := &RequestChangesRequest{
 		Type: "pullrequest_comment",
 		Content: &PullRequestCommentContent{
@@ -229,17 +229,17 @@ func (p *PullRequestService) AddComment(ctx context.Context, workspace, repoSlug
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
-	
+
 	if comment == "" {
 		return nil, NewValidationError("comment content is required", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/comments", workspace, repoSlug, id)
-	
+
 	request := &AddCommentRequest{
 		Type: "pullrequest_comment",
 		Content: &PullRequestCommentContent{
@@ -263,13 +263,13 @@ func (p *PullRequestService) GetComments(ctx context.Context, workspace, repoSlu
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/comments", workspace, repoSlug, id)
-	
+
 	// Use the paginator for potentially large comment lists
 	paginator := p.client.Paginate(endpoint, nil)
 	return paginator.NextPage(ctx)
@@ -280,21 +280,21 @@ func (p *PullRequestService) CreatePullRequest(ctx context.Context, workspace, r
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if request == nil {
 		return nil, NewValidationError("create request is required", "")
 	}
-	
+
 	if request.Title == "" {
 		return nil, NewValidationError("pull request title is required", "")
 	}
-	
+
 	if request.Source == nil || request.Destination == nil {
 		return nil, NewValidationError("source and destination branches are required", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests", workspace, repoSlug)
-	
+
 	// Ensure the type is set
 	if request.Type == "" {
 		request.Type = "pullrequest"
@@ -314,17 +314,17 @@ func (p *PullRequestService) UpdatePullRequest(ctx context.Context, workspace, r
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
-	
+
 	if request == nil {
 		return nil, NewValidationError("update request is required", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d", workspace, repoSlug, id)
-	
+
 	var result PullRequest
 	err := p.client.PutJSON(ctx, endpoint, request, &result)
 	if err != nil {
@@ -339,20 +339,20 @@ func (p *PullRequestService) MergePullRequest(ctx context.Context, workspace, re
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/merge", workspace, repoSlug, id)
-	
+
 	// Set default merge request if none provided
 	if request == nil {
 		request = &PullRequestMerge{
 			Type: "pullrequest_merge",
 		}
 	}
-	
+
 	if request.Type == "" {
 		request.Type = "pullrequest_merge"
 	}
@@ -371,17 +371,17 @@ func (p *PullRequestService) DeclinePullRequest(ctx context.Context, workspace, 
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/decline", workspace, repoSlug, id)
-	
+
 	request := map[string]interface{}{
 		"type": "pullrequest",
 	}
-	
+
 	if reason != "" {
 		request["reason"] = reason
 	}
@@ -399,7 +399,7 @@ func (p *PullRequestService) ReopenPullRequest(ctx context.Context, workspace, r
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
@@ -423,13 +423,13 @@ func (p *PullRequestService) GetPullRequestActivity(ctx context.Context, workspa
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/activity", workspace, repoSlug, id)
-	
+
 	// Use the paginator for potentially large activity lists
 	paginator := p.client.Paginate(endpoint, nil)
 	return paginator.NextPage(ctx)
@@ -489,7 +489,7 @@ func (p *PullRequestService) AddInlineComment(ctx context.Context, workspace, re
 		Path: filePath,
 		To:   lineNumber,
 	}
-	
+
 	return p.AddComment(ctx, workspace, repoSlug, id, comment, inline)
 }
 
@@ -497,7 +497,7 @@ func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, wo
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
@@ -508,7 +508,7 @@ func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, wo
 	}
 
 	lockMessage := "🔒 **Conversation locked**\n\nThis pull request's conversation has been locked to prevent further comments."
-	
+
 	if reason != "" {
 		var reasonText string
 		switch reason {
@@ -525,7 +525,7 @@ func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, wo
 		}
 		lockMessage += fmt.Sprintf("\n\n**Reason:** %s", reasonText)
 	}
-	
+
 	lockMessage += "\n\nIf you have questions about this decision, please contact the repository administrators."
 
 	_, err = p.AddComment(ctx, workspace, repoSlug, id, lockMessage, nil)
@@ -540,7 +540,7 @@ func (p *PullRequestService) UnlockPullRequestConversation(ctx context.Context, 
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
@@ -564,13 +564,13 @@ func (p *PullRequestService) GetDiffstat(ctx context.Context, workspace, repoSlu
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
-	
+
 	if id <= 0 {
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diffstat", workspace, repoSlug, id)
-	
+
 	var result PullRequestDiffStat
 	err := p.client.GetJSON(ctx, endpoint, &result)
 	if err != nil {

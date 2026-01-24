@@ -19,16 +19,16 @@ type UpdateBranchCmd struct {
 }
 
 type UpdateBranchResult struct {
-	PRID          int                 `json:"pr_id"`
-	Title         string              `json:"title"`
-	SourceBranch  string              `json:"source_branch"`
-	TargetBranch  string              `json:"target_branch"`
-	Success       bool                `json:"success"`
-	Message       string              `json:"message"`
-	FilesUpdated  []string            `json:"files_updated,omitempty"`
-	HasConflicts  bool                `json:"has_conflicts"`
-	ConflictFiles []string            `json:"conflict_files,omitempty"`
-	MergeResult   *git.MergeResult    `json:"merge_result,omitempty"`
+	PRID          int              `json:"pr_id"`
+	Title         string           `json:"title"`
+	SourceBranch  string           `json:"source_branch"`
+	TargetBranch  string           `json:"target_branch"`
+	Success       bool             `json:"success"`
+	Message       string           `json:"message"`
+	FilesUpdated  []string         `json:"files_updated,omitempty"`
+	HasConflicts  bool             `json:"has_conflicts"`
+	ConflictFiles []string         `json:"conflict_files,omitempty"`
+	MergeResult   *git.MergeResult `json:"merge_result,omitempty"`
 }
 
 func (cmd *UpdateBranchCmd) Run(ctx context.Context) error {
@@ -88,7 +88,7 @@ func (cmd *UpdateBranchCmd) validatePRState(pr *api.PullRequest) error {
 	if pr.State != string(api.PullRequestStateOpen) {
 		return fmt.Errorf("pull request #%d is %s and cannot be updated", pr.ID, pr.State)
 	}
-	
+
 	return nil
 }
 
@@ -96,22 +96,22 @@ func (cmd *UpdateBranchCmd) extractBranchNames(pr *api.PullRequest) (string, str
 	if pr.Source == nil || pr.Source.Branch == nil {
 		return "", "", fmt.Errorf("pull request source branch information is missing")
 	}
-	
+
 	if pr.Destination == nil || pr.Destination.Branch == nil {
 		return "", "", fmt.Errorf("pull request destination branch information is missing")
 	}
-	
+
 	sourceBranch := pr.Source.Branch.Name
 	targetBranch := pr.Destination.Branch.Name
-	
+
 	if sourceBranch == "" {
 		return "", "", fmt.Errorf("pull request source branch name is empty")
 	}
-	
+
 	if targetBranch == "" {
 		return "", "", fmt.Errorf("pull request destination branch name is empty")
 	}
-	
+
 	return sourceBranch, targetBranch, nil
 }
 
@@ -223,7 +223,7 @@ func (cmd *UpdateBranchCmd) formatOutput(prCtx *PRContext, result *UpdateBranchR
 func (cmd *UpdateBranchCmd) formatTable(result *UpdateBranchResult) error {
 	fmt.Printf("PR #%d: %s\n", result.PRID, result.Title)
 	fmt.Printf("Branch update: %s ← %s\n", result.SourceBranch, result.TargetBranch)
-	
+
 	if result.Success {
 		fmt.Printf("Status: ✅ Success\n")
 	} else {

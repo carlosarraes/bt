@@ -30,10 +30,10 @@ func (r *RepositoryService) ListRepositories(ctx context.Context, workspace stri
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s", workspace)
-	
+
 	if options != nil {
 		queryParams := url.Values{}
-		
+
 		if options.Role != "" {
 			queryParams.Set("role", options.Role)
 		}
@@ -43,12 +43,12 @@ func (r *RepositoryService) ListRepositories(ctx context.Context, workspace stri
 		if options.Sort != "" {
 			queryParams.Set("sort", options.Sort)
 		}
-		
+
 		if len(queryParams) > 0 {
 			endpoint += "?" + queryParams.Encode()
 		}
 	}
-	
+
 	pageOptions := &PageOptions{
 		Page:    1,
 		PageLen: 50,
@@ -61,7 +61,7 @@ func (r *RepositoryService) ListRepositories(ctx context.Context, workspace stri
 			pageOptions.PageLen = options.PageLen
 		}
 	}
-	
+
 	paginator := r.client.Paginate(endpoint, pageOptions)
 	return paginator.NextPage(ctx)
 }

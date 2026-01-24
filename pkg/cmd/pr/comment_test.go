@@ -62,12 +62,12 @@ func TestCommentCmd_ParsePRID(t *testing.T) {
 
 func TestCommentCmd_getCommentBody(t *testing.T) {
 	tests := []struct {
-		name       string
-		body       string
-		bodyFile   string
+		name        string
+		body        string
+		bodyFile    string
 		fileContent string
-		want       string
-		wantErr    bool
+		want        string
+		wantErr     bool
 	}{
 		{
 			name: "body from flag",
@@ -159,10 +159,10 @@ func TestCommentCmd_Validation(t *testing.T) {
 			wantPRIDErr: true,
 		},
 		{
-			name:     "valid with reply-to",
-			prid:     "123",
-			body:     "Test comment",
-			replyTo:  "456",
+			name:    "valid with reply-to",
+			prid:    "123",
+			body:    "Test comment",
+			replyTo: "456",
 		},
 	}
 

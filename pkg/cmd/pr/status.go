@@ -199,7 +199,7 @@ func (cmd *StatusCmd) formatTable(prCtx *PRContext, result *PRStatusResult) erro
 
 func (cmd *StatusCmd) printPRInfo(pr *api.PullRequest, indent string) {
 	statusIcon := cmd.getStatusIcon(pr)
-	
+
 	branchInfo := ""
 	if pr.Source != nil && pr.Source.Branch != nil {
 		branchInfo = pr.Source.Branch.Name

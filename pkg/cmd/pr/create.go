@@ -31,8 +31,8 @@ type CreateCmd struct {
 	CloseSourceBranch bool     `name:"close-source-branch" help:"Close source branch when pull request is merged"`
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor           bool
-	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository        string   `help:"Repository name (defaults to git remote)"`
+	Workspace         string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository        string `help:"Repository name (defaults to git remote)"`
 }
 
 type PRCreateResult struct {
@@ -71,7 +71,7 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 	if !cmd.NoPush {
 		if err := repo.FetchRemote("origin"); err != nil {
 		}
-		
+
 		branchStatus, err := repo.GetBranchStatus(currentBranch.ShortName)
 		if err != nil {
 			fmt.Printf("Warning: Could not determine branch status: %v\n", err)
@@ -114,7 +114,7 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 		if err := cmd.validateAIOptions(); err != nil {
 			return err
 		}
-		
+
 		aiResult, err := cmd.generateAIDescription(ctx, prCtx, repo, currentBranch.ShortName, baseBranch)
 		if err != nil {
 			fmt.Printf("⚠️  AI generation failed: %v\n", err)
@@ -132,7 +132,7 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to get commit messages: %w", err)
 		}
-		
+
 		if title == "" {
 			title = commitTitle
 		}
@@ -178,13 +178,13 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 
 func (cmd *CreateCmd) handleBranchPush(branchName string) error {
 	fmt.Printf("Branch '%s' is not pushed to remote. Push now? (Y/n) ", branchName)
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read input: %w", err)
 	}
-	
+
 	input = strings.TrimSpace(strings.ToLower(input))
 	if input != "" && input != "y" && input != "yes" {
 		return fmt.Errorf("branch must be pushed to remote before creating pull request")
@@ -231,12 +231,12 @@ func (cmd *CreateCmd) promptForTitle() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read title: %w", err)
 	}
-	
+
 	title = strings.TrimSpace(title)
 	if title == "" {
 		return "", fmt.Errorf("title cannot be empty")
 	}
-	
+
 	return title, nil
 }
 
@@ -247,7 +247,7 @@ func (cmd *CreateCmd) promptForBody() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read body: %w", err)
 	}
-	
+
 	return strings.TrimSpace(body), nil
 }
 
@@ -304,7 +304,7 @@ func (cmd *CreateCmd) formatOutput(prCtx *PRContext, result *PRCreateResult) err
 
 func (cmd *CreateCmd) formatTable(prCtx *PRContext, result *PRCreateResult) error {
 	pr := result.PullRequest
-	
+
 	fmt.Printf("✓ Pull request created successfully!\n\n")
 	fmt.Printf("Title: %s\n", pr.Title)
 	fmt.Printf("ID: #%d\n", pr.ID)
@@ -312,7 +312,7 @@ func (cmd *CreateCmd) formatTable(prCtx *PRContext, result *PRCreateResult) erro
 	fmt.Printf("Destination: %s\n", pr.Destination.Branch.Name)
 	fmt.Printf("State: %s\n", pr.State)
 	fmt.Printf("URL: %s\n", result.URL)
-	
+
 	if len(pr.Reviewers) > 0 {
 		fmt.Printf("Reviewers: ")
 		reviewerNames := make([]string, len(pr.Reviewers))
@@ -323,7 +323,7 @@ func (cmd *CreateCmd) formatTable(prCtx *PRContext, result *PRCreateResult) erro
 		}
 		fmt.Printf("%s\n", strings.Join(reviewerNames, ", "))
 	}
-	
+
 	return nil
 }
 
@@ -365,7 +365,7 @@ func (cmd *CreateCmd) promptForMultilineInput(prompt string) (string, error) {
 	}
 
 	fmt.Printf("Opening editor (%s) for %s...\n", editor, strings.ToLower(prompt))
-	
+
 	return "", nil
 }
 
@@ -377,14 +377,14 @@ func confirmAction(prompt string) bool {
 	if !isTerminal() {
 		return true
 	}
-	
+
 	fmt.Printf("%s (y/N): ", prompt)
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return false
 	}
-	
+
 	input = strings.TrimSpace(strings.ToLower(input))
 	return input == "y" || input == "yes"
 }
@@ -393,19 +393,19 @@ func (cmd *CreateCmd) validateAIOptions() error {
 	if err := ai.ValidateLanguage(cmd.Template); err != nil {
 		return err
 	}
-	
+
 	if cmd.Jira != "" {
 		if _, err := os.Stat(cmd.Jira); os.IsNotExist(err) {
 			return fmt.Errorf("JIRA context file not found: %s", cmd.Jira)
 		}
 	}
-	
+
 	return nil
 }
 
 func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContext, repo *git.Repository, sourceBranch, targetBranch string) (*ai.PRDescriptionResult, error) {
 	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor, prCtx.Config)
-	
+
 	opts := &ai.GenerateOptions{
 		SourceBranch: sourceBranch,
 		TargetBranch: targetBranch,
@@ -414,12 +414,12 @@ func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContex
 		Verbose:      true,
 		Debug:        cmd.Debug,
 	}
-	
+
 	result, err := generator.GenerateDescription(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }
 
@@ -432,20 +432,20 @@ func (cmd *CreateCmd) generateTitleFromBranch(branchName, baseBranch string, aut
 			break
 		}
 	}
-	
+
 	title = strings.ReplaceAll(title, "-", " ")
 	title = strings.ReplaceAll(title, "_", " ")
-	
+
 	suffixes := []string{"-hml", "-prd", "-dev", "-staging", "-prod"}
 	for _, suffix := range suffixes {
 		title = strings.TrimSuffix(title, suffix)
 	}
-	
+
 	title = strings.TrimSpace(title)
 	if len(title) > 0 {
 		title = strings.ToUpper(title[:1]) + title[1:]
 	}
-	
+
 	if autoDetectedBase {
 		if noEmoji {
 			title = fmt.Sprintf("%s (%s)", title, baseBranch)
@@ -454,7 +454,7 @@ func (cmd *CreateCmd) generateTitleFromBranch(branchName, baseBranch string, aut
 			title = fmt.Sprintf("%s %s (%s)", title, emoji, baseBranch)
 		}
 	}
-	
+
 	return title
 }
 
@@ -475,12 +475,12 @@ func (cmd *CreateCmd) getBaseBranchEmoji(baseBranch string) string {
 
 func (cmd *CreateCmd) detectBaseBranchFromSuffix(prCtx *PRContext, branchName string) string {
 	suffixMapping := prCtx.Config.PR.BranchSuffixMapping
-	
+
 	for suffix, baseBranch := range suffixMapping {
 		if strings.HasSuffix(branchName, "-"+suffix) {
 			return baseBranch
 		}
 	}
-	
+
 	return ""
 }

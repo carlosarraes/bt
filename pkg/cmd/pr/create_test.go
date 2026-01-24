@@ -203,7 +203,7 @@ func TestCreateCmd_formatOutput(t *testing.T) {
 			wantError:  false,
 		},
 		{
-			name:       "yaml output", 
+			name:       "yaml output",
 			outputType: "yaml",
 			wantError:  false,
 		},

@@ -43,7 +43,7 @@ func (cmd *OpenCmd) Run(ctx context.Context) error {
 			}
 		}(prid)
 	}
-	
+
 	wg.Wait()
 
 	return nil
@@ -147,23 +147,23 @@ func (cmd *OpenCmd) findPRURL(ctx context.Context, prCtx *PRContext, prID int) (
 					}
 					return
 				}
-				
+
 				if cmd.Debug {
 					fmt.Fprintf(os.Stderr, "DEBUG: Current user username: '%s', account_id: '%s'\n", currentUser.Username, currentUser.AccountID)
 					if pr.Author != nil {
-						fmt.Fprintf(os.Stderr, "DEBUG: PR author username: '%s', display_name: '%s', account_id: '%s'\n", 
+						fmt.Fprintf(os.Stderr, "DEBUG: PR author username: '%s', display_name: '%s', account_id: '%s'\n",
 							pr.Author.Username, pr.Author.DisplayName, pr.Author.AccountID)
 					} else {
 						fmt.Fprintf(os.Stderr, "DEBUG: PR #%d in repository %s has no author field\n", prID, repo.FullName)
 					}
 				}
-				
+
 				if pr.Author != nil && pr.Author.AccountID == currentUser.AccountID {
 					url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d", prCtx.Workspace, repoSlug, prID)
 					if cmd.Debug {
 						fmt.Fprintf(os.Stderr, "DEBUG: Found user's PR #%d in repository %s\n", prID, repo.FullName)
 					}
-					
+
 					mu.Lock()
 					matches = append(matches, PRMatch{
 						URL:        url,
@@ -204,7 +204,7 @@ func (cmd *OpenCmd) findPRURL(ctx context.Context, prCtx *PRContext, prID int) (
 		fmt.Fprintf(os.Stderr, "[%d] %s (%s)\n", i+1, match.FullName, match.URL)
 	}
 	fmt.Fprintf(os.Stderr, "\nPlease be more specific by using: bt pr open --workspace %s --repository <repo_name> %d\n", prCtx.Workspace, prID)
-	
+
 	return "", fmt.Errorf("multiple PRs found - please specify repository")
 }
 

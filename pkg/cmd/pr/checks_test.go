@@ -310,7 +310,7 @@ func TestChecksCmd_getPipelinePriority(t *testing.T) {
 
 func TestChecksCmd_sortChecksByPriority(t *testing.T) {
 	cmd := &ChecksCmd{}
-	
+
 	pipelines := []*api.Pipeline{
 		{
 			UUID:        "successful-1",
@@ -613,7 +613,7 @@ func TestChecksCmd_getPipelineDuration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := cmd.getPipelineDuration(tt.pipeline)
-			
+
 			if tt.pipeline.State != nil && tt.pipeline.State.Name == "IN_PROGRESS" {
 				if result == "" {
 					t.Errorf("getPipelineDuration() returned empty string for running pipeline")
@@ -627,12 +627,12 @@ func TestChecksCmd_getPipelineDuration(t *testing.T) {
 
 func TestChecksCmd_formatOutput_UnsupportedFormat(t *testing.T) {
 	cmd := &ChecksCmd{Output: "xml"}
-	
+
 	err := cmd.formatOutput(nil, []*api.Pipeline{})
 	if err == nil {
 		t.Error("formatOutput() expected error for unsupported format but got none")
 	}
-	
+
 	expectedMsg := "unsupported output format: xml"
 	if err.Error() != expectedMsg {
 		t.Errorf("formatOutput() error = %q, expected %q", err.Error(), expectedMsg)
@@ -643,12 +643,12 @@ func TestChecksCmd_Run_InvalidPRID(t *testing.T) {
 	cmd := &ChecksCmd{
 		PRID: "invalid",
 	}
-	
+
 	err := cmd.Run(context.Background())
 	if err == nil {
 		t.Error("Run() expected error for invalid PR ID but got none")
 	}
-	
+
 	if err.Error() == "" {
 		t.Error("Run() returned empty error message")
 	}
@@ -656,10 +656,10 @@ func TestChecksCmd_Run_InvalidPRID(t *testing.T) {
 
 func BenchmarkChecksCmd_sortChecksByPriority(b *testing.B) {
 	cmd := &ChecksCmd{}
-	
+
 	pipelines := make([]*api.Pipeline, 100)
 	states := []string{"SUCCESSFUL", "FAILED", "IN_PROGRESS", "PENDING", "STOPPED"}
-	
+
 	for i := 0; i < 100; i++ {
 		pipelines[i] = &api.Pipeline{
 			UUID:        fmt.Sprintf("pipeline-%d", i),
@@ -667,7 +667,7 @@ func BenchmarkChecksCmd_sortChecksByPriority(b *testing.B) {
 			State:       &api.PipelineState{Name: states[i%len(states)]},
 		}
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cmd.sortChecksByPriority(pipelines)
@@ -676,16 +676,16 @@ func BenchmarkChecksCmd_sortChecksByPriority(b *testing.B) {
 
 func BenchmarkChecksCmd_getChecksSummary(b *testing.B) {
 	cmd := &ChecksCmd{}
-	
+
 	pipelines := make([]*api.Pipeline, 50)
 	states := []string{"SUCCESSFUL", "FAILED", "IN_PROGRESS", "PENDING", "STOPPED"}
-	
+
 	for i := 0; i < 50; i++ {
 		pipelines[i] = &api.Pipeline{
 			State: &api.PipelineState{Name: states[i%len(states)]},
 		}
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cmd.getChecksSummary(pipelines)

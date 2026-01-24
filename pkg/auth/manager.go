@@ -26,22 +26,22 @@ type User struct {
 type AuthManager interface {
 	// Authenticate performs authentication using the configured method
 	Authenticate(ctx context.Context) error
-	
+
 	// GetAuthenticatedUser returns the current authenticated user information
 	GetAuthenticatedUser(ctx context.Context) (*User, error)
-	
+
 	// SetHTTPHeaders adds authentication headers to HTTP requests
 	SetHTTPHeaders(req *http.Request) error
-	
+
 	// IsAuthenticated checks if the user is currently authenticated
 	IsAuthenticated(ctx context.Context) (bool, error)
-	
+
 	// Refresh refreshes the authentication token if applicable
 	Refresh(ctx context.Context) error
-	
+
 	// Logout clears all stored authentication data
 	Logout() error
-	
+
 	// GetMethod returns the authentication method being used
 	GetMethod() AuthMethod
 }
@@ -50,19 +50,19 @@ type AuthManager interface {
 type Authenticator interface {
 	// Authenticate performs the authentication flow
 	Authenticate(ctx context.Context) error
-	
+
 	// SetHTTPHeaders adds the appropriate auth headers to requests
 	SetHTTPHeaders(req *http.Request) error
-	
+
 	// IsValid checks if the current authentication is still valid
 	IsValid(ctx context.Context) (bool, error)
-	
+
 	// Refresh refreshes the authentication if supported
 	Refresh(ctx context.Context) error
-	
+
 	// GetUser returns the authenticated user info
 	GetUser(ctx context.Context) (*User, error)
-	
+
 	// Clear removes all stored authentication data
 	Clear() error
 }
@@ -88,18 +88,18 @@ func NewAuthManager(config *Config, storage CredentialStorage) (AuthManager, err
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	manager := &authManager{
 		config:  config,
 		storage: storage,
 	}
-	
+
 	// Create the API token authenticator
 	auth, err := NewAPITokenAuth(config, storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create API token authenticator: %w", err)
 	}
-	
+
 	manager.authenticator = auth
 	return manager, nil
 }

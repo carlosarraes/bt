@@ -255,21 +255,21 @@ func TestParsePullRequestResults(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pullRequests, err := parsePullRequestResults(tt.result)
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Nil(t, pullRequests)
 			} else {
 				assert.NoError(t, err)
 				assert.Len(t, pullRequests, tt.expected)
-				
+
 				// Verify the parsed data for valid cases
 				if tt.expected > 0 && pullRequests != nil {
 					assert.Equal(t, 123, pullRequests[0].ID)
 					assert.Equal(t, "Test PR 1", pullRequests[0].Title)
 					assert.Equal(t, "OPEN", pullRequests[0].State)
 					assert.Equal(t, "user1", pullRequests[0].Author.Username)
-					
+
 					if len(pullRequests) > 1 {
 						assert.Equal(t, 124, pullRequests[1].ID)
 						assert.Equal(t, "Test PR 2", pullRequests[1].Title)
@@ -507,7 +507,7 @@ func TestFormatTable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ListCmd{Output: "table"}
-			
+
 			// This test just ensures the function doesn't panic
 			// In a real environment, we'd capture stdout for verification
 			err := cmd.formatTable(&PRContext{}, tt.prs)
@@ -522,10 +522,10 @@ func TestSortFieldValidation(t *testing.T) {
 		expected string
 	}{
 		{"created", "-created_on"},
-		{"updated", "-updated_on"}, 
+		{"updated", "-updated_on"},
 		{"priority", "-priority"},
-		{"CREATED", "-created_on"},  // Test case insensitive
-		{"Updated", "-updated_on"},  // Test mixed case
+		{"CREATED", "-created_on"}, // Test case insensitive
+		{"Updated", "-updated_on"}, // Test mixed case
 	}
 
 	for _, tt := range tests {
@@ -540,7 +540,7 @@ func TestSortFieldValidation(t *testing.T) {
 			case "priority":
 				sortField = "-priority"
 			}
-			
+
 			assert.Equal(t, tt.expected, sortField)
 		})
 	}

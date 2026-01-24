@@ -13,12 +13,12 @@ import (
 
 var cli struct {
 	// Global flags
-	Verbose    bool   `short:"v"`
-	ConfigFile string `default:"~/.config/bt/config.yml"`
-	NoColor    bool
-	Help       bool   `short:"h"`
-	VersionFlag bool  `name:"version" help:"Show version information"`
-	LLM        bool   `help:"Show LLM-optimized usage guide and examples"`
+	Verbose     bool   `short:"v"`
+	ConfigFile  string `default:"~/.config/bt/config.yml"`
+	NoColor     bool
+	Help        bool `short:"h"`
+	VersionFlag bool `name:"version" help:"Show version information"`
+	LLM         bool `help:"Show LLM-optimized usage guide and examples"`
 
 	// Commands
 	Version cmd.VersionCmd `cmd:""`
@@ -36,25 +36,25 @@ func main() {
 	// Intercept help, version, and LLM requests before Kong processes them
 	originalArgs := os.Args
 	args := os.Args[1:]
-	
+
 	// Check for --version flag
 	if len(args) >= 1 && args[0] == "--version" {
 		fmt.Println(version.GetBuildInfo().String())
 		return
 	}
-	
+
 	// Check for global --llm flag
 	if len(args) >= 1 && args[0] == "--llm" {
 		showLLMHelp("")
 		return
 	}
-	
+
 	// Check for command-specific --llm flag
 	if len(args) >= 2 && args[1] == "--llm" {
 		showLLMHelp(args[0])
 		return
 	}
-	
+
 	if len(args) == 0 || (len(args) == 1 && (args[0] == "--help" || args[0] == "-h")) {
 		showMainHelp()
 		return
@@ -111,7 +111,7 @@ func main() {
 		showMainHelp()
 		return
 	}
-	
+
 	// Check if version flag was set after Kong parsing
 	if cli.VersionFlag {
 		fmt.Println(version.GetBuildInfo().String())
@@ -319,7 +319,7 @@ func showLLMHelp(commandPath string) {
 	llmHelp := &cmd.LLMHelp{
 		Command: mainCommand,
 	}
-	
+
 	// Use background context since we don't need specific configuration for help
 	ctx := context.Background()
 	llmHelp.Run(ctx)

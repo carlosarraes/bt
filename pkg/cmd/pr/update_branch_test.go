@@ -8,7 +8,7 @@ import (
 
 func TestUpdateBranchCmd_ParsePRID(t *testing.T) {
 	cmd := &UpdateBranchCmd{}
-	
+
 	tests := []struct {
 		name      string
 		prid      string
@@ -51,19 +51,19 @@ func TestUpdateBranchCmd_ParsePRID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd.PRID = tt.prid
 			result, err := ParsePRID(cmd.PRID)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			
+
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
 			}
@@ -73,7 +73,7 @@ func TestUpdateBranchCmd_ParsePRID(t *testing.T) {
 
 func TestUpdateBranchCmd_ValidatePRState(t *testing.T) {
 	cmd := &UpdateBranchCmd{}
-	
+
 	tests := []struct {
 		name      string
 		pr        *api.PullRequest
@@ -116,14 +116,14 @@ func TestUpdateBranchCmd_ValidatePRState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := cmd.validatePRState(tt.pr)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -133,7 +133,7 @@ func TestUpdateBranchCmd_ValidatePRState(t *testing.T) {
 
 func TestUpdateBranchCmd_ExtractBranchNames(t *testing.T) {
 	cmd := &UpdateBranchCmd{}
-	
+
 	tests := []struct {
 		name           string
 		pr             *api.PullRequest
@@ -248,23 +248,23 @@ func TestUpdateBranchCmd_ExtractBranchNames(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			source, target, err := cmd.extractBranchNames(tt.pr)
-			
+
 			if tt.expectErr {
 				if err == nil {
 					t.Errorf("expected error but got none")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 				return
 			}
-			
+
 			if source != tt.expectedSource {
 				t.Errorf("expected source branch %q, got %q", tt.expectedSource, source)
 			}
-			
+
 			if target != tt.expectedTarget {
 				t.Errorf("expected target branch %q, got %q", tt.expectedTarget, target)
 			}
@@ -274,7 +274,7 @@ func TestUpdateBranchCmd_ExtractBranchNames(t *testing.T) {
 
 func TestUpdateBranchCmd_FormatTable(t *testing.T) {
 	cmd := &UpdateBranchCmd{}
-	
+
 	tests := []struct {
 		name   string
 		result *UpdateBranchResult
@@ -343,7 +343,7 @@ func TestUpdateBranchResult_JSON(t *testing.T) {
 		Message:      "Successfully updated",
 		HasConflicts: false,
 	}
-	
+
 	_ = result
 }
 
@@ -351,7 +351,7 @@ func TestUpdateBranchCmd_Integration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
 	}
-	
+
 	t.Skip("integration tests not implemented yet")
 }
 
@@ -375,7 +375,7 @@ func BenchmarkUpdateBranchCmd_ExtractBranchNames(b *testing.B) {
 			},
 		},
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = cmd.extractBranchNames(pr)

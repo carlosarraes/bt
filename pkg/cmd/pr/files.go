@@ -36,7 +36,7 @@ func (c *FilesCmd) Run(ctx context.Context) error {
 
 	workspace := c.Workspace
 	repository := c.Repository
-	
+
 	if workspace == "" {
 		workspace = prCtx.Workspace
 	}
@@ -88,10 +88,10 @@ func (c *FilesCmd) matchesFilter(path, pattern string) bool {
 func (c *FilesCmd) formatOutput(prCtx *PRContext, files []*api.PullRequestFile) error {
 	if c.Output == "json" || c.Output == "yaml" {
 		output := struct {
-			Files       []*api.PullRequestFile `json:"files" yaml:"files"`
-			TotalFiles  int                    `json:"total_files" yaml:"total_files"`
-			TotalAdded  int                    `json:"total_added" yaml:"total_added"`
-			TotalRemoved int                   `json:"total_removed" yaml:"total_removed"`
+			Files        []*api.PullRequestFile `json:"files" yaml:"files"`
+			TotalFiles   int                    `json:"total_files" yaml:"total_files"`
+			TotalAdded   int                    `json:"total_added" yaml:"total_added"`
+			TotalRemoved int                    `json:"total_removed" yaml:"total_removed"`
 		}{
 			Files:      files,
 			TotalFiles: len(files),
@@ -135,7 +135,7 @@ func (c *FilesCmd) formatTable(prCtx *PRContext, files []*api.PullRequestFile) e
 		status := c.getFileStatus(file)
 		added := fmt.Sprintf("%d", file.LinesAdded)
 		removed := fmt.Sprintf("%d", file.LinesRemoved)
-		
+
 		totalAdded += file.LinesAdded
 		totalRemoved += file.LinesRemoved
 
@@ -215,7 +215,7 @@ func (c *FilesCmd) renderTable(headers []string, rows [][]string) error {
 					cell = "\033[31m-" + cell + "\033[0m"
 				}
 			}
-			
+
 			fmt.Printf("%-*s", colWidths[i], cell)
 			if i < len(row)-1 {
 				fmt.Print("  ")

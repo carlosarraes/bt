@@ -32,9 +32,9 @@ func (cmd *LogsCmd) Run(ctx context.Context) error {
 	// For logs, we handle text output specially - just use table format for the context
 	outputFormat := cmd.Output
 	if outputFormat == "text" {
-		outputFormat = "table"  // Use table formatter for context, but we'll output raw text
+		outputFormat = "table" // Use table formatter for context, but we'll output raw text
 	}
-	
+
 	// Create run context with authentication and configuration
 	runCtx, err := shared.NewCommandContext(ctx, outputFormat, cmd.NoColor)
 	if err != nil {
@@ -83,7 +83,7 @@ func (cmd *LogsCmd) Run(ctx context.Context) error {
 // resolvePipelineUUID converts build number to UUID or validates UUID (reused from view.go)
 func (cmd *LogsCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
 	pipelineID := strings.TrimSpace(cmd.PipelineID)
-	
+
 	// If it's already a UUID (contains hyphens), return as-is
 	if strings.Contains(pipelineID, "-") {
 		return pipelineID, nil
@@ -130,7 +130,7 @@ func (cmd *LogsCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext)
 // displayStepInfo shows useful information about a step
 func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
 	fmt.Printf("\n=== Step: %s ===\n", step.Name)
-	
+
 	if step.State != nil {
 		status := step.State.Name
 		if step.State.Result != nil && step.State.Result.Name != "" {
@@ -138,23 +138,23 @@ func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
 		}
 		fmt.Printf("Status: %s\n", status)
 	}
-	
+
 	if step.StartedOn != nil {
 		fmt.Printf("Started: %s\n", step.StartedOn.Format("2006-01-02 15:04:05"))
 	}
-	
+
 	if step.CompletedOn != nil {
 		fmt.Printf("Completed: %s\n", step.CompletedOn.Format("2006-01-02 15:04:05"))
 	}
-	
+
 	if step.BuildSecondsUsed > 0 {
 		fmt.Printf("Duration: %s\n", output.FormatDuration(step.BuildSecondsUsed))
 	}
-	
+
 	if step.Image != nil {
 		fmt.Printf("Image: %s\n", step.Image.Name)
 	}
-	
+
 	// Show setup commands
 	if len(step.SetupCommands) > 0 {
 		fmt.Printf("\nSetup Commands:\n")
@@ -162,7 +162,7 @@ func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
 			fmt.Printf("  - %s\n", cmd.Command)
 		}
 	}
-	
+
 	// Show script commands
 	if len(step.ScriptCommands) > 0 {
 		fmt.Printf("\nScript Commands:\n")
@@ -170,7 +170,7 @@ func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
 			fmt.Printf("  - %s\n", cmd.Command)
 		}
 	}
-	
+
 	fmt.Println()
 }
 
@@ -193,12 +193,12 @@ func (cmd *LogsCmd) displayTestResults(ctx context.Context, runCtx *RunContext, 
 	totalPassed := 0
 	totalFailed := 0
 	totalSkipped := 0
-	
+
 	for _, report := range reports {
 		fmt.Printf("  Report: %s\n", report.Name)
 		fmt.Printf("    Status: %s\n", report.Status)
 		if report.Total > 0 {
-			fmt.Printf("    Tests: %d total, %d passed, %d failed, %d skipped\n", 
+			fmt.Printf("    Tests: %d total, %d passed, %d failed, %d skipped\n",
 				report.Total, report.Passed, report.Failed, report.Skipped)
 			totalPassed += report.Passed
 			totalFailed += report.Failed
@@ -213,7 +213,7 @@ func (cmd *LogsCmd) displayTestResults(ctx context.Context, runCtx *RunContext, 
 	// If there are failures, get detailed test cases
 	if totalFailed > 0 {
 		fmt.Printf("❌ Getting details for %d failed test(s)...\n\n", totalFailed)
-		
+
 		testCases, err := runCtx.Client.Pipelines.GetStepTestCases(ctx, runCtx.Workspace, runCtx.Repository, pipeline.UUID, step.UUID)
 		if err != nil {
 			fmt.Printf("Could not get detailed test cases: %v\n", err)
@@ -285,7 +285,7 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 
 	// Process logs for each step
 	allResults := make([]*utils.LogAnalysisResult, 0, len(filteredSteps))
-	
+
 	for _, step := range filteredSteps {
 		// Try to get step logs first, or use --tests flag to show test results
 		if cmd.Tests {
@@ -312,7 +312,7 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 			if cmd.Output == "text" {
 				cmd.displayStepInfo(step)
 				fmt.Printf("Note: Raw logs not available through API for step '%s': %v\n", step.Name, err)
-				
+
 				// Try to show test results as fallback
 				fmt.Printf("Checking for test results...\n")
 				cmd.displayTestResults(ctx, runCtx, pipeline, step)
@@ -334,7 +334,7 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 		// Analyze logs with error detection
 		parser := utils.NewLogParser()
 		parser.SetContextLines(cmd.Context)
-		
+
 		result, err := parser.AnalyzeLog(logReader, step.Name)
 		if err != nil {
 			fmt.Printf("Warning: Could not analyze logs for step '%s': %v\n", step.Name, err)
@@ -357,7 +357,7 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 func (cmd *LogsCmd) followLogs(ctx context.Context, runCtx *RunContext, pipeline *api.Pipeline) error {
 	// Check if pipeline is in a state that can be followed
 	if pipeline.State == nil || (pipeline.State.Name != "IN_PROGRESS" && pipeline.State.Name != "PENDING") {
-		fmt.Printf("Pipeline #%d is %s - following is only available for running pipelines\n", 
+		fmt.Printf("Pipeline #%d is %s - following is only available for running pipelines\n",
 			pipeline.BuildNumber, pipeline.State.Name)
 		// Fall back to static view
 		return cmd.viewLogs(ctx, runCtx, pipeline)
@@ -374,7 +374,7 @@ func (cmd *LogsCmd) followLogs(ctx context.Context, runCtx *RunContext, pipeline
 	defer ticker.Stop()
 
 	seenSteps := make(map[string]bool)
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -416,9 +416,9 @@ func (cmd *LogsCmd) followLogs(ctx context.Context, runCtx *RunContext, pipeline
 				continue
 			}
 
-			if updatedPipeline.State != nil && 
-			   updatedPipeline.State.Name != "IN_PROGRESS" && 
-			   updatedPipeline.State.Name != "PENDING" {
+			if updatedPipeline.State != nil &&
+				updatedPipeline.State.Name != "IN_PROGRESS" &&
+				updatedPipeline.State.Name != "PENDING" {
 				fmt.Printf("\n🏁 Pipeline completed with status: %s\n", updatedPipeline.State.Name)
 				return nil
 			}
@@ -449,7 +449,7 @@ func (cmd *LogsCmd) streamStepLogs(ctx context.Context, runCtx *RunContext, pipe
 				// Channel closed, process accumulated logs
 				return cmd.processAccumulatedLogs(logLines, step.Name, parser)
 			}
-			
+
 			lineNumber++
 			logLines = append(logLines, line)
 
@@ -504,13 +504,13 @@ func (cmd *LogsCmd) containsError(line string, parser *utils.LogParser) bool {
 // filterStepsByName filters steps by name with fuzzy matching
 func (cmd *LogsCmd) filterStepsByName(steps []*api.PipelineStep, stepName string) []*api.PipelineStep {
 	var filtered []*api.PipelineStep
-	
+
 	for _, step := range steps {
 		if cmd.matchesStepName(step.Name, stepName) {
 			filtered = append(filtered, step)
 		}
 	}
-	
+
 	return filtered
 }
 
@@ -518,22 +518,22 @@ func (cmd *LogsCmd) filterStepsByName(steps []*api.PipelineStep, stepName string
 func (cmd *LogsCmd) matchesStepName(stepName, requestedName string) bool {
 	stepNameLower := strings.ToLower(stepName)
 	requestedLower := strings.ToLower(requestedName)
-	
+
 	// Exact match
 	if stepNameLower == requestedLower {
 		return true
 	}
-	
+
 	// Contains match
 	if strings.Contains(stepNameLower, requestedLower) {
 		return true
 	}
-	
+
 	// Prefix match
 	if strings.HasPrefix(stepNameLower, requestedLower) {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -586,7 +586,7 @@ func (cmd *LogsCmd) formatText(runCtx *RunContext, pipeline *api.Pipeline, steps
 			}
 
 			fmt.Printf("=== Step: %s (%s) ===\n", step.Name, stepStatus)
-			
+
 			if cmd.ErrorsOnly {
 				// Show only errors with context
 				if len(result.Errors) > 0 {
@@ -606,9 +606,9 @@ func (cmd *LogsCmd) formatText(runCtx *RunContext, pipeline *api.Pipeline, steps
 				}
 			} else {
 				// Show summary with error highlights
-				fmt.Printf("Total lines: %d, Errors: %d, Warnings: %d\n", 
+				fmt.Printf("Total lines: %d, Errors: %d, Warnings: %d\n",
 					result.TotalLines, result.ErrorCount, result.WarningCount)
-				
+
 				if len(result.Errors) > 0 {
 					fmt.Printf("\n❌ Errors found:\n")
 					for _, logError := range result.Errors {
@@ -630,8 +630,8 @@ func (cmd *LogsCmd) formatText(runCtx *RunContext, pipeline *api.Pipeline, steps
 			totalErrors += result.ErrorCount
 			totalWarnings += result.WarningCount
 		}
-		
-		fmt.Printf("📊 Overall Summary: %d error(s), %d warning(s) across %d step(s)\n", 
+
+		fmt.Printf("📊 Overall Summary: %d error(s), %d warning(s) across %d step(s)\n",
 			totalErrors, totalWarnings, len(results))
 	}
 
@@ -641,8 +641,8 @@ func (cmd *LogsCmd) formatText(runCtx *RunContext, pipeline *api.Pipeline, steps
 // formatJSON formats logs as structured JSON for AI/automation
 func (cmd *LogsCmd) formatJSON(runCtx *RunContext, pipeline *api.Pipeline, steps []*api.PipelineStep, results []*utils.LogAnalysisResult) error {
 	output := map[string]interface{}{
-		"pipeline":    pipeline,
-		"steps":       steps,
+		"pipeline":     pipeline,
+		"steps":        steps,
 		"log_analysis": results,
 		"summary": map[string]interface{}{
 			"total_steps": len(steps),

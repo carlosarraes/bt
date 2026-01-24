@@ -151,7 +151,7 @@ func (t *TableFormatter) formatSingleMap(data map[string]interface{}) error {
 	// Calculate column widths
 	maxKeyWidth := 0
 	maxValueWidth := 0
-	
+
 	for key, value := range data {
 		if len(key) > maxKeyWidth {
 			maxKeyWidth = len(key)

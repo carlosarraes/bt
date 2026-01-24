@@ -8,7 +8,7 @@ import (
 )
 
 func TestGetDiff_CorrectParameterOrder(t *testing.T) {
-	
+
 	tests := []struct {
 		name         string
 		targetBranch string
@@ -34,19 +34,19 @@ func TestGetDiff_CorrectParameterOrder(t *testing.T) {
 			description:  "Shows what changes when merging ZUP-55-hml INTO homolog",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Logf("Correct order: GetDiff(%q, %q)", tt.targetBranch, tt.sourceBranch)
 			t.Logf("Description: %s", tt.description)
-			
+
 			t.Logf("WRONG order would be: GetDiff(%q, %q) - DON'T DO THIS!", tt.sourceBranch, tt.targetBranch)
 		})
 	}
 }
 
 func TestDiffInterpretation_AdditionsVsDeletions(t *testing.T) {
-	
+
 	testDiff := `diff --git a/app.py b/app.py
 index abc123..def456 100644
 --- a/app.py
@@ -66,10 +66,10 @@ index abc123..def456 100644
 +
  @app.route('/validate_pdf', methods=['POST'])
  def validate_pdf():`
-	
+
 	assert.True(t, strings.Contains(testDiff, "+def get_api_base_url():"), "Should contain added function")
 	assert.True(t, strings.Contains(testDiff, "+    \"\"\"Determine API base URL based on environment\"\"\""), "Should contain added docstring")
-	
+
 	lines := strings.Split(testDiff, "\n")
 	additionCount := 0
 	deletionCount := 0
@@ -86,7 +86,7 @@ index abc123..def456 100644
 }
 
 func TestDiffInterpretation_WrongDirection(t *testing.T) {
-	
+
 	wrongDiff := `diff --git a/app.py b/app.py
 index def456..abc123 100644
 --- a/app.py
@@ -106,9 +106,9 @@ index def456..abc123 100644
 -
  @app.route('/validate_pdf', methods=['POST'])
  def validate_pdf():`
-	
+
 	assert.True(t, strings.Contains(wrongDiff, "-def get_api_base_url():"), "Function appears as deletion with wrong order")
-	
+
 	t.Log("With wrong parameter order, the AI sees additions as deletions!")
 	t.Log("This is why it said 'removes functionality' when code was being added")
 }

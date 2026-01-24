@@ -75,7 +75,7 @@ func TestViewCmd_ParsePRID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{PRID: tt.prid}
 			result, err := cmd.ParsePRID()
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
@@ -153,7 +153,7 @@ func TestViewCmd_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test PR ID parsing
 			_, err := tt.cmd.ParsePRID()
-			
+
 			if tt.expectErr {
 				assert.Error(t, err)
 				if tt.errMsg != "" {
@@ -170,9 +170,9 @@ func TestViewCmd_FormatOutput(t *testing.T) {
 	// Create test data
 	now := time.Now()
 	testPR := &api.PullRequest{
-		ID:    123,
-		Title: "Test Pull Request",
-		State: "OPEN",
+		ID:          123,
+		Title:       "Test Pull Request",
+		State:       "OPEN",
 		Description: "This is a test pull request description",
 		Author: &api.User{
 			Username:    "testuser",
@@ -239,10 +239,10 @@ func TestViewCmd_FormatOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{Output: tt.output}
-			
+
 			// Create a mock PRContext (this would need proper mocking in real tests)
 			prCtx := &PRContext{}
-			
+
 			// Test table format directly since it doesn't use formatter
 			err := cmd.formatTable(prCtx, tt.pr, tt.files, nil)
 			assert.NoError(t, err)
@@ -315,11 +315,11 @@ func TestViewCmd_FormatTable_EdgeCases(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{Output: "table"}
-			
+
 			// This test ensures the table formatting handles edge cases gracefully
 			// In a real test, we'd capture and validate the output
 			err := cmd.formatTable(&PRContext{}, tt.pr, nil, nil)
-			
+
 			// We expect no panics or crashes, even with minimal data
 			// The function should handle nil values gracefully
 			assert.NoError(t, err)
@@ -395,10 +395,10 @@ func TestViewCmd_DisplayComments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cmd := &ViewCmd{}
-			
+
 			// Test that displayComments doesn't panic with various inputs
 			err := cmd.displayComments(tt.comments)
-			
+
 			// The function should handle all cases gracefully
 			if tt.name == "invalid JSON comments" {
 				assert.Error(t, err)
@@ -440,12 +440,12 @@ func TestViewCmd_OpenInBrowser(t *testing.T) {
 				Workspace:  tt.workspace,
 				Repository: tt.repo,
 			}
-			
+
 			// We can't actually test browser opening in unit tests,
 			// but we can test URL construction logic by examining the error
 			// (since we don't have a real browser environment)
 			err := cmd.openInBrowser(prCtx, tt.prID)
-			
+
 			// In most CI environments, this will fail, but that's expected
 			// The important thing is that it constructs the right URL
 			// We can verify this by checking the error message contains the expected URL
@@ -459,7 +459,7 @@ func TestViewCmd_OpenInBrowser(t *testing.T) {
 func TestViewCmd_UnsupportedOutputFormat(t *testing.T) {
 	cmd := &ViewCmd{Output: "unsupported"}
 	pr := &api.PullRequest{ID: 123, Title: "Test", State: "OPEN"}
-	
+
 	err := cmd.formatOutput(&PRContext{}, pr, nil, nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported output format: unsupported")
@@ -512,7 +512,7 @@ func TestViewCmd_GitHubCLICompatibility(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This test verifies the command structure matches GitHub CLI expectations
 			// In practice, Kong CLI framework would parse these arguments
-			
+
 			// Verify PRID parsing works correctly
 			cmd := &ViewCmd{PRID: tt.expected.PRID}
 			prID, err := cmd.ParsePRID()

@@ -190,7 +190,7 @@ func TestFilesCmd_validatePRID(t *testing.T) {
 			if len(prID) > 0 && prID[0] == '#' {
 				prID = prID[1:]
 			}
-			
+
 			var err error
 			if prID != "" {
 				_, err = strconv.Atoi(prID)

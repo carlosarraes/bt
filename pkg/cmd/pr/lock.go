@@ -100,20 +100,20 @@ func (cmd *LockCmd) confirmLock(pr *api.PullRequest) error {
 	if cmd.Reason != "" {
 		reasonMsg = fmt.Sprintf(" (reason: %s)", cmd.Reason)
 	}
-	
+
 	fmt.Printf("Are you sure you want to lock conversation for pull request #%d (%s)%s? [y/N] ", pr.ID, pr.Title, reasonMsg)
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read confirmation: %w", err)
 	}
-	
+
 	response = strings.TrimSpace(strings.ToLower(response))
 	if response != "y" && response != "yes" {
 		return fmt.Errorf("operation cancelled")
 	}
-	
+
 	return nil
 }
 
@@ -134,7 +134,7 @@ func (cmd *LockCmd) formatTable(pr *api.PullRequest) error {
 	fmt.Printf("✓ Locked conversation for pull request #%d\n", pr.ID)
 	fmt.Printf("Title: %s\n", pr.Title)
 	fmt.Printf("State: %s\n", pr.State)
-	
+
 	if pr.Author != nil {
 		authorName := pr.Author.DisplayName
 		if authorName == "" {
@@ -146,21 +146,21 @@ func (cmd *LockCmd) formatTable(pr *api.PullRequest) error {
 	if pr.Source != nil && pr.Destination != nil {
 		sourceBranch := "unknown"
 		destBranch := "unknown"
-		
+
 		if pr.Source.Branch != nil {
 			sourceBranch = pr.Source.Branch.Name
 		}
 		if pr.Destination.Branch != nil {
 			destBranch = pr.Destination.Branch.Name
 		}
-		
+
 		fmt.Printf("Branches: %s → %s\n", sourceBranch, destBranch)
 	}
 
 	if cmd.Reason != "" {
 		fmt.Printf("Lock reason: %s\n", cmd.Reason)
 	}
-	
+
 	fmt.Printf("🔒 Further comments on this pull request have been disabled\n")
 
 	return nil

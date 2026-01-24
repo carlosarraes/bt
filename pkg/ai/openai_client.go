@@ -24,11 +24,11 @@ type CacheManager struct {
 }
 
 type PRDescriptionSchema struct {
-	Contexto              string   `json:"contexto" jsonschema:"description=Brief context description for the PR in the specified language"`
-	Alteracoes            []string `json:"alteracoes" jsonschema:"description=List of specific changes made, each starting with bullet point"`
-	ChecklistItems        []string `json:"checklist_items" jsonschema:"description=Dynamic checklist items based on change types, each starting with checkbox"`
-	EvidencePlaceholders  []string `json:"evidence_placeholders" jsonschema:"description=Evidence placeholder items based on change types, each starting with checkbox"`
-	Title                 string   `json:"title" jsonschema:"description=Concise PR title based on changes and branch name"`
+	Contexto             string   `json:"contexto" jsonschema:"description=Brief context description for the PR in the specified language"`
+	Alteracoes           []string `json:"alteracoes" jsonschema:"description=List of specific changes made, each starting with bullet point"`
+	ChecklistItems       []string `json:"checklist_items" jsonschema:"description=Dynamic checklist items based on change types, each starting with checkbox"`
+	EvidencePlaceholders []string `json:"evidence_placeholders" jsonschema:"description=Evidence placeholder items based on change types, each starting with checkbox"`
+	Title                string   `json:"title" jsonschema:"description=Concise PR title based on changes and branch name"`
 	JiraTicket           string   `json:"jira_ticket,omitempty" jsonschema:"description=JIRA ticket ID if found in context"`
 	ClientSpecific       string   `json:"client_specific,omitempty" jsonschema:"description=Client-specific information if found"`
 }
@@ -51,7 +51,7 @@ func NewOpenAIClient() (*OpenAIClient, error) {
 	}
 
 	client := openai.NewClient(apiKey)
-	
+
 	cache, err := NewCacheManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cache manager: %w", err)
@@ -100,7 +100,7 @@ func NewCacheManager() (*CacheManager, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	cacheDir := filepath.Join(homeDir, ".cache", "bt", "ai")
 	if err := os.MkdirAll(cacheDir, 0755); err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func NewCacheManager() (*CacheManager, error) {
 
 func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnalysisInput, language string) (*PRDescriptionSchema, error) {
 	cacheKey := c.generateCacheKey(input, language)
-	
+
 	if cached, err := c.cache.Get(cacheKey); err == nil {
 		return cached, nil
 	}
@@ -187,7 +187,7 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 			},
 		},
 		ResponseFormat: &openai.ChatCompletionResponseFormat{
-			Type: openai.ChatCompletionResponseFormatTypeJSONSchema,
+			Type:       openai.ChatCompletionResponseFormatTypeJSONSchema,
 			JSONSchema: schema,
 		},
 	}
@@ -287,7 +287,7 @@ CRITICAL INSTRUCTIONS FOR GIT DIFF ANALYSIS:
 6. Be specific about what code is actually changing based on the +/- indicators
 7. Each bullet point and checklist item should be on a separate line
 8. If no client-specific info is found, set client_specific to empty string
-`, 
+`,
 		input.SourceBranch,
 		input.TargetBranch,
 		formatCommits(input.CommitMessages),
@@ -322,7 +322,7 @@ func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput, language string)
 		input.LinesAdded,
 		input.LinesRemoved,
 	)
-	
+
 	if input.JiraContext != "" {
 		data += "|" + input.JiraContext
 	}
@@ -334,7 +334,7 @@ func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput, language string)
 
 func (cm *CacheManager) Get(key string) (*PRDescriptionSchema, error) {
 	cachePath := filepath.Join(cm.cacheDir, key+".json")
-	
+
 	data, err := os.ReadFile(cachePath)
 	if err != nil {
 		return nil, err
@@ -355,7 +355,7 @@ func (cm *CacheManager) Get(key string) (*PRDescriptionSchema, error) {
 
 func (cm *CacheManager) Set(key string, response *PRDescriptionSchema) error {
 	cachePath := filepath.Join(cm.cacheDir, key+".json")
-	
+
 	cached := CachedResponse{
 		Response:  response,
 		Timestamp: time.Now(),
@@ -413,15 +413,15 @@ func truncateString(s string, maxLen int) string {
 }
 
 type PRAnalysisInput struct {
-	SourceBranch    string
-	TargetBranch    string
-	CommitMessages  []string
-	ChangedFiles    []string
-	GitDiff         string
-	FilesChanged    int
-	LinesAdded      int
-	LinesRemoved    int
-	JiraContext     string
+	SourceBranch   string
+	TargetBranch   string
+	CommitMessages []string
+	ChangedFiles   []string
+	GitDiff        string
+	FilesChanged   int
+	LinesAdded     int
+	LinesRemoved   int
+	JiraContext    string
 }
 
 type JSONSchemaMarshaler struct {

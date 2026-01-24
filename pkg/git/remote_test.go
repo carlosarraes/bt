@@ -106,7 +106,7 @@ func TestParseRemoteURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseRemoteURL(tt.remoteName, tt.remoteURL)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("parseRemoteURL() expected error but got none")
@@ -182,7 +182,7 @@ func TestParseBitbucketURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			workspace, repo, err := ParseBitbucketURL(tt.url)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ParseBitbucketURL() expected error but got none")
@@ -419,10 +419,10 @@ func TestIsValidBitbucketURL(t *testing.T) {
 
 func TestGetRemoteInfo(t *testing.T) {
 	tests := []struct {
-		name        string
-		remoteURL   string
-		want        *RemoteInfo
-		wantErr     bool
+		name      string
+		remoteURL string
+		want      *RemoteInfo
+		wantErr   bool
 	}{
 		{
 			name:      "Valid SSH URL",
@@ -511,9 +511,9 @@ func remoteInfoEqual(a, b *RemoteInfo) bool {
 }
 
 func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
-		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
-		 indexOfString(s, substr) >= 0)))
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
+			indexOfString(s, substr) >= 0)))
 }
 
 func indexOfString(s, substr string) int {

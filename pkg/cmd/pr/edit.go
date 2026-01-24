@@ -30,8 +30,8 @@ type EditCmd struct {
 	Debug          bool     `help:"Print debug information including git diff and AI inputs"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor        bool
-	Workspace      string   `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository     string   `help:"Repository name (defaults to git remote)"`
+	Workspace      string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository     string `help:"Repository name (defaults to git remote)"`
 }
 
 func (cmd *EditCmd) Run(ctx context.Context) error {
@@ -73,7 +73,7 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 		if err := cmd.validateAIOptions(); err != nil {
 			return err
 		}
-		
+
 		aiResult, err := cmd.generateAIDescription(ctx, prCtx, pr)
 		if err != nil {
 			fmt.Printf("⚠️  AI generation failed: %v\n", err)
@@ -105,7 +105,6 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 	fmt.Println("No changes specified. Use --help to see available options.")
 	return nil
 }
-
 
 func (cmd *EditCmd) isInteractiveMode() bool {
 	return cmd.Title == "" && cmd.Body == "" && cmd.BodyFile == "" &&
@@ -261,7 +260,7 @@ func (cmd *EditCmd) buildUpdateRequest(pr *api.PullRequest) (*api.UpdatePullRequ
 
 func (cmd *EditCmd) buildReviewersList(pr *api.PullRequest) ([]*api.PullRequestParticipant, error) {
 	existingReviewers := make(map[string]*api.PullRequestParticipant)
-	
+
 	for _, reviewer := range pr.Reviewers {
 		if reviewer.User != nil {
 			existingReviewers[reviewer.User.Username] = reviewer
@@ -317,7 +316,7 @@ func (cmd *EditCmd) formatOutput(prCtx *PRContext, pr *api.PullRequest) error {
 func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 	fmt.Printf("#%d • %s\n", pr.ID, pr.Title)
 	fmt.Printf("State: %s\n", pr.State)
-	
+
 	if pr.Author != nil {
 		authorName := pr.Author.DisplayName
 		if authorName == "" {
@@ -329,14 +328,14 @@ func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 	if pr.Source != nil && pr.Destination != nil {
 		sourceBranch := "unknown"
 		destBranch := "unknown"
-		
+
 		if pr.Source.Branch != nil {
 			sourceBranch = pr.Source.Branch.Name
 		}
 		if pr.Destination.Branch != nil {
 			destBranch = pr.Destination.Branch.Name
 		}
-		
+
 		fmt.Printf("Branches: %s → %s\n", sourceBranch, destBranch)
 	}
 
@@ -359,14 +358,14 @@ func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 				if name == "" {
 					name = reviewer.User.Username
 				}
-				
+
 				status := "pending"
 				if reviewer.Approved {
 					status = "approved"
 				} else if reviewer.State == "changes_requested" {
 					status = "changes requested"
 				}
-				
+
 				fmt.Printf("  • %s (%s)\n", name, status)
 			}
 		}
@@ -379,13 +378,13 @@ func (cmd *EditCmd) validateAIOptions() error {
 	if err := ai.ValidateLanguage(cmd.Template); err != nil {
 		return err
 	}
-	
+
 	if cmd.Jira != "" {
 		if _, err := os.Stat(cmd.Jira); os.IsNotExist(err) {
 			return fmt.Errorf("JIRA context file not found: %s", cmd.Jira)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -396,17 +395,17 @@ func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext,
 	}
 
 	generator := ai.NewDescriptionGenerator(prCtx.Client, repo, prCtx.Workspace, prCtx.Repository, cmd.NoColor, prCtx.Config)
-	
+
 	sourceBranch := "unknown"
 	targetBranch := "unknown"
-	
+
 	if pr.Source != nil && pr.Source.Branch != nil {
 		sourceBranch = pr.Source.Branch.Name
 	}
 	if pr.Destination != nil && pr.Destination.Branch != nil {
 		targetBranch = pr.Destination.Branch.Name
 	}
-	
+
 	opts := &ai.GenerateOptions{
 		SourceBranch: sourceBranch,
 		TargetBranch: targetBranch,
@@ -415,11 +414,11 @@ func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext,
 		Verbose:      true,
 		Debug:        cmd.Debug,
 	}
-	
+
 	result, err := generator.GenerateDescription(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return result, nil
 }

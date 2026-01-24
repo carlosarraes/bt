@@ -407,18 +407,18 @@ func (r *Repository) GetCommitMessages(baseBranch, targetBranch string) ([]strin
 
 	var messages []string
 	baseCommit, _ := r.repo.CommitObject(*baseHash)
-	
+
 	err = commitIter.ForEach(func(commit *object.Commit) error {
 		if baseCommit != nil && commit.Hash == baseCommit.Hash {
 			return nil
 		}
-		
+
 		message := strings.Split(strings.TrimSpace(commit.Message), "\n")[0]
 		messages = append(messages, message)
-		
+
 		return nil
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to iterate commits: %w", err)
 	}

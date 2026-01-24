@@ -115,7 +115,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 	// Custom table rendering for better control
 	headers := []string{"ID", "Status", "Ref", "Started By", "Duration", "Started"}
 	rows := make([][]string, len(pipelines))
-	
+
 	for i, pipeline := range pipelines {
 		status := "UNKNOWN"
 		if pipeline.State != nil {
@@ -238,7 +238,7 @@ func validateStatus(status string) error {
 		}
 	}
 
-	return fmt.Errorf("invalid status '%s'. Valid statuses are: %s", 
+	return fmt.Errorf("invalid status '%s'. Valid statuses are: %s",
 		status, strings.Join(validStatuses, ", "))
 }
 
@@ -261,4 +261,3 @@ func handlePipelineAPIError(err error) error {
 
 	return fmt.Errorf("failed to list pipelines: %w", err)
 }
-

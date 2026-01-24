@@ -57,19 +57,19 @@ func (c *CheckoutCmd) Run(ctx context.Context) error {
 
 	sourceBranch := pr.Source.Branch.Name
 	sourceRepo := pr.Source.Repository
-	
+
 	if sourceRepo == nil {
 		return fmt.Errorf("pull request source repository information not available")
 	}
 
 	isFork := sourceRepo.FullName != fmt.Sprintf("%s/%s", prCtx.Workspace, prCtx.Repository)
-	
+
 	var remoteName string
 	var remoteURL string
-	
+
 	if isFork {
 		remoteName = fmt.Sprintf("pr-%d", prID)
-		
+
 		parts := strings.Split(sourceRepo.FullName, "/")
 		if len(parts) == 2 {
 			remoteURL = fmt.Sprintf("https://bitbucket.org/%s/%s.git", parts[0], parts[1])
@@ -85,7 +85,7 @@ func (c *CheckoutCmd) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to check for uncommitted changes: %w", err)
 		}
-		
+
 		if hasChanges {
 			return fmt.Errorf("you have uncommitted changes. Use --force to discard them or commit/stash your changes")
 		}
@@ -106,7 +106,7 @@ func (c *CheckoutCmd) Run(ctx context.Context) error {
 	}
 
 	localBranch := sourceBranch
-	
+
 	if gitRepo.BranchExists(localBranch) && !isSameBranch(gitRepo, localBranch, remoteName, sourceBranch) {
 		localBranch = fmt.Sprintf("pr-%d", prID)
 		if gitRepo.BranchExists(localBranch) {
@@ -147,15 +147,14 @@ func (c *CheckoutCmd) Run(ctx context.Context) error {
 	return nil
 }
 
-
 func isSameBranch(repo *git.Repository, localBranch, remoteName, remoteBranch string) bool {
 	if currentBranch, err := repo.GetCurrentBranch(); err == nil {
-		if currentBranch.ShortName == localBranch && 
-		   currentBranch.Remote == remoteName && 
-		   currentBranch.RemoteBranch == remoteBranch {
+		if currentBranch.ShortName == localBranch &&
+			currentBranch.Remote == remoteName &&
+			currentBranch.RemoteBranch == remoteBranch {
 			return true
 		}
 	}
-	
+
 	return false
 }

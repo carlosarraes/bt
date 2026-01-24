@@ -60,18 +60,18 @@ func (d *ProjectKeyDiscovery) extractFromBitbucketReports(ctx context.Context, w
 	}
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/commit/%s/reports", workspace, repo, commitHash)
-	
+
 	var reports struct {
 		Values []struct {
-			UUID        string `json:"uuid"`
-			Title       string `json:"title"`
-			Details     string `json:"details"`
-			ExternalID  string `json:"external_id"`
-			Reporter    string `json:"reporter"`
-			Link        string `json:"link"`
-			ReportType  string `json:"report_type"`
-			Result      string `json:"result"`
-			Data        []struct {
+			UUID       string `json:"uuid"`
+			Title      string `json:"title"`
+			Details    string `json:"details"`
+			ExternalID string `json:"external_id"`
+			Reporter   string `json:"reporter"`
+			Link       string `json:"link"`
+			ReportType string `json:"report_type"`
+			Result     string `json:"result"`
+			Data       []struct {
 				Title string `json:"title"`
 				Type  string `json:"type"`
 				Value string `json:"value"`
@@ -84,9 +84,9 @@ func (d *ProjectKeyDiscovery) extractFromBitbucketReports(ctx context.Context, w
 	}
 
 	for _, report := range reports.Values {
-		if strings.Contains(strings.ToLower(report.Reporter), "sonar") || 
-		   strings.Contains(strings.ToLower(report.Title), "sonar") {
-			
+		if strings.Contains(strings.ToLower(report.Reporter), "sonar") ||
+			strings.Contains(strings.ToLower(report.Title), "sonar") {
+
 			if report.Link != "" {
 				projectKey := d.extractProjectKeyFromURL(report.Link)
 				if projectKey != "" {
@@ -132,10 +132,10 @@ func (d *ProjectKeyDiscovery) loadFromEnvironment(ctx context.Context, workspace
 		return key, "SONARCLOUD_PROJECT_KEY", nil
 	}
 
-	envVar := fmt.Sprintf("SONARCLOUD_PROJECT_KEY_%s_%s", 
+	envVar := fmt.Sprintf("SONARCLOUD_PROJECT_KEY_%s_%s",
 		strings.ToUpper(strings.ReplaceAll(workspace, "-", "_")),
 		strings.ToUpper(strings.ReplaceAll(repo, "-", "_")))
-	
+
 	if key := os.Getenv(envVar); key != "" {
 		return key, envVar, nil
 	}
@@ -271,21 +271,21 @@ func (d *ProjectKeyDiscovery) extractProjectKeyFromPackageJSON() (string, error)
 
 func (d *ProjectKeyDiscovery) generateHeuristicName(ctx context.Context, workspace, repo, commitHash string) (string, string, error) {
 	projectKey := fmt.Sprintf("%s_%s", workspace, repo)
-	
+
 	projectKey = d.sanitizeProjectKey(projectKey)
-	
+
 	return projectKey, "heuristic", nil
 }
 
 func (d *ProjectKeyDiscovery) sanitizeProjectKey(key string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9\-_.]`)
 	sanitized := re.ReplaceAllString(key, "_")
-	
+
 	re = regexp.MustCompile(`_+`)
 	sanitized = re.ReplaceAllString(sanitized, "_")
-	
+
 	sanitized = strings.Trim(sanitized, "_")
-	
+
 	return sanitized
 }
 
@@ -305,7 +305,7 @@ func (d *ProjectKeyDiscovery) isValidProjectKey(key string) bool {
 func (d *ProjectKeyDiscovery) GetProjectKeyStrategies() []string {
 	return []string{
 		"Bitbucket Reports API: Extract from SonarCloud report link in commit reports",
-		"Environment Variable: SONARCLOUD_PROJECT_KEY or repo-specific variables", 
+		"Environment Variable: SONARCLOUD_PROJECT_KEY or repo-specific variables",
 		"Configuration File: ~/.config/bt/sonarcloud.json or ./sonarcloud.json",
 		"Git Repository: sonar-project.properties, .sonarcloud.properties, package.json",
 		"Heuristic Naming: {workspace}_{repository} with sanitization",

@@ -22,28 +22,28 @@ import (
 const (
 	// DefaultBaseURL is the default Bitbucket API base URL
 	DefaultBaseURL = "https://api.bitbucket.org/2.0"
-	
+
 	// DefaultTimeout is the default request timeout
 	DefaultTimeout = 30 * time.Second
-	
+
 	// DefaultRetryAttempts is the default number of retry attempts
 	DefaultRetryAttempts = 3
-	
+
 	// DefaultPageSize is the default page size for paginated requests
 	DefaultPageSize = 50
-	
+
 	// MaxPageSize is the maximum page size allowed by Bitbucket
 	MaxPageSize = 100
 )
 
 // ClientConfig contains configuration options for the API client
 type ClientConfig struct {
-	BaseURL        string
-	Timeout        time.Duration
-	RetryAttempts  int
-	EnableLogging  bool
-	Logger         *log.Logger
-	UserAgent      string
+	BaseURL       string
+	Timeout       time.Duration
+	RetryAttempts int
+	EnableLogging bool
+	Logger        *log.Logger
+	UserAgent     string
 }
 
 // DefaultClientConfig returns a configuration with sensible defaults
@@ -63,11 +63,11 @@ type Client struct {
 	authManager auth.AuthManager
 	config      *ClientConfig
 	baseURL     *url.URL
-	
+
 	// Services
-	Pipelines     *PipelineService
-	PullRequests  *PullRequestService
-	Repositories  *RepositoryService
+	Pipelines    *PipelineService
+	PullRequests *PullRequestService
+	Repositories *RepositoryService
 }
 
 // NewClient creates a new Bitbucket API client
@@ -91,12 +91,12 @@ func NewClient(authManager auth.AuthManager, config *ClientConfig) (*Client, err
 		config:      config,
 		baseURL:     baseURL,
 	}
-	
+
 	// Initialize services
 	client.Pipelines = NewPipelineService(client)
 	client.PullRequests = NewPullRequestService(client)
 	client.Repositories = NewRepositoryService(client)
-	
+
 	return client, nil
 }
 
@@ -135,9 +135,9 @@ func (c *Client) getLogsRequest(ctx context.Context, endpoint string) (*http.Res
 	}
 
 	// Set headers to match xh/HTTPie defaults (which work for the user)
-	req.Header.Set("Accept", "*/*")  // xh uses */* by default, not text/plain
+	req.Header.Set("Accept", "*/*") // xh uses */* by default, not text/plain
 	req.Header.Set("Accept-Encoding", "gzip, deflate")
-	req.Header.Set("User-Agent", "bt/1.0.0")  // Simple user agent like xh
+	req.Header.Set("User-Agent", "bt/1.0.0") // Simple user agent like xh
 
 	// Add authentication headers
 	if c.authManager != nil {
@@ -219,13 +219,13 @@ func (c *Client) Paginate(endpoint string, options *PageOptions) *Paginator {
 func (c *Client) buildURL(endpoint string) (string, error) {
 	// Remove leading slash if present
 	endpoint = strings.TrimPrefix(endpoint, "/")
-	
+
 	// Ensure base URL ends with slash for proper URL joining
 	baseURLStr := c.baseURL.String()
 	if !strings.HasSuffix(baseURLStr, "/") {
 		baseURLStr += "/"
 	}
-	
+
 	// Parse endpoint as URL to handle query parameters
 	endpointURL, err := url.Parse(endpoint)
 	if err != nil {
@@ -265,7 +265,7 @@ func (c *Client) createRequest(ctx context.Context, method, url string, body int
 	// Set standard headers
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", c.config.UserAgent)
-	
+
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	}
@@ -298,20 +298,20 @@ func (c *Client) doRequestWithRetry(req *http.Request) (*http.Response, error) {
 		resp, err := c.doRequest(reqClone)
 		if err != nil {
 			lastErr = err
-			
+
 			// Don't retry certain network errors
 			if !isRetryableNetworkError(err) {
 				return nil, err
 			}
 
-			c.logError(fmt.Sprintf("Request failed (attempt %d/%d): %v", 
+			c.logError(fmt.Sprintf("Request failed (attempt %d/%d): %v",
 				attempt+1, c.config.RetryAttempts+1, err))
-			
+
 			if attempt < c.config.RetryAttempts {
 				c.waitBeforeRetry(attempt)
 				continue
 			}
-			
+
 			return nil, lastErr
 		}
 
@@ -321,14 +321,14 @@ func (c *Client) doRequestWithRetry(req *http.Request) (*http.Response, error) {
 		// Check if we should retry based on status code
 		if c.shouldRetry(resp, attempt) {
 			resp.Body.Close()
-			
+
 			// Handle rate limiting with special backoff
 			if resp.StatusCode == 429 {
 				c.handleRateLimit(resp, attempt)
 			} else {
 				c.waitBeforeRetry(attempt)
 			}
-			
+
 			continue
 		}
 
@@ -353,7 +353,7 @@ func (c *Client) doRequest(req *http.Request) (*http.Response, error) {
 // cloneRequest creates a copy of the HTTP request for retries
 func (c *Client) cloneRequest(req *http.Request) (*http.Request, error) {
 	var bodyReader io.Reader
-	
+
 	if req.Body != nil {
 		bodyBytes, err := io.ReadAll(req.Body)
 		if err != nil {
@@ -418,7 +418,7 @@ func (c *Client) handleRateLimit(resp *http.Response, attempt int) {
 func (c *Client) waitBeforeRetry(attempt int) {
 	// Exponential backoff: 1s, 2s, 4s, 8s...
 	baseDelay := time.Duration(math.Pow(2, float64(attempt))) * time.Second
-	
+
 	// Add jitter (±25%)
 	jitter := time.Duration(rand.Float64() * 0.5 * float64(baseDelay))
 	delay := baseDelay + jitter - time.Duration(0.25*float64(baseDelay))
@@ -437,8 +437,8 @@ func isRetryableNetworkError(err error) bool {
 	// In a real implementation, you'd check for specific network errors
 	// For now, we'll be conservative and only retry on timeout errors
 	return strings.Contains(err.Error(), "timeout") ||
-		   strings.Contains(err.Error(), "connection refused") ||
-		   strings.Contains(err.Error(), "temporary failure")
+		strings.Contains(err.Error(), "connection refused") ||
+		strings.Contains(err.Error(), "temporary failure")
 }
 
 // logRequest logs HTTP requests if logging is enabled

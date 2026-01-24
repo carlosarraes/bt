@@ -96,7 +96,7 @@ func (r *RunListCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.ListCmd{
 		Status:     r.Status,
 		Branch:     r.Branch,
@@ -131,7 +131,7 @@ func (r *RunViewCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.ViewCmd{
 		PipelineID: r.PipelineID,
 		Output:     r.Output,
@@ -164,7 +164,7 @@ func (r *RunWatchCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.WatchCmd{
 		PipelineID: r.PipelineID,
 		Output:     r.Output,
@@ -193,7 +193,7 @@ func (r *RunLogsCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.LogsCmd{
 		PipelineID: r.PipelineID,
 		Step:       r.Step,
@@ -223,7 +223,7 @@ func (r *RunCancelCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.CancelCmd{
 		PipelineID: r.PipelineID,
 		Force:      r.Force,
@@ -251,7 +251,7 @@ func (r *RunRerunCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.RerunCmd{
 		PipelineID: r.PipelineID,
 		Failed:     r.Failed,
@@ -295,7 +295,7 @@ func (r *RunReportCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &run.ReportCmd{
 		PipelineID:        r.PipelineID,
 		Output:            r.Output,
@@ -379,7 +379,7 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.CreateCmd{
 		Title:             p.Title,
 		Body:              p.Body,
@@ -422,7 +422,7 @@ func (p *PRListCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ListCmd{
 		State:      p.State,
 		Author:     p.Author,
@@ -455,7 +455,7 @@ func (p *PRListAllCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ListAllCmd{
 		State:     p.State,
 		Limit:     p.Limit,
@@ -486,7 +486,7 @@ func (p *PRViewCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ViewCmd{
 		PRID:       p.PRID,
 		Web:        p.Web,
@@ -512,7 +512,7 @@ func (p *PROpenCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.OpenCmd{
 		PRIDs:      p.PRIDs,
 		Show:       p.Show,
@@ -547,7 +547,7 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.EditCmd{
 		PRID:           p.PRID,
 		Title:          p.Title,
@@ -570,16 +570,16 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 }
 
 type PRDiffCmd struct {
-	PRID        string `arg:"" help:"Pull request ID (number)"`
-	NameOnly    bool   `name:"name-only" help:"Show only names of changed files"`
-	Patch       bool   `help:"Output in patch format suitable for git apply"`
-	File        string `help:"Show diff for specific file only"`
-	Color       string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
-	Output      string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
+	PRID         string `arg:"" help:"Pull request ID (number)"`
+	NameOnly     bool   `name:"name-only" help:"Show only names of changed files"`
+	Patch        bool   `help:"Output in patch format suitable for git apply"`
+	File         string `help:"Show diff for specific file only"`
+	Color        string `help:"When to use color (always, never, auto)" enum:"always,never,auto" default:"auto"`
+	Output       string `short:"o" help:"Output format (diff, json, yaml)" enum:"diff,json,yaml" default:"diff"`
 	Page         bool   `help:"Page output through diff-so-fancy and less for enhanced viewing"`
 	IncludeTests bool   `name:"include-tests" help:"Include test files in diff (excluded by default)"`
 	Workspace    string `help:"Bitbucket workspace (defaults to git remote or config)"`
-	Repository  string `help:"Repository name (defaults to git remote)"`
+	Repository   string `help:"Repository name (defaults to git remote)"`
 }
 
 func (p *PRDiffCmd) Run(ctx context.Context) error {
@@ -588,19 +588,19 @@ func (p *PRDiffCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.DiffCmd{
-		PRID:        p.PRID,
-		NameOnly:    p.NameOnly,
-		Patch:       p.Patch,
-		File:        p.File,
-		Color:       p.Color,
-		Output:      p.Output,
+		PRID:         p.PRID,
+		NameOnly:     p.NameOnly,
+		Patch:        p.Patch,
+		File:         p.File,
+		Color:        p.Color,
+		Output:       p.Output,
 		Page:         p.Page,
 		IncludeTests: p.IncludeTests,
 		NoColor:      noColor,
-		Workspace:   p.Workspace,
-		Repository:  p.Repository,
+		Workspace:    p.Workspace,
+		Repository:   p.Repository,
 	}
 	return cmd.Run(ctx)
 }
@@ -623,7 +623,7 @@ func (p *PRReviewCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ReviewCmd{
 		PRID:           p.PRID,
 		Approve:        p.Approve,
@@ -676,7 +676,7 @@ func (p *PRCommentCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.CommentCmd{
 		PRID:       p.PRID,
 		Body:       p.Body,
@@ -707,7 +707,7 @@ func (p *PRMergeCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.MergeCmd{
 		PRID:         p.PRID,
 		Squash:       p.Squash,
@@ -737,7 +737,7 @@ func (p *PRCheckoutCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.CheckoutCmd{
 		PRID:       p.PRID,
 		Detach:     p.Detach,
@@ -764,7 +764,7 @@ func (p *PRReadyCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ReadyCmd{
 		PRID:       p.PRID,
 		Comment:    p.Comment,
@@ -790,7 +790,7 @@ func (p *PRChecksCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ChecksCmd{
 		PRID:       p.PRID,
 		Watch:      p.Watch,
@@ -817,7 +817,7 @@ func (p *PRCloseCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.CloseCmd{
 		PRID:         p.PRID,
 		Comment:      p.Comment,
@@ -845,7 +845,7 @@ func (p *PRReopenCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.ReopenCmd{
 		PRID:       p.PRID,
 		Comment:    p.Comment,
@@ -869,7 +869,7 @@ func (p *PRStatusCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.StatusCmd{
 		Output:     p.Output,
 		NoColor:    noColor,
@@ -892,7 +892,7 @@ func (p *PRUpdateBranchCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.UpdateBranchCmd{
 		PRID:       p.PRID,
 		Force:      p.Force,
@@ -918,7 +918,7 @@ func (p *PRLockCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.LockCmd{
 		PRID:       p.PRID,
 		Reason:     p.Reason,
@@ -944,7 +944,7 @@ func (p *PRUnlockCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &pr.UnlockCmd{
 		PRID:       p.PRID,
 		Force:      p.Force,
@@ -1043,7 +1043,7 @@ func (c *ConfigGetCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &config.GetCmd{
 		Key:     c.Key,
 		Output:  c.Output,
@@ -1077,7 +1077,7 @@ func (c *ConfigListCmd) Run(ctx context.Context) error {
 	if v := ctx.Value("no-color"); v != nil {
 		noColor = v.(bool)
 	}
-	
+
 	cmd := &config.ListCmd{
 		Output:  c.Output,
 		NoColor: noColor,

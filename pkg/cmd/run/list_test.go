@@ -209,14 +209,14 @@ func TestParsePipelineResults(t *testing.T) {
 			expectLen: 2,
 		},
 		{
-			name: "empty results",
-			input: []byte(`[]`),
+			name:      "empty results",
+			input:     []byte(`[]`),
 			expectErr: false,
 			expectLen: 0,
 		},
 		{
-			name: "invalid JSON",
-			input: []byte(`invalid json`),
+			name:      "invalid JSON",
+			input:     []byte(`invalid json`),
 			expectErr: true,
 			expectLen: 0,
 		},

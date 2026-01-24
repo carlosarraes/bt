@@ -71,7 +71,7 @@ func TestExtractChangedFiles(t *testing.T) {
 		{
 			name:     "deleted file",
 			diff:     "diff --git a/old.txt b/dev/null\nindex 123..000 100644",
-expected: []string{"dev/null"},
+			expected: []string{"dev/null"},
 		},
 		{
 			name:     "empty diff",
@@ -234,14 +234,12 @@ index 123..456 100644
 +new line
 `
 
-
 	result := FormatDiff(simpleDiff, false)
 	assert.Equal(t, simpleDiff, result)
 
-
 	colorResult := FormatDiff(simpleDiff, true)
 	assert.NotEqual(t, simpleDiff, colorResult)
-assert.Contains(t, colorResult, "diff --git")
+	assert.Contains(t, colorResult, "diff --git")
 }
 
 func TestFormatFilePath(t *testing.T) {
@@ -381,14 +379,11 @@ func TestIsBinaryFile(t *testing.T) {
 func TestSplitDiffIntoFiles(t *testing.T) {
 	result := SplitDiffIntoFiles(testDiff)
 
-
 	assert.Len(t, result, 3)
-
 
 	assert.Contains(t, result, "src/main.go")
 	assert.Contains(t, result, "README.md")
 	assert.Contains(t, result, "deleted.txt")
-
 
 	mainGoDiff := result["src/main.go"]
 	assert.Contains(t, mainGoDiff, "diff --git a/src/main.go b/src/main.go")
@@ -402,21 +397,15 @@ func TestSplitDiffIntoFiles(t *testing.T) {
 
 func TestIsTerminal(t *testing.T) {
 
-
-	
-
 	result := IsTerminal(os.Stdin)
-assert.IsType(t, bool(false), result)
-
+	assert.IsType(t, bool(false), result)
 
 	result = IsTerminal(os.Stdout)
-assert.IsType(t, bool(false), result)
-
+	assert.IsType(t, bool(false), result)
 
 	result = IsTerminal(os.Stderr)
-assert.IsType(t, bool(false), result)
+	assert.IsType(t, bool(false), result)
 }
-
 
 func BenchmarkExtractChangedFiles(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -442,7 +431,6 @@ func BenchmarkFormatDiff(b *testing.B) {
 	}
 }
 
-
 func TestEdgeCases(t *testing.T) {
 	t.Run("very large diff", func(t *testing.T) {
 
@@ -451,7 +439,7 @@ func TestEdgeCases(t *testing.T) {
 		largeDiff.WriteString("--- a/large.txt\n")
 		largeDiff.WriteString("+++ b/large.txt\n")
 		largeDiff.WriteString("@@ -1,1000 +1,1001 @@\n")
-		
+
 		for i := 0; i < 1000; i++ {
 			largeDiff.WriteString("-line " + string(rune(i)) + "\n")
 		}
@@ -478,7 +466,7 @@ not a proper header
 +some content
 `
 		files := ExtractChangedFiles(malformedDiff)
-assert.Empty(t, files)
+		assert.Empty(t, files)
 	})
 
 	t.Run("unicode content", func(t *testing.T) {

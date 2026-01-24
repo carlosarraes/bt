@@ -6,20 +6,20 @@ import (
 
 // Pipeline represents a Bitbucket pipeline
 type Pipeline struct {
-	Type                   string                 `json:"type"`
-	UUID                   string                 `json:"uuid"`
-	BuildNumber            int                    `json:"build_number"`
-	Creator                *User                  `json:"creator,omitempty"`
-	Repository             *Repository            `json:"repository,omitempty"`
-	Target                 *PipelineTarget        `json:"target,omitempty"`
-	Trigger                *PipelineTrigger       `json:"trigger,omitempty"`
-	State                  *PipelineState         `json:"state,omitempty"`
-	Variables              []*PipelineVariable    `json:"variables,omitempty"`
-	CreatedOn              *time.Time             `json:"created_on,omitempty"`
-	CompletedOn            *time.Time             `json:"completed_on,omitempty"`
-	BuildSecondsUsed       int                    `json:"build_seconds_used"`
-	ConfigurationSources   []*ConfigurationSource `json:"configuration_sources,omitempty"`
-	Links                  *PipelineLinks         `json:"links,omitempty"`
+	Type                 string                 `json:"type"`
+	UUID                 string                 `json:"uuid"`
+	BuildNumber          int                    `json:"build_number"`
+	Creator              *User                  `json:"creator,omitempty"`
+	Repository           *Repository            `json:"repository,omitempty"`
+	Target               *PipelineTarget        `json:"target,omitempty"`
+	Trigger              *PipelineTrigger       `json:"trigger,omitempty"`
+	State                *PipelineState         `json:"state,omitempty"`
+	Variables            []*PipelineVariable    `json:"variables,omitempty"`
+	CreatedOn            *time.Time             `json:"created_on,omitempty"`
+	CompletedOn          *time.Time             `json:"completed_on,omitempty"`
+	BuildSecondsUsed     int                    `json:"build_seconds_used"`
+	ConfigurationSources []*ConfigurationSource `json:"configuration_sources,omitempty"`
+	Links                *PipelineLinks         `json:"links,omitempty"`
 }
 
 // PipelineState represents the state of a pipeline
@@ -44,12 +44,12 @@ type PipelineResult struct {
 
 // PipelineTarget represents the target of a pipeline (branch, tag, etc.)
 type PipelineTarget struct {
-	Type           string     `json:"type"`
-	RefType        string     `json:"ref_type,omitempty"`
-	RefName        string     `json:"ref_name,omitempty"`
-	Selector       *Selector  `json:"selector,omitempty"`
-	Commit         *Commit    `json:"commit,omitempty"`
-	PullRequestId  *int       `json:"pull_request_id,omitempty"`
+	Type          string    `json:"type"`
+	RefType       string    `json:"ref_type,omitempty"`
+	RefName       string    `json:"ref_name,omitempty"`
+	Selector      *Selector `json:"selector,omitempty"`
+	Commit        *Commit   `json:"commit,omitempty"`
+	PullRequestId *int      `json:"pull_request_id,omitempty"`
 }
 
 // PipelineTrigger represents what triggered the pipeline
@@ -81,18 +81,18 @@ type PipelineLinks struct {
 
 // PipelineStep represents a step in a pipeline
 type PipelineStep struct {
-	Type            string                 `json:"type"`
-	UUID            string                 `json:"uuid"`
-	Name            string                 `json:"name,omitempty"`
-	StartedOn       *time.Time             `json:"started_on,omitempty"`
-	CompletedOn     *time.Time             `json:"completed_on,omitempty"`
-	State           *PipelineState         `json:"state,omitempty"`
-	Image           *PipelineImage         `json:"image,omitempty"`
-	SetupCommands   []*PipelineCommand     `json:"setup_commands,omitempty"`
-	ScriptCommands  []*PipelineCommand     `json:"script_commands,omitempty"`
-	Logs            *Link                  `json:"logs,omitempty"`
-	MaxTime         int                    `json:"max_time,omitempty"`
-	BuildSecondsUsed int                   `json:"build_seconds_used"`
+	Type             string             `json:"type"`
+	UUID             string             `json:"uuid"`
+	Name             string             `json:"name,omitempty"`
+	StartedOn        *time.Time         `json:"started_on,omitempty"`
+	CompletedOn      *time.Time         `json:"completed_on,omitempty"`
+	State            *PipelineState     `json:"state,omitempty"`
+	Image            *PipelineImage     `json:"image,omitempty"`
+	SetupCommands    []*PipelineCommand `json:"setup_commands,omitempty"`
+	ScriptCommands   []*PipelineCommand `json:"script_commands,omitempty"`
+	Logs             *Link              `json:"logs,omitempty"`
+	MaxTime          int                `json:"max_time,omitempty"`
+	BuildSecondsUsed int                `json:"build_seconds_used"`
 }
 
 // PipelineImage represents the Docker image used in a pipeline step
@@ -177,11 +177,11 @@ type TriggerPipelineRequest struct {
 
 // PipelineListOptions represents options for listing pipelines
 type PipelineListOptions struct {
-	Status   string `json:"status,omitempty"`   // PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED
-	Branch   string `json:"branch,omitempty"`   // Filter by branch name
-	Sort     string `json:"sort,omitempty"`     // Sort field (created_on, -created_on)
-	Page     int    `json:"page,omitempty"`     // Page number
-	PageLen  int    `json:"pagelen,omitempty"`  // Items per page
+	Status  string `json:"status,omitempty"`  // PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED
+	Branch  string `json:"branch,omitempty"`  // Filter by branch name
+	Sort    string `json:"sort,omitempty"`    // Sort field (created_on, -created_on)
+	Page    int    `json:"page,omitempty"`    // Page number
+	PageLen int    `json:"pagelen,omitempty"` // Items per page
 }
 
 // PipelineStateType represents the possible pipeline states
@@ -203,31 +203,31 @@ func (p PipelineStateType) String() string {
 
 // TestReport represents a summary of test reports for a pipeline step
 type TestReport struct {
-	Type       string      `json:"type"`
-	UUID       string      `json:"uuid"`
-	Name       string      `json:"name,omitempty"`
-	Status     string      `json:"status,omitempty"`
-	Result     string      `json:"result,omitempty"`
-	Passed     int         `json:"passed,omitempty"`
-	Failed     int         `json:"failed,omitempty"`
-	Skipped    int         `json:"skipped,omitempty"`
-	Total      int         `json:"total,omitempty"`
-	Duration   float64     `json:"duration,omitempty"`
-	CreatedOn  *time.Time  `json:"created_on,omitempty"`
+	Type      string     `json:"type"`
+	UUID      string     `json:"uuid"`
+	Name      string     `json:"name,omitempty"`
+	Status    string     `json:"status,omitempty"`
+	Result    string     `json:"result,omitempty"`
+	Passed    int        `json:"passed,omitempty"`
+	Failed    int        `json:"failed,omitempty"`
+	Skipped   int        `json:"skipped,omitempty"`
+	Total     int        `json:"total,omitempty"`
+	Duration  float64    `json:"duration,omitempty"`
+	CreatedOn *time.Time `json:"created_on,omitempty"`
 }
 
 // TestCase represents a test case from a pipeline step
 type TestCase struct {
-	Type        string     `json:"type"`
-	UUID        string     `json:"uuid"`
-	Name        string     `json:"name"`
-	ClassName   string     `json:"class_name,omitempty"`
-	TestSuite   string     `json:"test_suite,omitempty"`
-	Status      string     `json:"status"`
-	Result      string     `json:"result,omitempty"`
-	Duration    float64    `json:"duration,omitempty"`
-	Message     string     `json:"message,omitempty"`
-	Stacktrace  string     `json:"stacktrace,omitempty"`
+	Type       string  `json:"type"`
+	UUID       string  `json:"uuid"`
+	Name       string  `json:"name"`
+	ClassName  string  `json:"class_name,omitempty"`
+	TestSuite  string  `json:"test_suite,omitempty"`
+	Status     string  `json:"status"`
+	Result     string  `json:"result,omitempty"`
+	Duration   float64 `json:"duration,omitempty"`
+	Message    string  `json:"message,omitempty"`
+	Stacktrace string  `json:"stacktrace,omitempty"`
 }
 
 // TestCaseReason represents the output/reason for a test case failure

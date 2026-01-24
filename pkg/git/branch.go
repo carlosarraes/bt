@@ -35,7 +35,7 @@ func (r *Repository) GetCurrentBranch() (*BranchInfo, error) {
 	}
 
 	branchName := head.Name().Short()
-	
+
 	info := &BranchInfo{
 		Name:      head.Name().String(),
 		ShortName: branchName,
@@ -199,9 +199,9 @@ func (r *Repository) GetBranchStatus(branchName string) (*BranchStatus, error) {
 	}
 
 	status := &BranchStatus{
-		Branch:     branchName,
-		LocalHash:  localBranchRef.Hash().String(),
-		HasLocal:   true,
+		Branch:    branchName,
+		LocalHash: localBranchRef.Hash().String(),
+		HasLocal:  true,
 	}
 
 	// Get remote tracking information
@@ -287,17 +287,17 @@ func (r *Repository) countCommitsDifference(localHash, remoteHash plumbing.Hash)
 func (r *Repository) findMergeBase(hash1, hash2 plumbing.Hash) (plumbing.Hash, error) {
 	// Simple implementation: if one is ancestor of the other, use it as merge base
 	// For more complex cases, this would need a proper merge base algorithm
-	
+
 	// Check if hash1 is ancestor of hash2
 	if isAncestor, _ := r.isAncestor(hash1, hash2); isAncestor {
 		return hash1, nil
 	}
-	
+
 	// Check if hash2 is ancestor of hash1
 	if isAncestor, _ := r.isAncestor(hash2, hash1); isAncestor {
 		return hash2, nil
 	}
-	
+
 	// For now, return hash1 as a fallback
 	// In a real implementation, you'd walk the commit history to find the actual merge base
 	return hash1, nil
@@ -367,7 +367,7 @@ func (r *Repository) GetDefaultBranch() (string, error) {
 			plumbing.NewRemoteHEADReferenceName(remoteName),
 			plumbing.NewRemoteReferenceName(remoteName, "main"),
 		)
-		
+
 		if ref, err := r.repo.Reference(remoteHeadRef.Name(), true); err == nil {
 			if ref.Type() == plumbing.SymbolicReference {
 				// Extract branch name from the target
@@ -481,7 +481,7 @@ func (r *Repository) CreateTrackingBranch(localBranch, remoteName, remoteBranch 
 
 	localRef := plumbing.NewBranchReferenceName(localBranch)
 	newRef := plumbing.NewHashReference(localRef, remoteBranchRef.Hash())
-	
+
 	err = r.repo.Storer.SetReference(newRef)
 	if err != nil {
 		return fmt.Errorf("failed to create local branch: %w", err)
@@ -673,6 +673,6 @@ func (r *Repository) PullBranch(branchName string, force bool) (*MergeResult, er
 	}
 
 	remoteBranchName := fmt.Sprintf("%s/%s", remote, remoteBranch)
-	
+
 	return r.MergeBranch(remoteBranchName, branchName, force)
 }

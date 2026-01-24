@@ -117,18 +117,18 @@ func (cmd *CloseCmd) validatePRState(pr *api.PullRequest) error {
 
 func (cmd *CloseCmd) confirmClose(pr *api.PullRequest) error {
 	fmt.Printf("Are you sure you want to close pull request #%d (%s)? [y/N] ", pr.ID, pr.Title)
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read confirmation: %w", err)
 	}
-	
+
 	response = strings.TrimSpace(strings.ToLower(response))
 	if response != "y" && response != "yes" {
 		return fmt.Errorf("operation cancelled")
 	}
-	
+
 	return nil
 }
 
@@ -138,9 +138,9 @@ func (cmd *CloseCmd) deleteBranch(ctx context.Context, prCtx *PRContext, pr *api
 	}
 
 	branchName := pr.Source.Branch.Name
-	
+
 	endpoint := fmt.Sprintf("repositories/%s/%s/refs/branches/%s", prCtx.Workspace, prCtx.Repository, branchName)
-	
+
 	resp, err := prCtx.Client.Delete(ctx, endpoint)
 	if err != nil {
 		return fmt.Errorf("failed to delete branch '%s': %w", branchName, err)
@@ -168,7 +168,7 @@ func (cmd *CloseCmd) formatTable(pr *api.PullRequest) error {
 	fmt.Printf("✓ Closed pull request #%d\n", pr.ID)
 	fmt.Printf("Title: %s\n", pr.Title)
 	fmt.Printf("State: %s\n", pr.State)
-	
+
 	if pr.Author != nil {
 		authorName := pr.Author.DisplayName
 		if authorName == "" {
@@ -180,14 +180,14 @@ func (cmd *CloseCmd) formatTable(pr *api.PullRequest) error {
 	if pr.Source != nil && pr.Destination != nil {
 		sourceBranch := "unknown"
 		destBranch := "unknown"
-		
+
 		if pr.Source.Branch != nil {
 			sourceBranch = pr.Source.Branch.Name
 		}
 		if pr.Destination.Branch != nil {
 			destBranch = pr.Destination.Branch.Name
 		}
-		
+
 		fmt.Printf("Branches: %s → %s\n", sourceBranch, destBranch)
 	}
 

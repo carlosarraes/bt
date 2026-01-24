@@ -186,7 +186,7 @@ func (cmd *ChecksCmd) formatTable(prCtx *PRContext, checks []*api.Pipeline) erro
 		status := cmd.getStatusIndicator(pipeline)
 		name := cmd.getPipelineName(pipeline)
 		duration := cmd.getPipelineDuration(pipeline)
-		
+
 		fmt.Printf("%s %s", status, name)
 		if duration != "" {
 			fmt.Printf(" (%s)", duration)

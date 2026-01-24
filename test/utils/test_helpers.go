@@ -29,21 +29,35 @@ type TestContext struct {
 }
 
 // NewTestContext creates a new test context with temporary directory and config
-func NewTestContext(t *testing.T) *TestContext {
-	tempDir := t.TempDir()
+func NewTestContext(t interface{}) *TestContext {
+	var tempDir string
+	var tPtr *testing.T
+
+	switch tb := t.(type) {
+	case *testing.T:
+		tempDir = tb.TempDir()
+		tPtr = tb
+	case *testing.B:
+		tempDir = tb.TempDir()
+		// For benchmarks, we create a dummy T for the struct
+		tPtr = &testing.T{}
+	default:
+		panic("NewTestContext expects *testing.T or *testing.B")
+	}
+
 	configFile := filepath.Join(tempDir, "config.yml")
-	
+
 	tc := &TestContext{
-		T:          t,
+		T:          tPtr,
 		TempDir:    tempDir,
 		ConfigFile: configFile,
 		TestRepo:   GetTestRepo(),
 		Cleanup:    make([]func(), 0),
 	}
-	
+
 	// Create default test config
 	tc.CreateTestConfig()
-	
+
 	return tc
 }
 
@@ -71,7 +85,7 @@ repository:
   default_workspace: ` + GetTestWorkspace() + `
   default_repo: ` + GetTestRepo() + `
 `
-	
+
 	err := os.WriteFile(tc.ConfigFile, []byte(config), 0644)
 	require.NoError(tc.T, err, "Failed to create test config")
 }
@@ -127,14 +141,14 @@ func SkipIfNoIntegration(t *testing.T) {
 // RequireIntegrationEnv ensures required environment variables are set for integration tests
 func RequireIntegrationEnv(t *testing.T) {
 	SkipIfNoIntegration(t)
-	
+
 	required := []string{
 		"BT_TEST_USERNAME",
 		"BT_TEST_APP_PASSWORD",
 		"BT_TEST_WORKSPACE",
 		"BT_TEST_REPO",
 	}
-	
+
 	for _, env := range required {
 		if os.Getenv(env) == "" {
 			t.Fatalf("Required environment variable %s is not set", env)
@@ -153,11 +167,11 @@ type CommandResult struct {
 // RunCommand executes a command and returns the result
 func RunCommand(name string, args ...string) *CommandResult {
 	cmd := exec.Command(name, args...)
-	
+
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	
+
 	err := cmd.Run()
 	exitCode := 0
 	if err != nil {
@@ -167,7 +181,7 @@ func RunCommand(name string, args ...string) *CommandResult {
 			exitCode = 1
 		}
 	}
-	
+
 	return &CommandResult{
 		ExitCode: exitCode,
 		Stdout:   stdout.String(),
@@ -184,7 +198,7 @@ func RunBTCommand(args ...string) *CommandResult {
 		// Fallback to current directory bt binary
 		btPath = filepath.Join("..", "..", "bt")
 	}
-	
+
 	return RunCommand(btPath, args...)
 }
 
@@ -197,7 +211,7 @@ func RunBTCommandWithConfig(configPath string, args ...string) *CommandResult {
 // AssertCommandSuccess asserts that a command executed successfully
 func AssertCommandSuccess(t *testing.T, result *CommandResult, msgAndArgs ...interface{}) {
 	if result.ExitCode != 0 {
-		t.Errorf("Command failed with exit code %d\nStdout: %s\nStderr: %s\nError: %v", 
+		t.Errorf("Command failed with exit code %d\nStdout: %s\nStderr: %s\nError: %v",
 			result.ExitCode, result.Stdout, result.Stderr, result.Error)
 		if len(msgAndArgs) > 0 {
 			t.Errorf("Additional info: %v", msgAndArgs)
@@ -209,7 +223,7 @@ func AssertCommandSuccess(t *testing.T, result *CommandResult, msgAndArgs ...int
 // AssertCommandFailure asserts that a command failed with expected exit code
 func AssertCommandFailure(t *testing.T, result *CommandResult, expectedExitCode int, msgAndArgs ...interface{}) {
 	if result.ExitCode != expectedExitCode {
-		t.Errorf("Expected exit code %d, got %d\nStdout: %s\nStderr: %s\nError: %v", 
+		t.Errorf("Expected exit code %d, got %d\nStdout: %s\nStderr: %s\nError: %v",
 			expectedExitCode, result.ExitCode, result.Stdout, result.Stderr, result.Error)
 		if len(msgAndArgs) > 0 {
 			t.Errorf("Additional info: %v", msgAndArgs)
@@ -273,28 +287,28 @@ func (c *HTTPClient) Request(method, endpoint string, body io.Reader) (*http.Res
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "bt-test-client/1.0")
-	
+
 	return c.Client.Do(req)
 }
 
 // ReadJSONResponse reads and parses a JSON response
 func ReadJSONResponse(resp *http.Response) (map[string]interface{}, error) {
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON response: %w\nBody: %s", err, string(body))
 	}
-	
+
 	return result, nil
 }
 
@@ -318,7 +332,7 @@ func CreateGitRepository(t *testing.T, dir string) {
 		{"git", "add", "."},
 		{"git", "commit", "-m", "Initial commit", "--allow-empty"},
 	}
-	
+
 	for _, cmd := range commands {
 		result := RunCommand(cmd[0], cmd[1:]...)
 		if result.ExitCode != 0 {
@@ -376,22 +390,38 @@ func GetProjectRoot() string {
 }
 
 // BuildBinary builds the bt binary for testing
-func BuildBinary(t *testing.T) string {
+func BuildBinary(t interface{}) string {
 	projectRoot := GetProjectRoot()
 	if projectRoot == "" {
-		t.Fatal("Could not find project root")
+		if tb, ok := t.(*testing.T); ok {
+			tb.Fatal("Could not find project root")
+		} else if bb, ok := t.(*testing.B); ok {
+			bb.Fatal("Could not find project root")
+		}
 	}
-	
+
 	buildDir := filepath.Join(projectRoot, "build")
 	err := os.MkdirAll(buildDir, 0755)
-	require.NoError(t, err, "Failed to create build directory")
-	
+	if err != nil {
+		if tb, ok := t.(*testing.T); ok {
+			require.NoError(tb, err, "Failed to create build directory")
+		} else if bb, ok := t.(*testing.B); ok {
+			bb.Fatalf("Failed to create build directory: %v", err)
+		}
+	}
+
 	binaryPath := filepath.Join(buildDir, "bt")
 	cmdDir := filepath.Join(projectRoot, "cmd", "bt")
-	
+
 	result := RunCommand("go", "build", "-o", binaryPath, cmdDir)
-	require.Equal(t, 0, result.ExitCode, "Failed to build binary: %s", result.Stderr)
-	
+	if result.ExitCode != 0 {
+		if tb, ok := t.(*testing.T); ok {
+			require.Equal(tb, 0, result.ExitCode, "Failed to build binary: %s", result.Stderr)
+		} else if bb, ok := t.(*testing.B); ok {
+			bb.Fatalf("Failed to build binary: %s", result.Stderr)
+		}
+	}
+
 	return binaryPath
 }
 
@@ -411,7 +441,7 @@ func BenchmarkFunc(name string, fn func()) *BenchmarkResult {
 	start := time.Now()
 	fn()
 	duration := time.Since(start)
-	
+
 	return &BenchmarkResult{
 		Name:     name,
 		Duration: duration,
@@ -423,7 +453,7 @@ func BenchmarkFunc(name string, fn func()) *BenchmarkResult {
 // AssertPerformance asserts that a benchmark meets performance requirements
 func AssertPerformance(t *testing.T, result *BenchmarkResult, maxDuration time.Duration) {
 	if result.Duration > maxDuration {
-		t.Errorf("Performance requirement failed for %s: took %v, expected <= %v", 
+		t.Errorf("Performance requirement failed for %s: took %v, expected <= %v",
 			result.Name, result.Duration, maxDuration)
 	}
 }
@@ -462,17 +492,17 @@ func GenerateTestData() map[string]interface{} {
 			},
 		},
 		"pipeline": map[string]interface{}{
-			"uuid":       "{12345678-1234-1234-1234-123456789012}",
+			"uuid":         "{12345678-1234-1234-1234-123456789012}",
 			"build_number": 1,
 			"state": map[string]interface{}{
-				"name":   "SUCCESSFUL",
-				"type":   "pipeline_state",
+				"name": "SUCCESSFUL",
+				"type": "pipeline_state",
 				"result": map[string]interface{}{
 					"name": "SUCCESSFUL",
 					"type": "pipeline_state_result",
 				},
 			},
-			"created_on": "2023-01-01T00:00:00.000000+00:00",
+			"created_on":   "2023-01-01T00:00:00.000000+00:00",
 			"completed_on": "2023-01-01T00:05:00.000000+00:00",
 		},
 	}
@@ -487,20 +517,20 @@ func CleanupTestData(t *testing.T, cleanup func()) {
 func CreateTestAuthManager() (auth.AuthManager, error) {
 	email := GetTestUsername()
 	token := GetTestAppPassword()
-	
+
 	// Set environment variables for API token auth
 	os.Setenv("BITBUCKET_EMAIL", email)
 	os.Setenv("BITBUCKET_API_TOKEN", token)
-	
+
 	// Create storage
 	storage, err := auth.NewFileCredentialStorage()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Create config
 	config := auth.DefaultConfig()
-	
+
 	// Create auth manager
 	return auth.NewAuthManager(config, storage)
 }

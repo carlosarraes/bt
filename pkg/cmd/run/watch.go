@@ -24,8 +24,8 @@ type WatchCmd struct {
 	NoColor    bool   // NoColor is passed from global flag
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
-	
-	logBuffer        *LogBuffer
+
+	logBuffer *LogBuffer
 }
 
 type LogBuffer struct {
@@ -44,17 +44,17 @@ func (lb *LogBuffer) GetNewLines(allLines []string) []string {
 	if len(allLines) <= lb.LastLogCount {
 		return nil
 	}
-	
+
 	newLines := allLines[lb.LastLogCount:]
 	lb.LastLogCount = len(allLines)
-	
+
 	var validLines []string
 	for _, line := range newLines {
 		if strings.TrimSpace(line) != "" {
 			validLines = append(validLines, line)
 		}
 	}
-	
+
 	return validLines
 }
 
@@ -96,7 +96,7 @@ func (cmd *WatchCmd) Run(ctx context.Context) error {
 // resolvePipelineUUID resolves a pipeline ID (build number or UUID) to a full UUID
 func (cmd *WatchCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
 	pipelineID := strings.TrimSpace(cmd.PipelineID)
-	
+
 	// If it's already a UUID (contains hyphens), return as-is
 	if strings.Contains(pipelineID, "-") {
 		return pipelineID, nil
@@ -163,9 +163,9 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 
 	// Check if pipeline is in a state that can be watched
 	if pipeline.State == nil || (pipeline.State.Name != "IN_PROGRESS" && pipeline.State.Name != "PENDING") {
-		fmt.Printf("Pipeline #%d is %s - watching is only available for running pipelines\n", 
+		fmt.Printf("Pipeline #%d is %s - watching is only available for running pipelines\n",
 			pipeline.BuildNumber, pipeline.State.Name)
-		
+
 		// Show current state and exit for completed pipelines
 		if cmd.Output == "json" {
 			return cmd.formatJSONOutput(runCtx, pipeline)
@@ -189,7 +189,7 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 		select {
 		case <-watchCtx.Done():
 			return watchCtx.Err()
-			
+
 		case <-updateTicker.C:
 			updatedPipeline, err := runCtx.Client.Pipelines.GetPipeline(watchCtx, runCtx.Workspace, runCtx.Repository, pipelineUUID)
 			if err != nil {
@@ -204,7 +204,7 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 			var activeStep *api.PipelineStep
 			completedSteps := 0
 			totalSteps := len(steps)
-			
+
 			for _, step := range steps {
 				if step.State != nil {
 					switch step.State.Name {
@@ -229,13 +229,13 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 				if currentStepUUID != "" && currentStepName != "" && newStepUUID != "" {
 					fmt.Printf("✅ Step completed: %s\n", currentStepName)
 				}
-				
+
 				currentStepUUID = newStepUUID
 				currentStepName = newStepName
 				cmd.logBuffer.Reset()
-				
+
 				if activeStep != nil {
-					fmt.Printf("🔄 Pipeline #%d: IN_PROGRESS | 🔄 %s [%d/%d steps]\n", 
+					fmt.Printf("🔄 Pipeline #%d: IN_PROGRESS | 🔄 %s [%d/%d steps]\n",
 						updatedPipeline.BuildNumber, activeStep.Name, completedSteps+1, totalSteps)
 					fmt.Printf("📋 Streaming output from \"%s\":\n", activeStep.Name)
 					displayedInitialStatus = true
@@ -245,8 +245,8 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 				if updatedPipeline.State != nil {
 					status = updatedPipeline.State.Name
 				}
-				fmt.Printf("%s Pipeline #%d: %s | 🔄 %s [%d/%d steps]\n", 
-					cmd.getStatusIcon(status), updatedPipeline.BuildNumber, status, 
+				fmt.Printf("%s Pipeline #%d: %s | 🔄 %s [%d/%d steps]\n",
+					cmd.getStatusIcon(status), updatedPipeline.BuildNumber, status,
 					activeStep.Name, completedSteps+1, totalSteps)
 				fmt.Printf("📋 Streaming output from \"%s\":\n", activeStep.Name)
 				displayedInitialStatus = true
@@ -267,13 +267,13 @@ func (cmd *WatchCmd) watchPipeline(ctx context.Context, runCtx *RunContext, pipe
 			}
 
 			// Check if pipeline completed
-			if updatedPipeline.State != nil && 
-			   updatedPipeline.State.Name != "IN_PROGRESS" && 
-			   updatedPipeline.State.Name != "PENDING" {
-				
-				fmt.Printf("🏁 Pipeline #%d completed with status: %s\n", 
+			if updatedPipeline.State != nil &&
+				updatedPipeline.State.Name != "IN_PROGRESS" &&
+				updatedPipeline.State.Name != "PENDING" {
+
+				fmt.Printf("🏁 Pipeline #%d completed with status: %s\n",
 					updatedPipeline.BuildNumber, updatedPipeline.State.Name)
-				
+
 				if cmd.Output == "json" {
 					return cmd.formatJSONOutput(runCtx, updatedPipeline)
 				}
@@ -305,7 +305,6 @@ func (cmd *WatchCmd) getAllLogs(ctx context.Context, runCtx *RunContext, pipelin
 
 	return lines, nil
 }
-
 
 // getStatusIcon returns an icon for the given status
 func (cmd *WatchCmd) getStatusIcon(status string) string {
@@ -343,11 +342,11 @@ func (cmd *WatchCmd) displayFinalStatus(pipeline *api.Pipeline) error {
 		duration = output.FormatDuration(pipeline.BuildSecondsUsed)
 	}
 
-	fmt.Printf("%s Pipeline #%d: %s", 
-		cmd.getStatusIcon(status), 
-		pipeline.BuildNumber, 
+	fmt.Printf("%s Pipeline #%d: %s",
+		cmd.getStatusIcon(status),
+		pipeline.BuildNumber,
 		status)
-	
+
 	if duration != "" {
 		fmt.Printf(" (%s)", duration)
 	}
@@ -359,7 +358,7 @@ func (cmd *WatchCmd) displayFinalStatus(pipeline *api.Pipeline) error {
 // formatJSONOutput formats the pipeline status as JSON
 func (cmd *WatchCmd) formatJSONOutput(runCtx *RunContext, pipeline *api.Pipeline) error {
 	// Use the same JSON formatting as the view command for consistency
-	steps, err := runCtx.Client.Pipelines.GetPipelineSteps(context.Background(), 
+	steps, err := runCtx.Client.Pipelines.GetPipelineSteps(context.Background(),
 		runCtx.Workspace, runCtx.Repository, pipeline.UUID)
 	if err != nil {
 		return err

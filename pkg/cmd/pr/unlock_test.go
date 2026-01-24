@@ -57,7 +57,7 @@ func TestUnlockCmd_ParsePRID(t *testing.T) {
 				PRID: tt.prid,
 			}
 			result, err := cmd.ParsePRID()
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("ParsePRID() expected error, got nil")
@@ -114,9 +114,9 @@ func TestUnlockCmd_ValidatePRState(t *testing.T) {
 				ID:    123,
 				State: tt.state,
 			}
-			
+
 			err := cmd.validatePRState(pr)
-			
+
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("validatePRState() expected error, got nil")
@@ -132,7 +132,7 @@ func TestUnlockCmd_ValidatePRState(t *testing.T) {
 
 func TestUnlockCmd_FormatTable(t *testing.T) {
 	cmd := &UnlockCmd{}
-	
+
 	pr := &api.PullRequest{
 		ID:    123,
 		Title: "Test PR",
@@ -152,7 +152,7 @@ func TestUnlockCmd_FormatTable(t *testing.T) {
 			},
 		},
 	}
-	
+
 	err := cmd.formatTable(pr)
 	if err != nil {
 		t.Errorf("formatTable() unexpected error: %v", err)

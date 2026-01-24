@@ -146,7 +146,7 @@ func TestViewCmd_ResolvePipelineUUID(t *testing.T) {
 				pipelineID := strings.TrimSpace(cmd.PipelineID)
 				isUUID := strings.Contains(pipelineID, "-")
 				assert.True(t, isUUID, "Should be detected as UUID format")
-				
+
 				// UUID should be returned as-is
 				assert.Equal(t, tt.expected, pipelineID)
 			} else {
@@ -155,7 +155,7 @@ func TestViewCmd_ResolvePipelineUUID(t *testing.T) {
 				if strings.HasPrefix(pipelineID, "#") {
 					pipelineID = pipelineID[1:]
 				}
-				
+
 				_, err := strconv.Atoi(pipelineID)
 				assert.NoError(t, err, "Should parse as build number")
 			}
@@ -192,7 +192,7 @@ func TestViewCmd_OutputFormats(t *testing.T) {
 func TestViewCmd_TableFormatting(t *testing.T) {
 	// Test the table formatting logic with various pipeline states
 	now := time.Now()
-	
+
 	tests := []struct {
 		name     string
 		pipeline *api.Pipeline
@@ -262,7 +262,7 @@ func TestViewCmd_TableFormatting(t *testing.T) {
 			// Test that table formatting doesn't panic
 			// We can't easily capture the output without a full RunContext
 			err := cmd.formatTable(nil, tt.pipeline, tt.steps)
-			
+
 			// We expect an error due to nil RunContext, but it should be a specific error
 			// not a panic or formatting issue
 			if err != nil {
@@ -316,7 +316,7 @@ func TestViewCmd_WatchFunctionality(t *testing.T) {
 			}
 
 			// Test the condition used in watchPipeline
-			canWatch := pipeline.State != nil && 
+			canWatch := pipeline.State != nil &&
 				(pipeline.State.Name == "IN_PROGRESS" || pipeline.State.Name == "PENDING")
 
 			assert.Equal(t, tt.shouldWatch, canWatch)
@@ -334,24 +334,24 @@ func TestViewCmd_Integration(t *testing.T) {
 	// This test would require setting up a real Bitbucket API connection
 	// and having test pipelines available. For now, we'll skip this.
 	t.Skip("Integration tests require real Bitbucket API access")
-	
+
 	// Example of what an integration test might look like:
 	/*
-	ctx := context.Background()
-	
-	// Create real RunContext with authentication
-	runCtx, err := NewRunContext(ctx, "json", true)
-	require.NoError(t, err)
-	
-	// Test with a known pipeline ID
-	cmd := &ViewCmd{
-		PipelineID: "123",
-		Output:     "json",
-		NoColor:    true,
-	}
-	
-	err = cmd.Run(ctx)
-	assert.NoError(t, err)
+		ctx := context.Background()
+
+		// Create real RunContext with authentication
+		runCtx, err := NewRunContext(ctx, "json", true)
+		require.NoError(t, err)
+
+		// Test with a known pipeline ID
+		cmd := &ViewCmd{
+			PipelineID: "123",
+			Output:     "json",
+			NoColor:    true,
+		}
+
+		err = cmd.Run(ctx)
+		assert.NoError(t, err)
 	*/
 }
 
@@ -359,7 +359,7 @@ func TestViewCmd_Integration(t *testing.T) {
 func BenchmarkViewCmd_GetStatusIcon(b *testing.B) {
 	cmd := &ViewCmd{}
 	statuses := []string{"SUCCESSFUL", "FAILED", "IN_PROGRESS", "PENDING", "STOPPED", "ERROR", "UNKNOWN"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		status := statuses[i%len(statuses)]
@@ -374,7 +374,7 @@ func BenchmarkViewCmd_ResolvePipelineUUID(b *testing.B) {
 		"87654321-4321-4321-4321-cba987654321",
 		"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		cmd.PipelineID = uuids[i%len(uuids)]

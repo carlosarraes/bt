@@ -80,22 +80,22 @@ func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunCon
 	if cmd.Debug {
 		fmt.Printf("🐛 Debug: Looking for PR with commit hash: %s\n", commitHash)
 	}
-	
+
 	options := &api.PullRequestListOptions{
 		State:   "OPEN,MERGED,DECLINED",
 		PageLen: 50,
 	}
-	
+
 	resp, err := runCtx.Client.PullRequests.ListPullRequests(ctx, runCtx.Workspace, runCtx.Repository, options)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pull requests: %w", err)
 	}
-	
+
 	pullRequests, err := cmd.parsePullRequestResults(resp)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse pull request results: %w", err)
 	}
-	
+
 	for _, pr := range pullRequests {
 		if pr.Source != nil && pr.Source.Commit != nil && pr.Source.Commit.Hash == commitHash {
 			if cmd.Debug {
@@ -103,14 +103,14 @@ func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunCon
 			}
 			return &pr.ID, nil
 		}
-		
+
 		if pr.Destination != nil && pr.Destination.Commit != nil && pr.Destination.Commit.Hash == commitHash {
 			if cmd.Debug {
 				fmt.Printf("🐛 Debug: Found matching PR #%d for commit %s (destination)\n", pr.ID, commitHash)
 			}
 			return &pr.ID, nil
 		}
-		
+
 		if cmd.Debug && pr.Source != nil && pr.Source.Commit != nil {
 			fmt.Printf("🐛 Debug: PR #%d source commit: %s\n", pr.ID, pr.Source.Commit.Hash)
 		}
@@ -118,7 +118,7 @@ func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunCon
 			fmt.Printf("🐛 Debug: PR #%d destination commit: %s\n", pr.ID, pr.Destination.Commit.Hash)
 		}
 	}
-	
+
 	if cmd.Debug {
 		fmt.Printf("🐛 Debug: No PR found for commit %s\n", commitHash)
 	}
@@ -149,7 +149,7 @@ func (cmd *RerunCmd) parsePullRequestResults(result *api.PaginatedResponse) ([]*
 
 func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
 	pipelineID := strings.TrimSpace(cmd.PipelineID)
-	
+
 	if strings.Contains(pipelineID, "-") {
 		return pipelineID, nil
 	}
@@ -167,9 +167,9 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 		PageLen: 100,
 		Sort:    "-created_on",
 	}
-	
+
 	fmt.Printf("🔍 Searching for pipeline #%d in workspace '%s', repository '%s'\n", buildNumber, runCtx.Workspace, runCtx.Repository)
-	
+
 	resp, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
 	if err != nil {
 		return "", fmt.Errorf("failed to search for pipeline: %w", err)
@@ -181,7 +181,7 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 	}
 
 	fmt.Printf("📋 Found %d pipelines. Looking for build number %d:\n", len(pipelines), buildNumber)
-	
+
 	for i, pipeline := range pipelines {
 		stateName := "UNKNOWN"
 		resultName := "UNKNOWN"
@@ -195,13 +195,13 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 				displayStatus = stateName
 			}
 		}
-		
+
 		if cmd.Debug {
 			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s, Result: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName, resultName)
 		} else {
 			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, displayStatus)
 		}
-		
+
 		if pipeline.BuildNumber == buildNumber {
 			fmt.Printf("✅ Found matching pipeline: #%d -> %s\n", buildNumber, pipeline.UUID)
 			return pipeline.UUID, nil
@@ -239,13 +239,13 @@ func (cmd *RerunCmd) validateRerunnable(pipeline *api.Pipeline) error {
 	if pipeline.State == nil {
 		return fmt.Errorf("pipeline #%d has no state information", pipeline.BuildNumber)
 	}
-	
+
 	switch pipeline.State.Name {
 	case "PENDING", "IN_PROGRESS":
-		return fmt.Errorf("pipeline #%d is still running (state: %s) and cannot be rerun. Use 'bt run cancel' to stop it first", 
+		return fmt.Errorf("pipeline #%d is still running (state: %s) and cannot be rerun. Use 'bt run cancel' to stop it first",
 			pipeline.BuildNumber, pipeline.State.Name)
 	}
-	
+
 	switch pipeline.State.Name {
 	case "COMPLETED":
 		return nil
@@ -259,7 +259,7 @@ func (cmd *RerunCmd) validateRerunnable(pipeline *api.Pipeline) error {
 			}
 			fmt.Printf("🐛 Debug: State=%s, Result=%s\n", pipeline.State.Name, resultName)
 		}
-		return fmt.Errorf("pipeline #%d is in an unknown state (%s) and may not be rerunnable", 
+		return fmt.Errorf("pipeline #%d is in an unknown state (%s) and may not be rerunnable",
 			pipeline.BuildNumber, pipeline.State.Name)
 	}
 }
@@ -276,25 +276,25 @@ func (cmd *RerunCmd) confirmRerun(pipeline *api.Pipeline) bool {
 	if pipeline.State.Result != nil && pipeline.State.Result.Name != "" {
 		displayStatus = pipeline.State.Result.Name
 	}
-	
-	fmt.Printf("Are you sure you want to %s pipeline #%d (%s)?\n", 
+
+	fmt.Printf("Are you sure you want to %s pipeline #%d (%s)?\n",
 		action, pipeline.BuildNumber, displayStatus)
-	
+
 	if pipeline.Target != nil {
 		fmt.Printf("  Branch: %s\n", pipeline.Target.RefName)
 		if pipeline.Target.Commit != nil {
 			fmt.Printf("  Commit: %s\n", pipeline.Target.Commit.Hash[:8])
 		}
 	}
-	
+
 	fmt.Print("Type 'yes' to confirm: ")
-	
+
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
 		return false
 	}
-	
+
 	input = strings.TrimSpace(strings.ToLower(input))
 	return input == "yes"
 }
@@ -332,13 +332,13 @@ func (cmd *RerunCmd) buildTriggerRequest(ctx context.Context, runCtx *RunContext
 			if cmd.Debug {
 				fmt.Printf("🐛 Debug: PR pipeline missing pullRequestId, attempting to find by commit hash\n")
 			}
-			
+
 			foundPRId, err := cmd.findPullRequestByCommit(ctx, runCtx, pipeline.Target.Commit.Hash)
 			if err != nil {
 				return nil, fmt.Errorf("failed to find pull request for commit %s: %w", pipeline.Target.Commit.Hash, err)
 			}
 			pullRequestId = foundPRId
-			
+
 			if cmd.Debug {
 				fmt.Printf("🐛 Debug: Found PR ID: %d\n", *pullRequestId)
 			}
@@ -384,7 +384,7 @@ func (cmd *RerunCmd) outputTable(originalPipeline *api.Pipeline, newPipeline *ap
 	fmt.Printf("✓ Pipeline #%d has been triggered successfully.\n", newPipeline.BuildNumber)
 	fmt.Printf("  Original pipeline: #%d (%s)\n", originalPipeline.BuildNumber, originalPipeline.State.Name)
 	fmt.Printf("  New pipeline: #%d (%s)\n", newPipeline.BuildNumber, newPipeline.State.Name)
-	
+
 	if newPipeline.Repository != nil {
 		fmt.Printf("  Repository: %s\n", newPipeline.Repository.FullName)
 	}
@@ -394,7 +394,7 @@ func (cmd *RerunCmd) outputTable(originalPipeline *api.Pipeline, newPipeline *ap
 			fmt.Printf("  Commit: %s\n", newPipeline.Target.Commit.Hash[:8])
 		}
 	}
-	
+
 	fmt.Printf("\nUse 'bt run watch %d' to monitor the new pipeline.\n", newPipeline.BuildNumber)
 	return nil
 }
@@ -404,38 +404,38 @@ func (cmd *RerunCmd) outputJSON(runCtx *RunContext, originalPipeline *api.Pipeli
 		"build_number": originalPipeline.BuildNumber,
 		"uuid":         originalPipeline.UUID,
 	}
-	
+
 	if originalPipeline.State != nil {
 		originalData["state"] = originalPipeline.State.Name
 	}
-	
+
 	newData := map[string]interface{}{
 		"build_number": newPipeline.BuildNumber,
 		"uuid":         newPipeline.UUID,
 	}
-	
+
 	if newPipeline.State != nil {
 		newData["state"] = newPipeline.State.Name
 	}
-	
+
 	if newPipeline.Repository != nil {
 		newData["repository"] = newPipeline.Repository.FullName
 	}
-	
+
 	if newPipeline.Target != nil {
 		newData["branch"] = newPipeline.Target.RefName
 		if newPipeline.Target.Commit != nil {
 			newData["commit"] = newPipeline.Target.Commit.Hash
 		}
 	}
-	
+
 	result := map[string]interface{}{
 		"success":           true,
 		"message":           "Pipeline rerun triggered successfully",
 		"original_pipeline": originalData,
 		"new_pipeline":      newData,
 	}
-	
+
 	return runCtx.Formatter.Format(result)
 }
 
@@ -444,37 +444,37 @@ func (cmd *RerunCmd) outputYAML(runCtx *RunContext, originalPipeline *api.Pipeli
 		"build_number": originalPipeline.BuildNumber,
 		"uuid":         originalPipeline.UUID,
 	}
-	
+
 	if originalPipeline.State != nil {
 		originalData["state"] = originalPipeline.State.Name
 	}
-	
+
 	newData := map[string]interface{}{
 		"build_number": newPipeline.BuildNumber,
 		"uuid":         newPipeline.UUID,
 	}
-	
+
 	if newPipeline.State != nil {
 		newData["state"] = newPipeline.State.Name
 	}
-	
+
 	if newPipeline.Repository != nil {
 		newData["repository"] = newPipeline.Repository.FullName
 	}
-	
+
 	if newPipeline.Target != nil {
 		newData["branch"] = newPipeline.Target.RefName
 		if newPipeline.Target.Commit != nil {
 			newData["commit"] = newPipeline.Target.Commit.Hash
 		}
 	}
-	
+
 	result := map[string]interface{}{
 		"success":           true,
 		"message":           "Pipeline rerun triggered successfully",
 		"original_pipeline": originalData,
 		"new_pipeline":      newData,
 	}
-	
+
 	return runCtx.Formatter.Format(result)
 }

@@ -75,11 +75,11 @@ func (s *Service) GenerateReportForPR(ctx context.Context, prID int, workspace, 
 		PreferredMetrics:  []string{"new_coverage", "new_uncovered_lines", "new_bugs", "new_vulnerabilities", "new_code_smells"},
 		PipelineCompleted: true,
 	}
-	
+
 	apiContext.BaseParams["pullRequest"] = fmt.Sprintf("%d", prID)
-	
+
 	if filters.Debug {
-		fmt.Printf("DEBUG: API Context - IsPullRequest: %t, PullRequestID: %d\n", 
+		fmt.Printf("DEBUG: API Context - IsPullRequest: %t, PullRequestID: %d\n",
 			apiContext.IsPullRequest, apiContext.PullRequestID)
 		fmt.Printf("DEBUG: Project Key: %s\n", discoveryResult.ProjectKey)
 	}
@@ -146,9 +146,9 @@ func (s *Service) GenerateReport(ctx context.Context, pipeline *api.Pipeline, wo
 	}
 
 	apiContext := s.buildAPIContext(pipeline, discoveryResult.ProjectKey)
-	
+
 	if filters.Debug {
-		fmt.Printf("DEBUG: API Context - IsPullRequest: %t, PullRequestID: %d\n", 
+		fmt.Printf("DEBUG: API Context - IsPullRequest: %t, PullRequestID: %d\n",
 			apiContext.IsPullRequest, apiContext.PullRequestID)
 		fmt.Printf("DEBUG: Project Key: %s\n", discoveryResult.ProjectKey)
 	}
@@ -217,9 +217,9 @@ func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext) (*Q
 	}
 
 	info := &QualityGateInfo{
-		Status: qualityGate.ProjectStatus.Status,
-		Passed: qualityGate.ProjectStatus.Status == "OK",
-		Conditions: make([]QualityGateCondition, 0, len(qualityGate.ProjectStatus.Conditions)),
+		Status:           qualityGate.ProjectStatus.Status,
+		Passed:           qualityGate.ProjectStatus.Status == "OK",
+		Conditions:       make([]QualityGateCondition, 0, len(qualityGate.ProjectStatus.Conditions)),
 		FailedConditions: make([]QualityGateCondition, 0),
 	}
 
@@ -246,8 +246,8 @@ func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext) (*Q
 
 func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, filters FilterOptions) (*CoverageData, error) {
 	data := &CoverageData{
-		Available: true,
-		Files:     make([]CoverageFile, 0),
+		Available:      true,
+		Files:          make([]CoverageFile, 0),
 		UncoveredLines: make([]UncoveredLine, 0),
 	}
 
@@ -264,7 +264,7 @@ func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, fi
 			fmt.Printf("DEBUG: Error getting uncovered lines: %v\n", err)
 		}
 	}
-	
+
 	if filters.Debug {
 		fmt.Printf("DEBUG: Coverage details count: %d\n", len(data.CoverageDetails))
 		fmt.Printf("DEBUG: Uncovered lines count: %d\n", len(data.UncoveredLines))
@@ -396,7 +396,7 @@ func (s *Service) getUncoveredLines(ctx context.Context, apiContext APIContext, 
 	if filters.Debug {
 		fmt.Printf("DEBUG: Eligible files for line details: %d\n", len(eligibleFiles))
 		for i, file := range eligibleFiles {
-			fmt.Printf("DEBUG: File %d: %s (ComponentKey: %s, NewUncovered: %d)\n", 
+			fmt.Printf("DEBUG: File %d: %s (ComponentKey: %s, NewUncovered: %d)\n",
 				i+1, file.Path, file.ComponentKey, file.NewUncoveredLines)
 		}
 	}
@@ -420,42 +420,42 @@ func (s *Service) getUncoveredLines(ctx context.Context, apiContext APIContext, 
 
 func (s *Service) filterEligibleFiles(files []CoverageFile, filters FilterOptions) []CoverageFile {
 	var eligible []CoverageFile
-	
+
 	for _, file := range files {
 		if filters.NewLinesOnly && file.NewUncoveredLines == 0 {
 			continue
 		}
-		
+
 		if filters.MinUncoveredLines > 0 && file.UncoveredLines < filters.MinUncoveredLines {
 			continue
 		}
-		
+
 		if filters.MaxUncoveredLines > 0 && file.UncoveredLines > filters.MaxUncoveredLines {
 			continue
 		}
-		
+
 		if file.UncoveredLines > 500 {
 			continue
 		}
-		
+
 		if file.Coverage >= 100.0 {
 			continue
 		}
-		
+
 		if s.isGeneratedFile(file.Path) {
 			continue
 		}
-		
+
 		if filters.FilePattern != "" {
 			matched, err := s.matchFilePattern(file.Path, filters.FilePattern)
 			if err != nil || !matched {
 				continue
 			}
 		}
-		
+
 		eligible = append(eligible, file)
 	}
-	
+
 	return eligible
 }
 
@@ -466,13 +466,13 @@ func (s *Service) isGeneratedFile(path string) bool {
 		"vendor/", "build/", "dist/",
 		".min.js", ".min.css",
 	}
-	
+
 	for _, pattern := range generatedPatterns {
 		if strings.Contains(path, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -480,7 +480,7 @@ func (s *Service) matchFilePattern(path, pattern string) (bool, error) {
 	if pattern == "" {
 		return true, nil
 	}
-	
+
 	matched, err := filepath.Match(pattern, path)
 	if err != nil {
 		return false, err
@@ -488,14 +488,14 @@ func (s *Service) matchFilePattern(path, pattern string) (bool, error) {
 	if matched {
 		return true, nil
 	}
-	
+
 	matched, err = filepath.Match(pattern, filepath.Base(path))
 	return matched, err
 }
 
 func (s *Service) getUncoveredLinesForFiles(ctx context.Context, files []CoverageFile, apiContext APIContext, filters FilterOptions) ([]CoverageDetails, error) {
 	var results []CoverageDetails
-	
+
 	batchSize := 5
 	for i := 0; i < len(files); i += batchSize {
 		end := i + batchSize
@@ -503,19 +503,19 @@ func (s *Service) getUncoveredLinesForFiles(ctx context.Context, files []Coverag
 			end = len(files)
 		}
 		batch := files[i:end]
-		
+
 		batchResults, err := s.processBatch(ctx, batch, apiContext, filters)
 		if err != nil {
 			continue
 		}
-		
+
 		results = append(results, batchResults...)
-		
+
 		if i+batchSize < len(files) {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -523,23 +523,23 @@ func (s *Service) processBatch(ctx context.Context, files []CoverageFile, apiCon
 	var results []CoverageDetails
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	
+
 	for _, file := range files {
 		wg.Add(1)
 		go func(f CoverageFile) {
 			defer wg.Done()
-			
+
 			details, err := s.getUncoveredLinesForFile(ctx, f, apiContext, filters)
 			if err != nil {
 				return
 			}
-			
+
 			mu.Lock()
 			results = append(results, *details)
 			mu.Unlock()
 		}(file)
 	}
-	
+
 	wg.Wait()
 	return results, nil
 }
@@ -590,7 +590,7 @@ func (s *Service) getUncoveredLinesForFile(ctx context.Context, file CoverageFil
 			}
 
 			details.UncoveredLines = append(details.UncoveredLines, uncoveredLine)
-			
+
 			if line.IsNew {
 				details.NewUncovered++
 			}
@@ -606,38 +606,38 @@ func (s *Service) getUncoveredLinesForFile(ctx context.Context, file CoverageFil
 
 func (s *Service) processCodeLine(code string, truncateLength int, filePath string) string {
 	code = strings.TrimSpace(code)
-	
+
 	if !s.shouldPreserveHTMLTags(filePath) {
 		code = s.cleanHTMLTags(code)
 	}
-	
+
 	if truncateLength > 0 && len(code) > truncateLength {
 		return code[:truncateLength-3] + "..."
 	}
-	
+
 	return code
 }
 
 func (s *Service) shouldPreserveHTMLTags(filePath string) bool {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	webExtensions := []string{".html", ".htm", ".tsx", ".jsx", ".vue", ".svelte"}
-	
+
 	for _, webExt := range webExtensions {
 		if ext == webExt {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
 func (s *Service) cleanHTMLTags(code string) string {
 	re := regexp.MustCompile(`<[^>]*>`)
 	cleaned := re.ReplaceAllString(code, "")
-	
+
 	cleaned = strings.ReplaceAll(cleaned, "  ", " ")
 	cleaned = strings.TrimSpace(cleaned)
-	
+
 	return cleaned
 }
 
@@ -647,7 +647,7 @@ func (s *Service) prioritizeUncoveredLines(lines []UncoveredLine, maxLines int) 
 	}
 
 	var newLines, oldLines []UncoveredLine
-	
+
 	for _, line := range lines {
 		if line.IsNew {
 			newLines = append(newLines, line)
@@ -787,7 +787,6 @@ func (s *Service) GetMetricsData(ctx context.Context, apiContext APIContext) (*M
 
 	return data, nil
 }
-
 
 func (s *Service) getMetricDisplayName(metricKey string) string {
 	displayNames := map[string]string{
