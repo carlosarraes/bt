@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/sonarcloud"
 )
 
@@ -44,7 +45,7 @@ func (cmd *ReportCmd) Run(ctx context.Context) error {
 		noColor = v.(bool)
 	}
 
-	prCtx, err := NewPRContext(ctx, cmd.Output, noColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, noColor)
 	if err != nil {
 		return err
 	}

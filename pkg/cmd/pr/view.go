@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 // ViewCmd handles the pr view command
@@ -26,7 +28,7 @@ type ViewCmd struct {
 // Run executes the pr view command
 func (cmd *ViewCmd) Run(ctx context.Context) error {
 	// Create PR context with authentication and configuration
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -178,10 +180,10 @@ func (cmd *ViewCmd) formatTable(prCtx *PRContext, pr *api.PullRequest, files *ap
 
 	// Timestamps
 	if pr.CreatedOn != nil {
-		fmt.Printf("Created: %s\n", FormatRelativeTime(pr.CreatedOn))
+		fmt.Printf("Created: %s\n", output.FormatRelativeTime(pr.CreatedOn))
 	}
 	if pr.UpdatedOn != nil {
-		fmt.Printf("Updated: %s\n", FormatRelativeTime(pr.UpdatedOn))
+		fmt.Printf("Updated: %s\n", output.FormatRelativeTime(pr.UpdatedOn))
 	}
 
 	// Description
@@ -266,7 +268,7 @@ func (cmd *ViewCmd) displayComments(comments *api.PaginatedResponse) error {
 
 			timeStr := ""
 			if comment.CreatedOn != nil {
-				timeStr = FormatRelativeTime(comment.CreatedOn)
+				timeStr = output.FormatRelativeTime(comment.CreatedOn)
 			}
 
 			fmt.Printf("\n%s (%s):\n", authorName, timeStr)

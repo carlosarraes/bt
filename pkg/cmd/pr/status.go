@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/git"
 )
 
@@ -23,7 +24,7 @@ type PRStatusResult struct {
 }
 
 func (cmd *StatusCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}

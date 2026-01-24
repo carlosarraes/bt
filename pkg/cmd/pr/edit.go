@@ -10,7 +10,9 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/ai"
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/git"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 type EditCmd struct {
@@ -33,7 +35,7 @@ type EditCmd struct {
 }
 
 func (cmd *EditCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -339,10 +341,10 @@ func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 	}
 
 	if pr.CreatedOn != nil {
-		fmt.Printf("Created: %s\n", FormatRelativeTime(pr.CreatedOn))
+		fmt.Printf("Created: %s\n", output.FormatRelativeTime(pr.CreatedOn))
 	}
 	if pr.UpdatedOn != nil {
-		fmt.Printf("Updated: %s\n", FormatRelativeTime(pr.UpdatedOn))
+		fmt.Printf("Updated: %s\n", output.FormatRelativeTime(pr.UpdatedOn))
 	}
 
 	if pr.Description != "" {

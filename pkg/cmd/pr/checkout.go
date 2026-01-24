@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/git"
 )
 
@@ -19,7 +20,7 @@ type CheckoutCmd struct {
 }
 
 func (c *CheckoutCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, c.Output, c.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, c.Output, c.NoColor)
 	if err != nil {
 		return err
 	}

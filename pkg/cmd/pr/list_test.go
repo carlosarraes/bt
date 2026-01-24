@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -358,7 +359,7 @@ func TestFormatRelativeTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := FormatRelativeTime(tt.time)
+			result := output.FormatRelativeTime(tt.time)
 			if tt.name == "old date" {
 				// For old dates, check the format pattern instead of exact match
 				assert.Regexp(t, `\d{4}-\d{2}-\d{2}`, result)

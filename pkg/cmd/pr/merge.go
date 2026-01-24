@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 )
 
 type MergeCmd struct {
@@ -22,7 +23,7 @@ type MergeCmd struct {
 }
 
 func (cmd *MergeCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}

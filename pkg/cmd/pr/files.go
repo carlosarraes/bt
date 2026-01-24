@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 )
 
 type FilesCmd struct {
@@ -22,7 +23,7 @@ type FilesCmd struct {
 }
 
 func (c *FilesCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, c.Output, false)
+	prCtx, err := shared.NewCommandContext(ctx, c.Output, false)
 	if err != nil {
 		return fmt.Errorf("failed to create PR context: %w", err)
 	}

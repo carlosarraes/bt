@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/carlosarraes/bt/pkg/utils"
 )
@@ -30,7 +31,7 @@ type DiffCmd struct {
 
 func (cmd *DiffCmd) Run(ctx context.Context) error {
 
-prCtx, err := NewPRContext(ctx, "table", cmd.NoColor)
+prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor)
 	if err != nil {
 		return err
 	}

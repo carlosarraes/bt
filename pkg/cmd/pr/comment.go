@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 type CommentCmd struct {
@@ -24,7 +26,7 @@ type CommentCmd struct {
 }
 
 func (cmd *CommentCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -202,7 +204,7 @@ func (cmd *CommentCmd) displayResult(prCtx *PRContext, pr *api.PullRequest, comm
 		}
 		
 		if comment.CreatedOn != nil {
-			fmt.Printf("  Created: %s\n", FormatRelativeTime(comment.CreatedOn))
+			fmt.Printf("  Created: %s\n", output.FormatRelativeTime(comment.CreatedOn))
 		}
 		
 		return nil

@@ -11,7 +11,9 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/config"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 type ListAllCmd struct {
@@ -33,7 +35,7 @@ type PRWithRepo struct {
 }
 
 func (cmd *ListAllCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor, cmd.Debug)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor, cmd.Debug)
 	if err != nil {
 		prCtx, err = cmd.createMinimalContext(ctx, cmd.Output, cmd.NoColor)
 		if err != nil {
@@ -327,7 +329,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 			state = "UNKNOWN"
 		}
 
-		updatedTime := FormatRelativeTime(pr.UpdatedOn)
+		updatedTime := output.FormatRelativeTime(pr.UpdatedOn)
 		
 		approved := cmd.isPRApproved(pr)
 		approvedStatus := "✗"
@@ -354,7 +356,7 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		}
 	}
 
-	return renderCustomTable(headers, rows)
+	return output.RenderSimpleTable(headers, rows)
 }
 
 func (cmd *ListAllCmd) formatJSON(prCtx *PRContext, prs []*PRWithRepo) error {
@@ -417,7 +419,7 @@ func (cmd *ListAllCmd) createMinimalContext(ctx context.Context, outputFormat st
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	authManager, err := createAuthManager()
+	authManager, err := shared.CreateAuthManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth manager: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/config"
 	"github.com/carlosarraes/bt/pkg/output"
 )
@@ -28,7 +29,7 @@ type ListCmd struct {
 }
 
 func (cmd *ListCmd) Run(ctx context.Context) error {
-	prCtx, err := NewPRContext(ctx, cmd.Output, cmd.NoColor, cmd.Debug)
+	prCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor, cmd.Debug)
 	if err != nil {
 		if cmd.Workspace != "" && cmd.Repository != "" {
 			prCtx, err = cmd.createMinimalContext(ctx, cmd.Output, cmd.NoColor)
@@ -213,7 +214,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 			state = "UNKNOWN"
 		}
 
-		updatedTime := FormatRelativeTime(pr.UpdatedOn)
+		updatedTime := output.FormatRelativeTime(pr.UpdatedOn)
 		
 		approved := cmd.isPRApproved(pr)
 		approvedStatus := "✗"
@@ -239,7 +240,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 		}
 	}
 
-	return renderCustomTable(headers, rows)
+	return output.RenderSimpleTable(headers, rows)
 }
 
 func (cmd *ListCmd) formatJSON(prCtx *PRContext, pullRequests []*api.PullRequest) error {
@@ -299,55 +300,6 @@ func validateState(state string) error {
 }
 
 
-func renderCustomTable(headers []string, rows [][]string) error {
-	if len(rows) == 0 {
-		return nil
-	}
-
-	colWidths := make([]int, len(headers))
-	for i, header := range headers {
-		colWidths[i] = len(header)
-	}
-
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(colWidths) && len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
-			}
-		}
-	}
-
-	for i, header := range headers {
-		fmt.Printf("%-*s", colWidths[i], header)
-		if i < len(headers)-1 {
-			fmt.Print("  ")
-		}
-	}
-	fmt.Println()
-
-	for i, width := range colWidths {
-		fmt.Print(strings.Repeat("-", width))
-		if i < len(colWidths)-1 {
-			fmt.Print("  ")
-		}
-	}
-	fmt.Println()
-
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(colWidths) {
-				fmt.Printf("%-*s", colWidths[i], cell)
-				if i < len(row)-1 {
-					fmt.Print("  ")
-				}
-			}
-		}
-		fmt.Println()
-	}
-
-	return nil
-}
-
 func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
 	loader := config.NewLoader()
 	cfg, err := loader.Load()
@@ -355,7 +307,7 @@ func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat strin
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	authManager, err := createAuthManager()
+	authManager, err := shared.CreateAuthManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth manager: %w", err)
 	}

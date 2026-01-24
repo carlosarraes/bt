@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/config"
 )
 
@@ -59,7 +60,7 @@ func (cmd *OpenCmd) processPR(ctx context.Context, prid string) error {
 		return cmd.handleURL(url)
 	}
 
-	prCtx, err := NewPRContext(ctx, "table", cmd.NoColor, cmd.Debug)
+	prCtx, err := shared.NewCommandContext(ctx, "table", cmd.NoColor, cmd.Debug)
 	if err != nil {
 		prCtx, err = cmd.createMinimalContext(ctx, "table", cmd.NoColor)
 		if err != nil {
@@ -245,7 +246,7 @@ func (cmd *OpenCmd) createMinimalContext(ctx context.Context, outputFormat strin
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	authManager, err := createAuthManager()
+	authManager, err := shared.CreateAuthManager()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create auth manager: %w", err)
 	}
