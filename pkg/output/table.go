@@ -297,3 +297,52 @@ func (t *TableFormatter) SetNoColor(noColor bool) {
 	t.BaseFormatter.SetNoColor(noColor)
 	t.initializeStyle()
 }
+
+func RenderSimpleTable(headers []string, rows [][]string) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	colWidths := make([]int, len(headers))
+	for i, header := range headers {
+		colWidths[i] = len(header)
+	}
+
+	for _, row := range rows {
+		for i, cell := range row {
+			if i < len(colWidths) && len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	for i, header := range headers {
+		fmt.Printf("%-*s", colWidths[i], header)
+		if i < len(headers)-1 {
+			fmt.Print("  ")
+		}
+	}
+	fmt.Println()
+
+	for i, width := range colWidths {
+		fmt.Print(strings.Repeat("-", width))
+		if i < len(colWidths)-1 {
+			fmt.Print("  ")
+		}
+	}
+	fmt.Println()
+
+	for _, row := range rows {
+		for i, cell := range row {
+			if i < len(colWidths) {
+				fmt.Printf("%-*s", colWidths[i], cell)
+				if i < len(row)-1 {
+					fmt.Print("  ")
+				}
+			}
+		}
+		fmt.Println()
+	}
+
+	return nil
+}
