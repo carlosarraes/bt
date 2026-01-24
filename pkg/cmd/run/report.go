@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/sonarcloud"
 )
 
@@ -38,7 +39,7 @@ type ReportCmd struct {
 }
 
 func (cmd *ReportCmd) Run(ctx context.Context) error {
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}

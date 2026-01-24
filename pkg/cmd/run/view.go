@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/carlosarraes/bt/pkg/utils"
 )
 
@@ -34,7 +36,7 @@ type ViewCmd struct {
 // Run executes the run view command
 func (cmd *ViewCmd) Run(ctx context.Context) error {
 	// Create run context with authentication and configuration
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -228,7 +230,7 @@ func (cmd *ViewCmd) displayPipelineUpdate(ctx context.Context, runCtx *RunContex
 
 	duration := ""
 	if pipeline.BuildSecondsUsed > 0 {
-		duration = FormatDuration(pipeline.BuildSecondsUsed)
+		duration = output.FormatDuration(pipeline.BuildSecondsUsed)
 	}
 
 	fmt.Printf("[%s] Pipeline #%d: %s", 
@@ -248,7 +250,7 @@ func (cmd *ViewCmd) displayPipelineUpdate(ctx context.Context, runCtx *RunContex
 
 		stepDuration := ""
 		if step.BuildSecondsUsed > 0 {
-			stepDuration = FormatDuration(step.BuildSecondsUsed)
+			stepDuration = output.FormatDuration(step.BuildSecondsUsed)
 		}
 
 		statusIcon := cmd.getStatusIcon(stepStatus)
@@ -335,7 +337,7 @@ func (cmd *ViewCmd) formatTable(runCtx *RunContext, pipeline *api.Pipeline, step
 	}
 
 	if pipeline.BuildSecondsUsed > 0 {
-		fmt.Printf("Duration:    %s\n", FormatDuration(pipeline.BuildSecondsUsed))
+		fmt.Printf("Duration:    %s\n", output.FormatDuration(pipeline.BuildSecondsUsed))
 	}
 
 	// Variables (if any)
@@ -361,7 +363,7 @@ func (cmd *ViewCmd) formatTable(runCtx *RunContext, pipeline *api.Pipeline, step
 
 			stepDuration := ""
 			if step.BuildSecondsUsed > 0 {
-				stepDuration = FormatDuration(step.BuildSecondsUsed)
+				stepDuration = output.FormatDuration(step.BuildSecondsUsed)
 			}
 
 			statusIcon := cmd.getStatusIcon(stepStatus)
@@ -618,7 +620,7 @@ func (cmd *ViewCmd) displayStepInfo(step *api.PipelineStep) {
 	}
 	
 	if step.BuildSecondsUsed > 0 {
-		fmt.Printf("Duration: %s\n", FormatDuration(step.BuildSecondsUsed))
+		fmt.Printf("Duration: %s\n", output.FormatDuration(step.BuildSecondsUsed))
 	}
 	
 	if step.Image != nil {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 )
 
 // CancelCmd handles the run cancel command
@@ -25,7 +26,7 @@ type CancelCmd struct {
 // Run executes the run cancel command
 func (cmd *CancelCmd) Run(ctx context.Context) error {
 	// Create run context with authentication and configuration
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}

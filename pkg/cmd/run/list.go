@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 )
 
 // ListCmd handles the run list command
@@ -23,7 +25,7 @@ type ListCmd struct {
 // Run executes the run list command
 func (cmd *ListCmd) Run(ctx context.Context) error {
 	// Create run context with authentication and configuration
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -126,11 +128,11 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 			}
 		}
 
-		startedTime := FormatRelativeTime(pipeline.CreatedOn)
+		startedTime := output.FormatRelativeTime(pipeline.CreatedOn)
 
 		duration := "-"
 		if pipeline.BuildSecondsUsed > 0 {
-			duration = FormatDuration(pipeline.BuildSecondsUsed)
+			duration = output.FormatDuration(pipeline.BuildSecondsUsed)
 		}
 
 		ref := "-"
@@ -174,7 +176,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 		}
 	}
 
-	return renderCustomTable(headers, rows)
+	return output.RenderSimpleTable(headers, rows)
 }
 
 // formatJSON formats pipelines as JSON
@@ -260,56 +262,3 @@ func handlePipelineAPIError(err error) error {
 	return fmt.Errorf("failed to list pipelines: %w", err)
 }
 
-// renderCustomTable renders a table with proper alignment
-func renderCustomTable(headers []string, rows [][]string) error {
-	if len(rows) == 0 {
-		return nil
-	}
-
-	// Calculate column widths
-	colWidths := make([]int, len(headers))
-	for i, header := range headers {
-		colWidths[i] = len(header)
-	}
-
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(colWidths) && len(cell) > colWidths[i] {
-				colWidths[i] = len(cell)
-			}
-		}
-	}
-
-	// Render header
-	for i, header := range headers {
-		fmt.Printf("%-*s", colWidths[i], header)
-		if i < len(headers)-1 {
-			fmt.Print("  ")
-		}
-	}
-	fmt.Println()
-
-	// Render separator
-	for i, width := range colWidths {
-		fmt.Print(strings.Repeat("-", width))
-		if i < len(colWidths)-1 {
-			fmt.Print("  ")
-		}
-	}
-	fmt.Println()
-
-	// Render rows
-	for _, row := range rows {
-		for i, cell := range row {
-			if i < len(colWidths) {
-				fmt.Printf("%-*s", colWidths[i], cell)
-				if i < len(row)-1 {
-					fmt.Print("  ")
-				}
-			}
-		}
-		fmt.Println()
-	}
-
-	return nil
-}

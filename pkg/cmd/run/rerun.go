@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 )
 
 type RerunCmd struct {
@@ -25,7 +26,7 @@ type RerunCmd struct {
 }
 
 func (cmd *RerunCmd) Run(ctx context.Context) error {
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}

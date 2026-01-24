@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/carlosarraes/bt/pkg/utils"
 )
 
@@ -34,7 +36,7 @@ func (cmd *LogsCmd) Run(ctx context.Context) error {
 	}
 	
 	// Create run context with authentication and configuration
-	runCtx, err := NewRunContext(ctx, outputFormat, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, outputFormat, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -146,7 +148,7 @@ func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
 	}
 	
 	if step.BuildSecondsUsed > 0 {
-		fmt.Printf("Duration: %s\n", FormatDuration(step.BuildSecondsUsed))
+		fmt.Printf("Duration: %s\n", output.FormatDuration(step.BuildSecondsUsed))
 	}
 	
 	if step.Image != nil {

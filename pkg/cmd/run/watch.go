@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -63,7 +65,7 @@ func (lb *LogBuffer) Reset() {
 // Run executes the run watch command
 func (cmd *WatchCmd) Run(ctx context.Context) error {
 	// Create run context with authentication and configuration
-	runCtx, err := NewRunContext(ctx, cmd.Output, cmd.NoColor)
+	runCtx, err := shared.NewCommandContext(ctx, cmd.Output, cmd.NoColor)
 	if err != nil {
 		return err
 	}
@@ -338,7 +340,7 @@ func (cmd *WatchCmd) displayFinalStatus(pipeline *api.Pipeline) error {
 
 	duration := ""
 	if pipeline.BuildSecondsUsed > 0 {
-		duration = FormatDuration(pipeline.BuildSecondsUsed)
+		duration = output.FormatDuration(pipeline.BuildSecondsUsed)
 	}
 
 	fmt.Printf("%s Pipeline #%d: %s", 
