@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/carlosarraes/bt/pkg/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
@@ -64,7 +65,7 @@ func (cmd *StatusCmd) getAuthStatus(ctx context.Context) (*AuthStatus, error) {
 		status.TokenSource = tokenSource
 
 		// Try to authenticate and get user info
-		manager, err := createAuthManager(auth.AuthMethodAPIToken)
+		manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 		if err != nil {
 			status.Error = fmt.Sprintf("Failed to create auth manager: %v", err)
 			return status, nil
@@ -105,7 +106,7 @@ func (cmd *StatusCmd) detectAuthMethod() string {
 	}
 
 	// Try to load from stored credentials
-	if tokenManager, err := createAuthManager(auth.AuthMethodAPIToken); err == nil {
+	if tokenManager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken); err == nil {
 		if _, err := tokenManager.GetAuthenticatedUser(context.Background()); err == nil {
 			return "stored credentials"
 		}

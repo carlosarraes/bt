@@ -11,6 +11,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/carlosarraes/bt/pkg/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/config"
 )
 
@@ -64,7 +65,7 @@ func (cmd *LoginCmd) authenticateWithAPIToken(ctx context.Context, email, token,
 	os.Setenv("BITBUCKET_API_TOKEN", token)
 
 	// Create API token authenticator
-	manager, err := createAuthManager(auth.AuthMethodAPIToken)
+	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 	if err != nil {
 		return fmt.Errorf("failed to create auth manager: %w", err)
 	}

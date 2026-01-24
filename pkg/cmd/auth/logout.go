@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/auth"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 )
 
 // LogoutCmd handles auth logout command
@@ -58,7 +59,7 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 
 // getCurrentAuthStatus checks current authentication status
 func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, error) {
-	manager, err := createAuthManager(auth.AuthMethodAPIToken)
+	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func (cmd *LogoutCmd) confirmLogout() bool {
 
 // clearAuthMethod clears stored credentials
 func (cmd *LogoutCmd) clearAuthMethod() error {
-	manager, err := createAuthManager(auth.AuthMethodAPIToken)
+	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 	if err != nil {
 		return err
 	}
