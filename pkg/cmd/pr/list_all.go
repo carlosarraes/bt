@@ -12,7 +12,6 @@ import (
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/auth"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/config"
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
@@ -413,32 +412,12 @@ func (cmd *ListAllCmd) formatURL(prCtx *PRContext, prs []*PRWithRepo) error {
 }
 
 func (cmd *ListAllCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
-	loader := config.NewLoader()
-	cfg, err := loader.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	authManager, err := shared.CreateAuthManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth manager: %w", err)
-	}
-
-	clientConfig := api.DefaultClientConfig()
-	clientConfig.BaseURL = cfg.API.BaseURL
-	clientConfig.Timeout = cfg.API.Timeout
-
-	client, err := api.NewClient(authManager, clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create API client: %w", err)
-	}
-
-	return &PRContext{
-		Client:    client,
-		Config:    cfg,
-		Workspace: cmd.Workspace,
-		Debug:     cmd.Debug,
-	}, nil
+	return shared.NewMinimalContext(ctx, shared.MinimalContextOptions{
+		OutputFormat: outputFormat,
+		Workspace:    cmd.Workspace,
+		NoColor:      noColor,
+		Debug:        cmd.Debug,
+	})
 }
 
 func (cmd *ListAllCmd) isPRApproved(pr *api.PullRequest) bool {

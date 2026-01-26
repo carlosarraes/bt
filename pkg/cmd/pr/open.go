@@ -13,7 +13,6 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/config"
 )
 
 type OpenCmd struct {
@@ -240,35 +239,10 @@ func (cmd *OpenCmd) openInBrowser(url string) error {
 }
 
 func (cmd *OpenCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
-	loader := config.NewLoader()
-	cfg, err := loader.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	authManager, err := shared.CreateAuthManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth manager: %w", err)
-	}
-
-	clientConfig := api.DefaultClientConfig()
-	clientConfig.BaseURL = cfg.API.BaseURL
-	clientConfig.Timeout = cfg.API.Timeout
-
-	client, err := api.NewClient(authManager, clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create API client: %w", err)
-	}
-
-	workspace := cmd.Workspace
-	if workspace == "" {
-		workspace = cfg.Auth.DefaultWorkspace
-	}
-
-	return &PRContext{
-		Client:    client,
-		Config:    cfg,
-		Workspace: workspace,
-		Debug:     cmd.Debug,
-	}, nil
+	return shared.NewMinimalContext(ctx, shared.MinimalContextOptions{
+		OutputFormat: outputFormat,
+		Workspace:    cmd.Workspace,
+		NoColor:      noColor,
+		Debug:        cmd.Debug,
+	})
 }

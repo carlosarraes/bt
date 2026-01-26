@@ -2,7 +2,6 @@ package pr
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/config"
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
@@ -262,81 +260,21 @@ func (cmd *ListCmd) formatYAML(prCtx *PRContext, pullRequests []*api.PullRequest
 }
 
 func parsePullRequestResults(result *api.PaginatedResponse) ([]*api.PullRequest, error) {
-	var pullRequests []*api.PullRequest
-
-	if result.Values != nil {
-		var values []json.RawMessage
-		if err := json.Unmarshal(result.Values, &values); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pull request values: %w", err)
-		}
-
-		pullRequests = make([]*api.PullRequest, len(values))
-		for i, rawPR := range values {
-			var pr api.PullRequest
-			if err := json.Unmarshal(rawPR, &pr); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal pull request %d: %w", i, err)
-			}
-			pullRequests[i] = &pr
-		}
-	}
-
-	return pullRequests, nil
+	return shared.ParsePaginatedResults[api.PullRequest](result)
 }
 
 func validateState(state string) error {
-	validStates := []string{
-		"open", "merged", "declined", "all",
-	}
-
-	stateLower := strings.ToLower(state)
-	for _, validState := range validStates {
-		if stateLower == validState {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid state '%s'. Valid states are: %s",
-		state, strings.Join(validStates, ", "))
+	return shared.ValidateAllowedValue(state, shared.AllowedPRStates, "state")
 }
 
 func (cmd *ListCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
-	loader := config.NewLoader()
-	cfg, err := loader.Load()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	authManager, err := shared.CreateAuthManager()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create auth manager: %w", err)
-	}
-
-	clientConfig := api.DefaultClientConfig()
-	clientConfig.BaseURL = cfg.API.BaseURL
-	clientConfig.Timeout = cfg.API.Timeout
-
-	client, err := api.NewClient(authManager, clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create API client: %w", err)
-	}
-
-	formatterOpts := &output.FormatterOptions{
-		NoColor: noColor,
-	}
-
-	formatter, err := output.NewFormatter(output.Format(outputFormat), formatterOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create output formatter: %w", err)
-	}
-
-	return &PRContext{
-		Client:     client,
-		Config:     cfg,
-		Workspace:  cmd.Workspace,
-		Repository: cmd.Repository,
-		Formatter:  formatter,
-		Debug:      cmd.Debug,
-	}, nil
+	return shared.NewMinimalContext(ctx, shared.MinimalContextOptions{
+		OutputFormat: outputFormat,
+		Workspace:    cmd.Workspace,
+		Repository:   cmd.Repository,
+		NoColor:      noColor,
+		Debug:        cmd.Debug,
+	})
 }
 
 func (cmd *ListCmd) checkMergeableStatusConcurrently(prCtx *PRContext, pullRequests []*api.PullRequest) []bool {
