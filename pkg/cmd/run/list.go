@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -11,13 +10,12 @@ import (
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
-// ListCmd handles the run list command
 type ListCmd struct {
 	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
 	Branch     string `help:"Filter by branch name"`
 	Limit      int    `help:"Maximum number of runs to show" default:"10"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
-	NoColor    bool   // NoColor is passed from global flag
+	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
@@ -62,7 +60,7 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 	options := &api.PipelineListOptions{
 		PageLen: cmd.Limit,
 		Page:    1,
-		Sort:    "-created_on", // Most recent first
+		Sort:    "-created_on",
 	}
 
 	// Add status filter if specified
@@ -201,63 +199,14 @@ func (cmd *ListCmd) formatYAML(runCtx *RunContext, pipelines []*api.Pipeline) er
 	return runCtx.Formatter.Format(output)
 }
 
-// parsePipelineResults parses the paginated response into Pipeline structs
 func parsePipelineResults(result *api.PaginatedResponse) ([]*api.Pipeline, error) {
-	var pipelines []*api.Pipeline
-
-	// Parse the Values field (raw JSON) into Pipeline structs
-	if result.Values != nil {
-		var values []json.RawMessage
-		if err := json.Unmarshal(result.Values, &values); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pipeline values: %w", err)
-		}
-
-		pipelines = make([]*api.Pipeline, len(values))
-		for i, rawPipeline := range values {
-			var pipeline api.Pipeline
-			if err := json.Unmarshal(rawPipeline, &pipeline); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal pipeline %d: %w", i, err)
-			}
-			pipelines[i] = &pipeline
-		}
-	}
-
-	return pipelines, nil
+	return shared.ParsePaginatedResults[api.Pipeline](result)
 }
 
-// validateStatus validates the status filter
 func validateStatus(status string) error {
-	validStatuses := []string{
-		"PENDING", "IN_PROGRESS", "SUCCESSFUL", "FAILED", "ERROR", "STOPPED",
-	}
-
-	statusUpper := strings.ToUpper(status)
-	for _, validStatus := range validStatuses {
-		if statusUpper == validStatus {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("invalid status '%s'. Valid statuses are: %s",
-		status, strings.Join(validStatuses, ", "))
+	return shared.ValidateAllowedValue(status, shared.AllowedPipelineStatuses, "status")
 }
 
-// handlePipelineAPIError provides user-friendly error messages for API errors
 func handlePipelineAPIError(err error) error {
-	if bitbucketErr, ok := err.(*api.BitbucketError); ok {
-		switch bitbucketErr.Type {
-		case api.ErrorTypeNotFound:
-			return fmt.Errorf("repository not found or pipelines not enabled. Verify the repository exists and has Bitbucket Pipelines enabled")
-		case api.ErrorTypeAuthentication:
-			return fmt.Errorf("authentication failed. Please run 'bt auth login' to authenticate")
-		case api.ErrorTypePermission:
-			return fmt.Errorf("permission denied. You may not have access to this repository")
-		case api.ErrorTypeRateLimit:
-			return fmt.Errorf("rate limit exceeded. Please wait before making more requests")
-		default:
-			return fmt.Errorf("API error: %s", bitbucketErr.Message)
-		}
-	}
-
-	return fmt.Errorf("failed to list pipelines: %w", err)
+	return shared.HandleAPIError(err, shared.DomainPipeline)
 }

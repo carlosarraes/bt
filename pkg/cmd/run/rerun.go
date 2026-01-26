@@ -3,7 +3,6 @@ package run
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -126,25 +125,7 @@ func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunCon
 }
 
 func (cmd *RerunCmd) parsePullRequestResults(result *api.PaginatedResponse) ([]*api.PullRequest, error) {
-	var pullRequests []*api.PullRequest
-
-	if result.Values != nil {
-		var values []json.RawMessage
-		if err := json.Unmarshal(result.Values, &values); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pull request values: %w", err)
-		}
-
-		pullRequests = make([]*api.PullRequest, len(values))
-		for i, rawPR := range values {
-			var pr api.PullRequest
-			if err := json.Unmarshal(rawPR, &pr); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal pull request %d: %w", i, err)
-			}
-			pullRequests[i] = &pr
-		}
-	}
-
-	return pullRequests, nil
+	return shared.ParsePaginatedResults[api.PullRequest](result)
 }
 
 func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
@@ -214,25 +195,7 @@ func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext
 }
 
 func (cmd *RerunCmd) parsePipelineResults(result *api.PaginatedResponse) ([]*api.Pipeline, error) {
-	var pipelines []*api.Pipeline
-
-	if result.Values != nil {
-		var values []json.RawMessage
-		if err := json.Unmarshal(result.Values, &values); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal pipeline values: %w", err)
-		}
-
-		pipelines = make([]*api.Pipeline, len(values))
-		for i, rawPipeline := range values {
-			var pipeline api.Pipeline
-			if err := json.Unmarshal(rawPipeline, &pipeline); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal pipeline %d: %w", i, err)
-			}
-			pipelines[i] = &pipeline
-		}
-	}
-
-	return pipelines, nil
+	return shared.ParsePaginatedResults[api.Pipeline](result)
 }
 
 func (cmd *RerunCmd) validateRerunnable(pipeline *api.Pipeline) error {
