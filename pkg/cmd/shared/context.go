@@ -11,6 +11,13 @@ import (
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
+func GetNoColor(ctx context.Context) bool {
+	if v := ctx.Value("no-color"); v != nil {
+		return v.(bool)
+	}
+	return false
+}
+
 type CommandContext struct {
 	Client     *api.Client
 	Config     *config.Config
@@ -107,4 +114,59 @@ func (c *CommandContext) ValidateWorkspaceAndRepo() error {
 		return fmt.Errorf("repository not specified. Either run from a git repository or use --repo flag")
 	}
 	return nil
+}
+
+type MinimalContextOptions struct {
+	OutputFormat string
+	Workspace    string
+	Repository   string
+	NoColor      bool
+	Debug        bool
+}
+
+func NewMinimalContext(ctx context.Context, opts MinimalContextOptions) (*CommandContext, error) {
+	loader := config.NewLoader()
+	cfg, err := loader.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	authManager, err := CreateAuthManager()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create auth manager: %w", err)
+	}
+
+	clientConfig := api.DefaultClientConfig()
+	clientConfig.BaseURL = cfg.API.BaseURL
+	clientConfig.Timeout = cfg.API.Timeout
+
+	client, err := api.NewClient(authManager, clientConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create API client: %w", err)
+	}
+
+	workspace := opts.Workspace
+	if workspace == "" {
+		workspace = cfg.Auth.DefaultWorkspace
+	}
+
+	var formatter output.Formatter
+	if opts.OutputFormat != "" {
+		formatterOpts := &output.FormatterOptions{
+			NoColor: opts.NoColor,
+		}
+		formatter, err = output.NewFormatter(output.Format(opts.OutputFormat), formatterOpts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create output formatter: %w", err)
+		}
+	}
+
+	return &CommandContext{
+		Client:     client,
+		Config:     cfg,
+		Workspace:  workspace,
+		Repository: opts.Repository,
+		Formatter:  formatter,
+		Debug:      opts.Debug,
+	}, nil
 }
