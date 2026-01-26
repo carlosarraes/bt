@@ -8,6 +8,7 @@ import (
 	"github.com/carlosarraes/bt/pkg/cmd/config"
 	"github.com/carlosarraes/bt/pkg/cmd/pr"
 	"github.com/carlosarraes/bt/pkg/cmd/run"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
@@ -91,11 +92,7 @@ type RunListCmd struct {
 }
 
 func (r *RunListCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.ListCmd{
 		Status:     r.Status,
@@ -126,11 +123,7 @@ type RunViewCmd struct {
 }
 
 func (r *RunViewCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.ViewCmd{
 		PipelineID: r.PipelineID,
@@ -159,11 +152,7 @@ type RunWatchCmd struct {
 }
 
 func (r *RunWatchCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.WatchCmd{
 		PipelineID: r.PipelineID,
@@ -188,11 +177,7 @@ type RunLogsCmd struct {
 }
 
 func (r *RunLogsCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.LogsCmd{
 		PipelineID: r.PipelineID,
@@ -218,11 +203,7 @@ type RunCancelCmd struct {
 }
 
 func (r *RunCancelCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.CancelCmd{
 		PipelineID: r.PipelineID,
@@ -247,10 +228,7 @@ type RunRerunCmd struct {
 }
 
 func (r *RunRerunCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.RerunCmd{
 		PipelineID: r.PipelineID,
@@ -291,10 +269,7 @@ type RunReportCmd struct {
 }
 
 func (r *RunReportCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &run.ReportCmd{
 		PipelineID:        r.PipelineID,
@@ -375,10 +350,7 @@ type PRCreateCmd struct {
 }
 
 func (p *PRCreateCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.CreateCmd{
 		Title:             p.Title,
@@ -417,11 +389,7 @@ type PRListCmd struct {
 }
 
 func (p *PRListCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ListCmd{
 		State:      p.State,
@@ -451,10 +419,7 @@ type PRListAllCmd struct {
 }
 
 func (p *PRListAllCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ListAllCmd{
 		State:     p.State,
@@ -481,11 +446,7 @@ type PRViewCmd struct {
 }
 
 func (p *PRViewCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ViewCmd{
 		PRID:       p.PRID,
@@ -508,10 +469,7 @@ type PROpenCmd struct {
 }
 
 func (p *PROpenCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.OpenCmd{
 		PRIDs:      p.PRIDs,
@@ -543,10 +501,7 @@ type PREditCmd struct {
 }
 
 func (p *PREditCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.EditCmd{
 		PRID:           p.PRID,
@@ -583,11 +538,7 @@ type PRDiffCmd struct {
 }
 
 func (p *PRDiffCmd) Run(ctx context.Context) error {
-
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.DiffCmd{
 		PRID:         p.PRID,
@@ -619,10 +570,7 @@ type PRReviewCmd struct {
 }
 
 func (p *PRReviewCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ReviewCmd{
 		PRID:           p.PRID,
@@ -672,10 +620,7 @@ type PRCommentCmd struct {
 }
 
 func (p *PRCommentCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.CommentCmd{
 		PRID:       p.PRID,
@@ -703,10 +648,7 @@ type PRMergeCmd struct {
 }
 
 func (p *PRMergeCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.MergeCmd{
 		PRID:         p.PRID,
@@ -733,10 +675,7 @@ type PRCheckoutCmd struct {
 }
 
 func (p *PRCheckoutCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.CheckoutCmd{
 		PRID:       p.PRID,
@@ -760,10 +699,7 @@ type PRReadyCmd struct {
 }
 
 func (p *PRReadyCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ReadyCmd{
 		PRID:       p.PRID,
@@ -786,10 +722,7 @@ type PRChecksCmd struct {
 }
 
 func (p *PRChecksCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ChecksCmd{
 		PRID:       p.PRID,
@@ -813,10 +746,7 @@ type PRCloseCmd struct {
 }
 
 func (p *PRCloseCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.CloseCmd{
 		PRID:         p.PRID,
@@ -841,10 +771,7 @@ type PRReopenCmd struct {
 }
 
 func (p *PRReopenCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.ReopenCmd{
 		PRID:       p.PRID,
@@ -865,10 +792,7 @@ type PRStatusCmd struct {
 }
 
 func (p *PRStatusCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.StatusCmd{
 		Output:     p.Output,
@@ -888,10 +812,7 @@ type PRUpdateBranchCmd struct {
 }
 
 func (p *PRUpdateBranchCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.UpdateBranchCmd{
 		PRID:       p.PRID,
@@ -914,10 +835,7 @@ type PRLockCmd struct {
 }
 
 func (p *PRLockCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.LockCmd{
 		PRID:       p.PRID,
@@ -940,10 +858,7 @@ type PRUnlockCmd struct {
 }
 
 func (p *PRUnlockCmd) Run(ctx context.Context) error {
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &pr.UnlockCmd{
 		PRID:       p.PRID,
@@ -1038,11 +953,7 @@ type ConfigGetCmd struct {
 }
 
 func (c *ConfigGetCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &config.GetCmd{
 		Key:     c.Key,
@@ -1072,11 +983,7 @@ type ConfigListCmd struct {
 }
 
 func (c *ConfigListCmd) Run(ctx context.Context) error {
-	// Get global NoColor from context
-	noColor := false
-	if v := ctx.Value("no-color"); v != nil {
-		noColor = v.(bool)
-	}
+	noColor := shared.GetNoColor(ctx)
 
 	cmd := &config.ListCmd{
 		Output:  c.Output,
