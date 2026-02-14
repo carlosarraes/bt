@@ -23,7 +23,6 @@ type CreateCmd struct {
 	Reviewer          []string `help:"Reviewers for the pull request"`
 	Fill              bool     `help:"Fill title and body from commit messages"`
 	AI                bool     `help:"Generate PR description using AI analysis"`
-	Template          string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira              string   `help:"Path to JIRA context file (markdown format)"`
 	Debug             bool     `help:"Enable debug output for AI generation"`
 	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
@@ -221,7 +220,7 @@ func (cmd *CreateCmd) getPRTemplate() (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no PR template found")
+	return ai.GetStaticTemplate(), nil
 }
 
 func (cmd *CreateCmd) promptForTitle() (string, error) {
@@ -390,10 +389,6 @@ func confirmAction(prompt string) bool {
 }
 
 func (cmd *CreateCmd) validateAIOptions() error {
-	if err := ai.ValidateLanguage(cmd.Template); err != nil {
-		return err
-	}
-
 	if cmd.Jira != "" {
 		if _, err := os.Stat(cmd.Jira); os.IsNotExist(err) {
 			return fmt.Errorf("JIRA context file not found: %s", cmd.Jira)
@@ -409,7 +404,6 @@ func (cmd *CreateCmd) generateAIDescription(ctx context.Context, prCtx *PRContex
 	opts := &ai.GenerateOptions{
 		SourceBranch: sourceBranch,
 		TargetBranch: targetBranch,
-		Template:     cmd.Template,
 		JiraFile:     cmd.Jira,
 		Verbose:      true,
 		Debug:        cmd.Debug,

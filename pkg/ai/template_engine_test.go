@@ -5,199 +5,150 @@ import (
 	"testing"
 )
 
-func TestTemplateEngine_Portuguese(t *testing.T) {
-	engine := NewTemplateEngine("portuguese")
-
-	vars := map[string]interface{}{
-		"contexto":              "Implementação de nova funcionalidade",
-		"alteracoes":            "• Alterações no backend\n• Modificações na interface do usuário",
-		"client_specific":       "",
-		"jira_ticket":           "",
-		"checklist":             []string{"✅ Testado localmente", "✅ Código revisado"},
-		"evidence_placeholders": "- [ ] Screenshots da interface\n- [ ] Logs de teste",
+func newTestVars() map[string]interface{} {
+	return map[string]interface{}{
+		"change_type":           "Feature",
+		"summary":               "Implementation of new functionality",
+		"jira_ticket":           "PROJ-123",
+		"design_doc":            "N/A",
+		"ui_changes":            "None",
+		"db_architecture":       "None",
+		"dependencies":          "None",
+		"documentation":         "README updated",
+		"testing_env":           "Local",
+		"test_cases":            "Unit tests for new handler",
+		"bug_fix_details":       "",
+		"feature_flags":         "N/A",
+		"security":              "No security impact detected",
+		"monitoring":            "[Datadog dashboards]",
+		"rollback_safety":       "Safe to revert",
+		"production_validation": "Health check endpoint",
 		"files_changed":         5,
 		"additions":             127,
 		"deletions":             45,
 		"branch_name":           "feature/new-functionality",
 		"target_branch":         "main",
 	}
-
-	result, err := engine.Apply(vars)
-	if err != nil {
-		t.Fatalf("Failed to apply template: %v", err)
-	}
-
-	if !strings.Contains(result, "## Descrição da Pull Request") {
-		t.Error("Portuguese template should contain Portuguese header")
-	}
-
-	if !strings.Contains(result, "Implementação de nova funcionalidade") {
-		t.Error("Template should contain the context")
-	}
-
-	if !strings.Contains(result, "feature/new-functionality → main") {
-		t.Error("Template should contain branch information")
-	}
-
-	if !strings.Contains(result, "5 arquivo(s) alterado(s)") {
-		t.Error("Template should contain file statistics")
-	}
-
 }
 
-func TestTemplateEngine_English(t *testing.T) {
-	engine := NewTemplateEngine("english")
-
-	vars := map[string]interface{}{
-		"contexto":              "Implementation of new functionality",
-		"alteracoes":            "• Backend changes\n• User interface modifications",
-		"checklist":             []string{"✅ Tested locally", "✅ Code reviewed"},
-		"evidence_placeholders": "- [ ] Interface screenshots\n- [ ] Test logs",
-		"files_changed":         3,
-		"additions":             45,
-		"deletions":             12,
-		"branch_name":           "feature/test",
-		"target_branch":         "main",
-	}
+func TestTemplateEngine_Apply(t *testing.T) {
+	engine := NewTemplateEngine()
+	vars := newTestVars()
 
 	result, err := engine.Apply(vars)
 	if err != nil {
 		t.Fatalf("Failed to apply template: %v", err)
 	}
 
-	if !strings.Contains(result, "## Pull Request Description") {
-		t.Error("English template should contain English header")
+	if !strings.Contains(result, "# 🚀 Pull Request") {
+		t.Error("Template should contain PR header")
+	}
+	if !strings.Contains(result, "## 📝 1. Context & Description") {
+		t.Error("Template should contain Context section")
+	}
+	if !strings.Contains(result, "## 🛠️ 2. Technical Impact & UI") {
+		t.Error("Template should contain Technical Impact section")
+	}
+	if !strings.Contains(result, "## ✅ 3. Testing & Quality") {
+		t.Error("Template should contain Testing section")
+	}
+	if !strings.Contains(result, "## 🛡️ 4. Safety, Observability & Risk") {
+		t.Error("Template should contain Safety section")
+	}
+}
+
+func TestTemplateEngine_VariableSubstitution(t *testing.T) {
+	engine := NewTemplateEngine()
+	vars := newTestVars()
+
+	result, err := engine.Apply(vars)
+	if err != nil {
+		t.Fatalf("Failed to apply template: %v", err)
 	}
 
 	if !strings.Contains(result, "Implementation of new functionality") {
-		t.Error("Template should contain the context")
+		t.Error("Template should contain the summary")
 	}
-
-	if !strings.Contains(result, "3 file(s) changed") {
+	if !strings.Contains(result, "PROJ-123") {
+		t.Error("Template should contain the JIRA ticket")
+	}
+	if !strings.Contains(result, "feature/new-functionality → main") {
+		t.Error("Template should contain branch information")
+	}
+	if !strings.Contains(result, "5 file(s) changed") {
 		t.Error("Template should contain file statistics")
 	}
-}
-
-func TestTemplateEngine_ValidateLanguage(t *testing.T) {
-	tests := []struct {
-		language    string
-		shouldError bool
-	}{
-		{"portuguese", false},
-		{"english", false},
-		{"spanish", true},
-		{"invalid", true},
-		{"", true},
+	if !strings.Contains(result, "+127 -45") {
+		t.Error("Template should contain line statistics")
 	}
-
-	for _, test := range tests {
-		err := ValidateLanguage(test.language)
-		if test.shouldError && err == nil {
-			t.Errorf("Expected error for language %s, but got none", test.language)
-		}
-		if !test.shouldError && err != nil {
-			t.Errorf("Expected no error for language %s, but got: %v", test.language, err)
-		}
+	if !strings.Contains(result, "`Feature`") {
+		t.Error("Template should contain change type")
 	}
 }
 
-func TestTemplateEngine_Conditionals(t *testing.T) {
-	engine := NewTemplateEngine("portuguese")
-
-	vars := map[string]interface{}{
-		"contexto":              "Test context",
-		"alteracoes":            "Test changes",
-		"client_specific":       "TestClient",
-		"jira_ticket":           "PROJ-123",
-		"checklist":             []string{"✅ Test"},
-		"evidence_placeholders": "- [ ] Test evidence",
-		"files_changed":         1,
-		"additions":             5,
-		"deletions":             2,
-		"branch_name":           "test",
-		"target_branch":         "main",
-	}
+func TestTemplateEngine_BugFixDetailsConditional_Shown(t *testing.T) {
+	engine := NewTemplateEngine()
+	vars := newTestVars()
+	vars["bug_fix_details"] = "Severity: 3 | Introduced in PR #42"
 
 	result, err := engine.Apply(vars)
 	if err != nil {
 		t.Fatalf("Failed to apply template: %v", err)
 	}
 
-	if !strings.Contains(result, "Cliente Específico") {
-		t.Error("Template should contain client-specific section when provided")
+	if !strings.Contains(result, "Bug Fix Details") {
+		t.Error("Template should contain bug fix details section when provided")
 	}
-
-	if !strings.Contains(result, "TestClient") {
-		t.Error("Template should contain client name")
-	}
-
-	if !strings.Contains(result, "PROJ-123") {
-		t.Error("Template should contain JIRA ticket")
+	if !strings.Contains(result, "Severity: 3 | Introduced in PR #42") {
+		t.Error("Template should contain the bug fix details content")
 	}
 }
 
-func TestTemplateEngine_ConditionalEmpty(t *testing.T) {
-	engine := NewTemplateEngine("portuguese")
-
-	vars := map[string]interface{}{
-		"contexto":              "Test context",
-		"alteracoes":            "Test changes",
-		"client_specific":       "",
-		"jira_ticket":           "PROJ-123",
-		"checklist":             []string{"✅ Test"},
-		"evidence_placeholders": "- [ ] Test evidence",
-		"files_changed":         1,
-		"additions":             5,
-		"deletions":             2,
-		"branch_name":           "test",
-		"target_branch":         "main",
-	}
+func TestTemplateEngine_BugFixDetailsConditional_Hidden(t *testing.T) {
+	engine := NewTemplateEngine()
+	vars := newTestVars()
+	vars["bug_fix_details"] = ""
 
 	result, err := engine.Apply(vars)
 	if err != nil {
 		t.Fatalf("Failed to apply template: %v", err)
 	}
 
-	if strings.Contains(result, "Cliente Específico") {
-		t.Error("Template should not contain client-specific section when empty")
+	if strings.Contains(result, "Bug Fix Details") {
+		t.Error("Template should not contain bug fix details section when empty")
 	}
-
-	if strings.Contains(result, "{{if client_specific}}") {
+	if strings.Contains(result, "{{if bug_fix_details}}") {
 		t.Error("Template should not contain unprocessed conditional syntax")
 	}
 }
 
-func TestTemplateEngine_ConditionalInlineContent(t *testing.T) {
-	engine := NewTemplateEngine("portuguese")
-
-	vars := map[string]interface{}{
-		"contexto":              "Test context",
-		"alteracoes":            "Test changes",
-		"client_specific":       "TestClient",
-		"jira_ticket":           "PROJ-123",
-		"checklist":             []string{"✅ Test"},
-		"evidence_placeholders": "- [ ] Test evidence",
-		"files_changed":         1,
-		"additions":             5,
-		"deletions":             2,
-		"branch_name":           "test",
-		"target_branch":         "main",
-	}
+func TestTemplateEngine_NoUnprocessedPlaceholders(t *testing.T) {
+	engine := NewTemplateEngine()
+	vars := newTestVars()
 
 	result, err := engine.Apply(vars)
 	if err != nil {
 		t.Fatalf("Failed to apply template: %v", err)
 	}
 
-	if !strings.Contains(result, "### Cliente Específico") {
-		t.Error("Template should contain client-specific section header when provided")
+	if strings.Contains(result, "{{") && strings.Contains(result, "}}") {
+		t.Error("Template should not contain unprocessed placeholders")
 	}
+}
 
-	if !strings.Contains(result, "[TestClient] PROJ-123") {
-		t.Error("Template should contain formatted client and JIRA ticket")
+func TestGetStaticTemplate(t *testing.T) {
+	result := GetStaticTemplate()
+
+	if result == "" {
+		t.Fatal("Static template should not be empty")
 	}
-
-	if strings.Contains(result, "{{if client_specific}}") {
-		t.Error("Template should not contain unprocessed conditional syntax")
+	if !strings.Contains(result, "[Bug Fix / Feature / Refactor / Chore]") {
+		t.Error("Static template should contain change type placeholder")
+	}
+	if !strings.Contains(result, "[Link]") {
+		t.Error("Static template should contain JIRA ticket placeholder")
+	}
+	if !strings.Contains(result, "Context & Description") {
+		t.Error("Static template should contain Context section")
 	}
 }

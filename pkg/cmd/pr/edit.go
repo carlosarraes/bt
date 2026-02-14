@@ -25,7 +25,6 @@ type EditCmd struct {
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
 	Draft          bool     `help:"Convert pull request to draft"`
 	AI             bool     `help:"Generate PR description using AI analysis"`
-	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira           string   `help:"Path to JIRA context file (markdown format)"`
 	Debug          bool     `help:"Print debug information including git diff and AI inputs"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -375,10 +374,6 @@ func (cmd *EditCmd) formatTable(prCtx *PRContext, pr *api.PullRequest) error {
 }
 
 func (cmd *EditCmd) validateAIOptions() error {
-	if err := ai.ValidateLanguage(cmd.Template); err != nil {
-		return err
-	}
-
 	if cmd.Jira != "" {
 		if _, err := os.Stat(cmd.Jira); os.IsNotExist(err) {
 			return fmt.Errorf("JIRA context file not found: %s", cmd.Jira)
@@ -409,7 +404,6 @@ func (cmd *EditCmd) generateAIDescription(ctx context.Context, prCtx *PRContext,
 	opts := &ai.GenerateOptions{
 		SourceBranch: sourceBranch,
 		TargetBranch: targetBranch,
-		Template:     cmd.Template,
 		JiraFile:     cmd.Jira,
 		Verbose:      true,
 		Debug:        cmd.Debug,

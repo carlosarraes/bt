@@ -5,109 +5,90 @@ import (
 	"strings"
 )
 
-type TemplateEngine struct {
-	language string
-}
+type TemplateEngine struct{}
 
-func NewTemplateEngine(language string) *TemplateEngine {
-	return &TemplateEngine{
-		language: language,
-	}
+func NewTemplateEngine() *TemplateEngine {
+	return &TemplateEngine{}
 }
 
 func (t *TemplateEngine) Apply(vars map[string]interface{}) (string, error) {
-	var template string
+	return t.renderTemplate(t.getTemplate(), vars)
+}
 
-	switch t.language {
-	case "portuguese":
-		template = t.getPortugueseTemplate()
-	case "english":
-		template = t.getEnglishTemplate()
-	default:
-		return "", fmt.Errorf("unsupported template language: %s", t.language)
+func (t *TemplateEngine) getTemplate() string {
+	return `# 🚀 Pull Request
+
+## 📝 1. Context & Description
+> *What are we doing and why?*
+
+- **Change Type:** ` + "`{{change_type}}`" + `
+- **Jira Ticket:** {{jira_ticket}}
+- **Proposal/Design Doc:** {{design_doc}}
+- **Summary:** {{summary}}
+
+---
+
+## 🛠️ 2. Technical Impact & UI
+> *Check only what applies. Leave empty if not applicable.*
+
+- [ ] **UI/UX Changes:** {{ui_changes}}
+- [ ] **Database & Architecture:** {{db_architecture}}
+- [ ] **Dependencies:** {{dependencies}}
+- [ ] **Documentation:** {{documentation}}
+
+---
+
+## ✅ 3. Testing & Quality
+> *How did you verify this works?*
+
+- **Manual Testing:** Tested in ` + "`{{testing_env}}`" + `
+- **Test Cases:** {{test_cases}}
+{{if bug_fix_details}}- **Bug Fix Details:**
+    - {{bug_fix_details}}
+{{end}}
+---
+
+## 🛡️ 4. Safety, Observability & Risk
+> *Mitigation and monitoring for production. Leave empty if not applicable.*
+
+- **Feature Flags:** {{feature_flags}}
+- **Security:** {{security}}
+- **Monitoring:** {{monitoring}}
+- **Rollback Safety:** {{rollback_safety}}
+- **Production Validation:** {{production_validation}}
+
+---
+**Statistics:** {{files_changed}} file(s) changed | +{{additions}} -{{deletions}} lines
+**Branch:** {{branch_name}} → {{target_branch}}`
+}
+
+func GetStaticTemplate() string {
+	engine := NewTemplateEngine()
+	vars := map[string]interface{}{
+		"change_type":           "[Bug Fix / Feature / Refactor / Chore]",
+		"jira_ticket":           "[Link]",
+		"design_doc":            "[Link/NA]",
+		"summary":               "(Briefly describe the problem and your solution)",
+		"ui_changes":            "(Attach screenshots or screen recordings here)",
+		"db_architecture":       "Performance/Locking impact? `[Yes / No]`",
+		"dependencies":          "(List any new libraries or required config changes)",
+		"documentation":         "Does this require a README or Confluence update? `[Yes / No]`",
+		"testing_env":           "[Local / Homolog / N/A]",
+		"test_cases":            "(Add a list with scenarios, edge cases, and failure cases tested)",
+		"bug_fix_details":       "",
+		"feature_flags":         "(List new feature flags added and how to enable them)",
+		"security":              "Any impact on Auth, sensitive data, or permissions? `[Yes / No]`",
+		"monitoring":            "(List Datadog dashboards, new logs, or specific alerts to watch)",
+		"rollback_safety":       "Is it safe to revert without data inconsistency? `[Yes / No]`",
+		"production_validation": "How will you confirm success after deployment?",
+		"files_changed":         0,
+		"additions":             0,
+		"deletions":             0,
+		"branch_name":           "",
+		"target_branch":         "",
 	}
-
-	return t.renderTemplate(template, vars)
-}
-
-func (t *TemplateEngine) getPortugueseTemplate() string {
-	return `## Descrição da Pull Request
-
-
-
-### Contexto
-
-{{contexto}}
-
-
-
-### Alterações Realizadas
-
-{{alteracoes}}
-
-
-
-{{if client_specific}}### Cliente Específico
-
-[{{client_specific}}] {{jira_ticket}}
-
-
-
-{{end}}### Checklist
-
-{{checklist}}
-
-
-
-### Evidências
-
-{{evidence_placeholders}}
-
-
-
----
-**Estatísticas:** {{files_changed}} arquivo(s) alterado(s) • +{{additions}} -{{deletions}} linhas  
-**Branch:** {{branch_name}} → {{target_branch}}`
-}
-
-func (t *TemplateEngine) getEnglishTemplate() string {
-	return `## Pull Request Description
-
-
-
-### Context
-
-{{contexto}}
-
-
-
-### Changes Made
-
-{{alteracoes}}
-
-
-
-{{if client_specific}}### Client Specific
-
-[{{client_specific}}] {{jira_ticket}}
-
-
-
-{{end}}### Checklist
-
-{{checklist}}
-
-
-
-### Evidence
-
-{{evidence_placeholders}}
-
-
-
----
-**Statistics:** {{files_changed}} file(s) changed • +{{additions}} -{{deletions}} lines  
-**Branch:** {{branch_name}} → {{target_branch}}`
+	result, _ := engine.Apply(vars)
+	return result
 }
 
 func (t *TemplateEngine) renderTemplate(template string, vars map[string]interface{}) (string, error) {
@@ -272,40 +253,4 @@ func (t *TemplateEngine) cleanupTemplate(template string) string {
 	result = strings.TrimSpace(result)
 
 	return result
-}
-
-func GetSupportedLanguages() []string {
-	return []string{"portuguese", "english"}
-}
-
-func ValidateLanguage(language string) error {
-	supported := GetSupportedLanguages()
-	for _, lang := range supported {
-		if lang == language {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("unsupported template language '%s', supported languages: %s",
-		language, strings.Join(supported, ", "))
-}
-
-func GetTemplatePreview(language string) (string, error) {
-	engine := NewTemplateEngine(language)
-
-	sampleVars := map[string]interface{}{
-		"contexto":              "Implementação de nova funcionalidade",
-		"alteracoes":            "• Alterações no backend\n• Modificações na interface do usuário",
-		"client_specific":       "ClienteXYZ",
-		"jira_ticket":           "PROJ-123",
-		"checklist":             []string{"✅ Testado localmente", "✅ Código revisado"},
-		"evidence_placeholders": "- [ ] Screenshots da interface\n- [ ] Logs de teste",
-		"files_changed":         5,
-		"additions":             127,
-		"deletions":             45,
-		"branch_name":           "feature/new-functionality",
-		"target_branch":         "main",
-	}
-
-	return engine.Apply(sampleVars)
 }

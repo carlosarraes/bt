@@ -24,13 +24,18 @@ type CacheManager struct {
 }
 
 type PRDescriptionSchema struct {
-	Contexto             string   `json:"contexto" jsonschema:"description=Brief context description for the PR in the specified language"`
-	Alteracoes           []string `json:"alteracoes" jsonschema:"description=List of specific changes made, each starting with bullet point"`
-	ChecklistItems       []string `json:"checklist_items" jsonschema:"description=Dynamic checklist items based on change types, each starting with checkbox"`
-	EvidencePlaceholders []string `json:"evidence_placeholders" jsonschema:"description=Evidence placeholder items based on change types, each starting with checkbox"`
-	Title                string   `json:"title" jsonschema:"description=Concise PR title based on changes and branch name"`
-	JiraTicket           string   `json:"jira_ticket,omitempty" jsonschema:"description=JIRA ticket ID if found in context"`
-	ClientSpecific       string   `json:"client_specific,omitempty" jsonschema:"description=Client-specific information if found"`
+	Title          string `json:"title"`
+	ChangeType     string `json:"change_type"`
+	Summary        string `json:"summary"`
+	JiraTicket     string `json:"jira_ticket,omitempty"`
+	UIChanges      string `json:"ui_changes"`
+	DBArchitecture string `json:"db_architecture"`
+	Dependencies   string `json:"dependencies"`
+	Documentation  string `json:"documentation"`
+	TestCases      string `json:"test_cases"`
+	BugFixDetails  string `json:"bug_fix_details,omitempty"`
+	Security       string `json:"security"`
+	RollbackSafety string `json:"rollback_safety"`
 }
 
 type CachedResponse struct {
@@ -111,59 +116,71 @@ func NewCacheManager() (*CacheManager, error) {
 	}, nil
 }
 
-func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnalysisInput, language string) (*PRDescriptionSchema, error) {
-	cacheKey := c.generateCacheKey(input, language)
+func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnalysisInput) (*PRDescriptionSchema, error) {
+	cacheKey := c.generateCacheKey(input)
 
 	if cached, err := c.cache.Get(cacheKey); err == nil {
 		return cached, nil
 	}
 
-	prompt := c.buildPrompt(input, language)
+	prompt := c.buildPrompt(input)
 
 	schemaData := map[string]interface{}{
 		"type": "object",
 		"properties": map[string]interface{}{
-			"contexto": map[string]interface{}{
-				"type":        "string",
-				"description": fmt.Sprintf("Brief context description for the PR in %s", language),
-			},
-			"alteracoes": map[string]interface{}{
-				"type":        "array",
-				"description": "List of specific changes made, each item starting with bullet (•) and complete on its own",
-				"items": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"checklist_items": map[string]interface{}{
-				"type":        "array",
-				"description": "Dynamic checklist items based on change types, each item starting with ✅ and complete on its own",
-				"items": map[string]interface{}{
-					"type": "string",
-				},
-			},
-			"evidence_placeholders": map[string]interface{}{
-				"type":        "array",
-				"description": "Evidence placeholder items based on change types, each item starting with - [ ] and complete on its own",
-				"items": map[string]interface{}{
-					"type": "string",
-				},
-			},
 			"title": map[string]interface{}{
 				"type":        "string",
 				"description": "Concise PR title based on changes and branch name",
 			},
+			"change_type": map[string]interface{}{
+				"type":        "string",
+				"enum":        []string{"Bug Fix", "Feature", "Refactor", "Chore"},
+				"description": "Type of change based on branch prefix and code analysis",
+			},
+			"summary": map[string]interface{}{
+				"type":        "string",
+				"description": "Brief summary of the PR purpose and what it accomplishes",
+			},
 			"jira_ticket": map[string]interface{}{
 				"type":        "string",
-				"description": "JIRA ticket ID if found in context, or empty string if none",
+				"description": "JIRA ticket ID if found in branch name or commits, or empty string",
 				"default":     "",
 			},
-			"client_specific": map[string]interface{}{
+			"ui_changes": map[string]interface{}{
 				"type":        "string",
-				"description": "Client-specific information if found, or empty string if none",
+				"description": "Description of UI/UX changes if any, or 'None' if no frontend changes detected",
+			},
+			"db_architecture": map[string]interface{}{
+				"type":        "string",
+				"description": "Database or architecture changes if any, including migration info, or 'None' if no DB changes",
+			},
+			"dependencies": map[string]interface{}{
+				"type":        "string",
+				"description": "New libraries, config changes, or dependency updates detected, or 'None'",
+			},
+			"documentation": map[string]interface{}{
+				"type":        "string",
+				"description": "Documentation changes detected (README, docs, etc.), or 'None'",
+			},
+			"test_cases": map[string]interface{}{
+				"type":        "string",
+				"description": "Testing scenarios and edge cases to verify, based on the changes",
+			},
+			"bug_fix_details": map[string]interface{}{
+				"type":        "string",
+				"description": "If this is a bug fix: severity and details. Empty string if not a bug fix",
 				"default":     "",
+			},
+			"security": map[string]interface{}{
+				"type":        "string",
+				"description": "Security impact assessment: auth, data handling, permissions changes. 'No security impact detected' if none",
+			},
+			"rollback_safety": map[string]interface{}{
+				"type":        "string",
+				"description": "Assessment of whether the change is safe to revert and any rollback concerns",
 			},
 		},
-		"required":             []string{"contexto", "alteracoes", "checklist_items", "evidence_placeholders", "title", "client_specific", "jira_ticket"},
+		"required":             []string{"title", "change_type", "summary", "jira_ticket", "ui_changes", "db_architecture", "dependencies", "documentation", "test_cases", "bug_fix_details", "security", "rollback_safety"},
 		"additionalProperties": false,
 	}
 
@@ -179,7 +196,7 @@ func (c *OpenAIClient) GeneratePRDescription(ctx context.Context, input *PRAnaly
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleSystem,
-				Content: c.getSystemPrompt(language),
+				Content: c.getSystemPrompt(),
 			},
 			{
 				Role:    openai.ChatMessageRoleUser,
@@ -217,48 +234,32 @@ func (c *OpenAIClient) GetModel() string {
 	return c.model
 }
 
-func (c *OpenAIClient) getSystemPrompt(language string) string {
-	if language == "portuguese" {
-		return `Você é um assistente especializado em análise de código e criação de descrições de Pull Requests. 
-
-Sua tarefa é analisar mudanças de código e gerar descrições estruturadas e profissionais em português.
-
-Diretrizes:
-- Seja específico sobre as mudanças realizadas
-- Use emojis e formatação markdown quando apropriado
-- Crie checklists dinâmicos baseados no tipo de mudança
-- Mantenha o tom profissional mas acessível
-- Para alterações: cada item deve começar com bullet (•) e estar em linha separada
-- Para checklist: cada item deve começar com ✅ e estar em linha separada 
-- Para evidências: cada item deve começar com - [ ] e estar em linha separada
-- CRÍTICO: Cada item do array representa UMA linha no markdown final - não coloque múltiplos itens em um único elemento do array
-- CRÍTICO: Retorne elementos separados do array para cada bullet point, item de checklist e item de evidência
-- IMPORTANTE: Coloque cada item de lista em sua própria linha, não junte tudo numa linha só
-- Identifique tickets JIRA se presentes no contexto
-- Extraia informações específicas do cliente quando relevante`
-	}
-
+func (c *OpenAIClient) getSystemPrompt() string {
 	return `You are a code analysis assistant specialized in creating Pull Request descriptions.
 
-Your task is to analyze code changes and generate structured, professional descriptions in English.
+Your task is to analyze code changes and generate structured, professional PR descriptions.
+
+For each PR, you must:
+1. Classify the change type (Bug Fix, Feature, Refactor, Chore) based on branch prefix and diff patterns
+2. Write a concise summary of what the PR does and why
+3. Detect UI/UX changes from frontend file modifications
+4. Detect database/architecture impact from migration files, schema changes, or SQL
+5. Detect new dependencies from package manager files (go.mod, package.json, requirements.txt, etc.)
+6. Detect documentation changes (README, docs/, etc.)
+7. Suggest test cases and scenarios based on the changes
+8. Fill bug_fix_details only if this is a bug fix (empty string otherwise)
+9. Assess security impact: look for auth, token, password, permission patterns
+10. Assess rollback safety: DB migrations make rollback risky, pure code changes are safe
 
 Guidelines:
-- Be specific about the changes made
-- Use emojis and markdown formatting when appropriate  
-- Create dynamic checklists based on change types
-- Maintain a professional but accessible tone
-- For changes: each item should start with bullet (•) and be on separate line
-- For checklist: each item should start with ✅ and be on separate line
-- For evidence: each item should start with - [ ] and be on separate line
-- CRITICAL: Each array item represents ONE line in the final markdown - don't put multiple items in a single array element
-- CRITICAL: Return separate array elements for each bullet point, checklist item, and evidence item
-- IMPORTANT: Put each list item on its own line, don't combine them into one line
-- Identify JIRA tickets if present in context
-- Extract client-specific information when relevant`
+- Be specific about the changes made based on the actual diff
+- If no changes detected for a category, use "None"
+- Extract JIRA ticket IDs from branch names or commit messages if present
+- Keep the summary concise but informative`
 }
 
-func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput, language string) string {
-	prompt := fmt.Sprintf(`Analyze the following PR information and generate a structured description based on ACTUAL CODE CHANGES:
+func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput) string {
+	prompt := fmt.Sprintf(`Analyze the following PR information and generate a structured description:
 
 **Branch Information:**
 - Source: %s
@@ -275,18 +276,16 @@ func (c *OpenAIClient) buildPrompt(input *PRAnalysisInput, language string) stri
 
 **Statistics:**
 - Files changed: %d
-- Lines added: %d  
+- Lines added: %d
 - Lines removed: %d
 
-CRITICAL INSTRUCTIONS FOR GIT DIFF ANALYSIS:
+CRITICAL INSTRUCTIONS:
 1. Lines starting with '+' are ADDITIONS (new code being added)
-2. Lines starting with '-' are DELETIONS (old code being removed)  
-3. When you see a function/feature being added (more + lines), say it's being ADDED/IMPLEMENTED
-4. When you see a function/feature being removed (more - lines), say it's being REMOVED
-5. Read the diff carefully - don't assume what the change is doing
-6. Be specific about what code is actually changing based on the +/- indicators
-7. Each bullet point and checklist item should be on a separate line
-8. If no client-specific info is found, set client_specific to empty string
+2. Lines starting with '-' are DELETIONS (old code being removed)
+3. Classify change_type from branch prefix: feature/feat/ -> Feature, fix/hotfix/bugfix/ -> Bug Fix, refactor/ -> Refactor, chore/ -> Chore
+4. For each Technical Impact category (ui_changes, db_architecture, dependencies, documentation), analyze the changed files and diff content
+5. If no JIRA ticket found, set jira_ticket to empty string
+6. If this is NOT a bug fix, set bug_fix_details to empty string
 `,
 		input.SourceBranch,
 		input.TargetBranch,
@@ -302,16 +301,10 @@ CRITICAL INSTRUCTIONS FOR GIT DIFF ANALYSIS:
 		prompt += fmt.Sprintf("\n**JIRA Context:**\n%s\n", input.JiraContext)
 	}
 
-	if language == "portuguese" {
-		prompt += "\nGere uma descrição de PR estruturada em português brasileiro."
-	} else {
-		prompt += "\nGenerate a structured PR description in English."
-	}
-
 	return prompt
 }
 
-func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput, language string) string {
+func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput) string {
 	data := fmt.Sprintf("%s|%s|%s|%s|%s|%d|%d|%d",
 		input.SourceBranch,
 		input.TargetBranch,
@@ -326,7 +319,6 @@ func (c *OpenAIClient) generateCacheKey(input *PRAnalysisInput, language string)
 	if input.JiraContext != "" {
 		data += "|" + input.JiraContext
 	}
-	data += "|" + language
 
 	hash := md5.Sum([]byte(data))
 	return fmt.Sprintf("%x", hash)

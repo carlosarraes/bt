@@ -12,17 +12,14 @@ import (
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
-// VersionCmd handles the version command
 type VersionCmd struct{}
 
-// Run executes the version command
 func (v *VersionCmd) Run(ctx context.Context) error {
 	buildInfo := version.GetBuildInfo()
 	fmt.Println(buildInfo.String())
 	return nil
 }
 
-// AuthCmd represents the auth command group
 type AuthCmd struct {
 	Login   AuthLoginCmd   `cmd:""`
 	Logout  AuthLogoutCmd  `cmd:""`
@@ -30,7 +27,6 @@ type AuthCmd struct {
 	Refresh AuthRefreshCmd `cmd:""`
 }
 
-// AuthLoginCmd handles auth login
 type AuthLoginCmd struct {
 	WithToken string `help:"Authenticate with a token instead of interactive flow"`
 }
@@ -42,7 +38,6 @@ func (a *AuthLoginCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// AuthLogoutCmd handles auth logout
 type AuthLogoutCmd struct {
 	Force bool `short:"f" help:"Force logout without confirmation"`
 }
@@ -54,7 +49,6 @@ func (a *AuthLogoutCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// AuthStatusCmd handles auth status
 type AuthStatusCmd struct{}
 
 func (a *AuthStatusCmd) Run(ctx context.Context) error {
@@ -62,7 +56,6 @@ func (a *AuthStatusCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// AuthRefreshCmd handles auth refresh
 type AuthRefreshCmd struct{}
 
 func (a *AuthRefreshCmd) Run(ctx context.Context) error {
@@ -70,7 +63,6 @@ func (a *AuthRefreshCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RunCmd represents the run command group
 type RunCmd struct {
 	List   RunListCmd   `cmd:""`
 	View   RunViewCmd   `cmd:""`
@@ -81,7 +73,6 @@ type RunCmd struct {
 	Report RunReportCmd `cmd:""`
 }
 
-// RunListCmd handles run list
 type RunListCmd struct {
 	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
 	Branch     string `help:"Filter by branch name"`
@@ -106,7 +97,6 @@ func (r *RunListCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RunViewCmd handles run view
 type RunViewCmd struct {
 	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -143,7 +133,6 @@ func (r *RunViewCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RunWatchCmd handles run watch
 type RunWatchCmd struct {
 	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
 	Output     string `short:"o" help:"Output format (table, json)" enum:"table,json" default:"table"`
@@ -164,7 +153,6 @@ func (r *RunWatchCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RunLogsCmd handles run logs
 type RunLogsCmd struct {
 	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
 	Step       string `help:"Show logs for specific step only"`
@@ -193,7 +181,6 @@ func (r *RunLogsCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RunCancelCmd handles run cancel
 type RunCancelCmd struct {
 	PipelineID string `arg:"" help:"Pipeline ID (build number or UUID)"`
 	Force      bool   `short:"f" help:"Force cancellation without confirmation"`
@@ -298,14 +285,12 @@ func (r *RunReportCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// RepoCmd represents the repo command group
 type RepoCmd struct{}
 
 func (r *RepoCmd) Run(ctx context.Context) error {
 	return fmt.Errorf("repo commands not yet implemented")
 }
 
-// PRCmd represents the pr command group
 type PRCmd struct {
 	Create       PRCreateCmd       `cmd:""`
 	List         PRListCmd         `cmd:""`
@@ -338,7 +323,6 @@ type PRCreateCmd struct {
 	Reviewer          []string `help:"Reviewers for the pull request"`
 	Fill              bool     `help:"Fill title and body from commit messages"`
 	AI                bool     `help:"Generate PR description using AI analysis"`
-	Template          string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira              string   `help:"Path to JIRA context file (markdown format)"`
 	Debug             bool     `help:"Enable debug output for AI generation"`
 	NoPush            bool     `name:"no-push" help:"Skip pushing branch to remote"`
@@ -360,7 +344,6 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 		Reviewer:          p.Reviewer,
 		Fill:              p.Fill,
 		AI:                p.AI,
-		Template:          p.Template,
 		Jira:              p.Jira,
 		Debug:             p.Debug,
 		NoPush:            p.NoPush,
@@ -374,7 +357,6 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// PRListCmd handles pr list
 type PRListCmd struct {
 	State      string `help:"Filter by state (open, merged, declined, all)" default:"open"`
 	Author     string `help:"Filter by pull request author"`
@@ -435,7 +417,6 @@ func (p *PRListAllCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// PRViewCmd handles pr view
 type PRViewCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
 	Web        bool   `help:"Open pull request in browser"`
@@ -492,7 +473,6 @@ type PREditCmd struct {
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
 	Draft          bool     `help:"Convert pull request to draft"`
 	AI             bool     `help:"Generate PR description using AI analysis"`
-	Template       string   `help:"Template language for AI generation (portuguese, english)" enum:"portuguese,english" default:"portuguese"`
 	Jira           string   `help:"Path to JIRA context file (markdown format)"`
 	Debug          bool     `help:"Print debug information including git diff and AI inputs"`
 	Output         string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -513,7 +493,6 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 		Ready:          p.Ready,
 		Draft:          p.Draft,
 		AI:             p.AI,
-		Template:       p.Template,
 		Jira:           p.Jira,
 		Debug:          p.Debug,
 		Output:         p.Output,
@@ -924,21 +903,18 @@ func (p *PRReportCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// APICmd represents the api command
 type APICmd struct{}
 
 func (a *APICmd) Run(ctx context.Context) error {
 	return fmt.Errorf("api command not yet implemented")
 }
 
-// BrowseCmd represents the browse command
 type BrowseCmd struct{}
 
 func (b *BrowseCmd) Run(ctx context.Context) error {
 	return fmt.Errorf("browse command not yet implemented")
 }
 
-// ConfigCmd represents the config command group
 type ConfigCmd struct {
 	Get   ConfigGetCmd   `cmd:""`
 	Set   ConfigSetCmd   `cmd:""`
@@ -946,7 +922,6 @@ type ConfigCmd struct {
 	Unset ConfigUnsetCmd `cmd:""`
 }
 
-// ConfigGetCmd handles config get
 type ConfigGetCmd struct {
 	Key    string `arg:"" help:"Configuration key to retrieve (e.g., auth.default_workspace)"`
 	Output string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -963,7 +938,6 @@ func (c *ConfigGetCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// ConfigSetCmd handles config set
 type ConfigSetCmd struct {
 	Key   string `arg:"" help:"Configuration key to set (e.g., auth.default_workspace)"`
 	Value string `arg:"" help:"Configuration value to set"`
@@ -977,7 +951,6 @@ func (c *ConfigSetCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// ConfigListCmd handles config list
 type ConfigListCmd struct {
 	Output string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 }
@@ -992,7 +965,6 @@ func (c *ConfigListCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// ConfigUnsetCmd handles config unset
 type ConfigUnsetCmd struct {
 	Key string `arg:"" help:"Configuration key to remove (e.g., auth.default_workspace)"`
 }
@@ -1004,7 +976,6 @@ func (c *ConfigUnsetCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
-// StatusCmd represents the status command
 type StatusCmd struct{}
 
 func (s *StatusCmd) Run(ctx context.Context) error {

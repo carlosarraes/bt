@@ -38,7 +38,6 @@ func NewDescriptionGenerator(client *api.Client, repo *git.Repository, workspace
 type GenerateOptions struct {
 	SourceBranch string
 	TargetBranch string
-	Template     string
 	JiraFile     string
 	Verbose      bool
 	Debug        bool
@@ -149,49 +148,54 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 		fmt.Printf("=== END DEBUG ===\n\n")
 	}
 
-	schema, err := g.openaiClient.GeneratePRDescription(ctx, input, opts.Template)
+	schema, err := g.openaiClient.GeneratePRDescription(ctx, input)
 	if err != nil {
 		return nil, err
 	}
 
 	if opts.Debug {
 		fmt.Printf("\n=== DEBUG: OpenAI Schema Response ===\n")
-		fmt.Printf("Contexto: %s\n", schema.Contexto)
-		fmt.Printf("Alteracoes: %v\n", schema.Alteracoes)
-		fmt.Printf("ChecklistItems: %v\n", schema.ChecklistItems)
-		fmt.Printf("EvidencePlaceholders: %v\n", schema.EvidencePlaceholders)
 		fmt.Printf("Title: %s\n", schema.Title)
+		fmt.Printf("ChangeType: %s\n", schema.ChangeType)
+		fmt.Printf("Summary: %s\n", schema.Summary)
 		fmt.Printf("JiraTicket: %s\n", schema.JiraTicket)
-		fmt.Printf("ClientSpecific: %s\n", schema.ClientSpecific)
+		fmt.Printf("UIChanges: %s\n", schema.UIChanges)
+		fmt.Printf("DBArchitecture: %s\n", schema.DBArchitecture)
+		fmt.Printf("Dependencies: %s\n", schema.Dependencies)
+		fmt.Printf("Documentation: %s\n", schema.Documentation)
+		fmt.Printf("TestCases: %s\n", schema.TestCases)
+		fmt.Printf("BugFixDetails: %s\n", schema.BugFixDetails)
+		fmt.Printf("Security: %s\n", schema.Security)
+		fmt.Printf("RollbackSafety: %s\n", schema.RollbackSafety)
 		fmt.Printf("=== END DEBUG ===\n\n")
 	}
 
-	checklist := strings.Join(schema.ChecklistItems, "\n\n")
-	if strings.TrimSpace(checklist) == "" {
-		checklist = "✅ Testado localmente\n\n✅ Código revisado"
-	}
-
-	evidencePlaceholders := strings.Join(schema.EvidencePlaceholders, "\n\n")
-	if strings.TrimSpace(evidencePlaceholders) == "" {
-		evidencePlaceholders = "- [ ] Evidências de teste\n\n- [ ] Documentação relevante"
-	}
-
 	templateVars := map[string]interface{}{
-		"contexto":              schema.Contexto,
-		"alteracoes":            strings.Join(schema.Alteracoes, "\n\n"),
-		"checklist":             checklist,
-		"evidence_placeholders": evidencePlaceholders,
+		"change_type":           schema.ChangeType,
+		"summary":               schema.Summary,
+		"jira_ticket":           coalesce(schema.JiraTicket, "[Link]"),
+		"design_doc":            "[Link/NA]",
+		"ui_changes":            schema.UIChanges,
+		"db_architecture":       schema.DBArchitecture,
+		"dependencies":          schema.Dependencies,
+		"documentation":         schema.Documentation,
+		"testing_env":           "[Local / Homolog / N/A]",
+		"test_cases":            schema.TestCases,
+		"bug_fix_details":       schema.BugFixDetails,
+		"feature_flags":         "(List new feature flags added and how to enable them)",
+		"security":              schema.Security,
+		"monitoring":            "(List Datadog dashboards, new logs, or specific alerts to watch)",
+		"rollback_safety":       schema.RollbackSafety,
+		"production_validation": "How will you confirm success after deployment?",
 		"branch_name":           opts.SourceBranch,
 		"target_branch":         opts.TargetBranch,
 		"files_changed":         diffData.Stats.FilesChanged,
 		"additions":             diffData.Stats.LinesAdded,
 		"deletions":             diffData.Stats.LinesRemoved,
-		"jira_ticket":           schema.JiraTicket,
-		"client_specific":       schema.ClientSpecific,
 	}
 
-	template := NewTemplateEngine(opts.Template)
-	description, err := template.Apply(templateVars)
+	tmpl := NewTemplateEngine()
+	description, err := tmpl.Apply(templateVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply template with OpenAI data: %w", err)
 	}
@@ -203,7 +207,6 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 		Metadata: map[string]interface{}{
 			"branch_name":   opts.SourceBranch,
 			"target_branch": opts.TargetBranch,
-			"template":      opts.Template,
 			"has_jira":      opts.JiraFile != "",
 			"openai_used":   true,
 			"files_changed": diffData.Stats.FilesChanged,
@@ -214,9 +217,9 @@ func (g *DescriptionGenerator) generateWithOpenAI(ctx context.Context, opts *Gen
 	}, nil
 }
 
-func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, opts *GenerateOptions, branchContext *BranchContext, diffData *DiffData, jiraContext string) (*PRDescriptionResult, error) {
+func (g *DescriptionGenerator) generateWithLocalTemplates(_ context.Context, opts *GenerateOptions, branchContext *BranchContext, diffData *DiffData, jiraContext string) (*PRDescriptionResult, error) {
 	if opts.Verbose {
-		g.logStep("🧠 Generating changes summary with local templates...")
+		g.logStep("🧠 Generating description with local templates...")
 	}
 
 	analysis, err := g.analyzeDiff(diffData)
@@ -227,18 +230,11 @@ func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, o
 	templateVars := g.buildTemplateVariables(branchContext, analysis, jiraContext, diffData.Stats)
 
 	if opts.Verbose {
-		g.logStep("📝 Creating checklist based on change types...")
+		g.logStep("📝 Applying template...")
 	}
 
-	checklist := g.generateChecklist(analysis)
-	templateVars["checklist"] = checklist
-
-	if opts.Verbose {
-		g.logStep(fmt.Sprintf("🎯 Applying %s template...", opts.Template))
-	}
-
-	template := NewTemplateEngine(opts.Template)
-	description, err := template.Apply(templateVars)
+	tmpl := NewTemplateEngine()
+	description, err := tmpl.Apply(templateVars)
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply template: %w", err)
 	}
@@ -247,18 +243,15 @@ func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, o
 
 	if opts.Verbose {
 		g.logStep("✅ Local template description generated successfully!")
-		g.logStep("")
-		g.logStep("📋 Generated Description:")
 	}
 
-	result := &PRDescriptionResult{
+	return &PRDescriptionResult{
 		Title:       title,
 		Description: description,
 		Stats:       diffData.Stats,
 		Metadata: map[string]interface{}{
 			"branch_name":   opts.SourceBranch,
 			"target_branch": opts.TargetBranch,
-			"template":      opts.Template,
 			"has_jira":      opts.JiraFile != "",
 			"change_types":  analysis.ChangeTypes,
 			"openai_used":   false,
@@ -267,9 +260,7 @@ func (g *DescriptionGenerator) generateWithLocalTemplates(ctx context.Context, o
 			"lines_removed": diffData.Stats.LinesRemoved,
 		},
 		Generated: time.Now(),
-	}
-
-	return result, nil
+	}, nil
 }
 
 type DiffData struct {
@@ -386,27 +377,38 @@ func (g *DescriptionGenerator) readJiraContext(jiraFile string) (string, error) 
 }
 
 func (g *DescriptionGenerator) buildTemplateVariables(branchContext *BranchContext, analysis *DiffAnalysis, jiraContext string, stats *utils.DiffStats) map[string]interface{} {
+	changeType := g.detectChangeType(branchContext)
+
 	vars := map[string]interface{}{
-		"branch_name":   branchContext.SourceBranch,
-		"target_branch": branchContext.TargetBranch,
-		"files_changed": stats.FilesChanged,
-		"additions":     stats.LinesAdded,
-		"deletions":     stats.LinesRemoved,
+		"branch_name":           branchContext.SourceBranch,
+		"target_branch":         branchContext.TargetBranch,
+		"files_changed":         stats.FilesChanged,
+		"additions":             stats.LinesAdded,
+		"deletions":             stats.LinesRemoved,
+		"change_type":           changeType,
+		"summary":               g.generateSummaryFromBranch(branchContext, analysis),
+		"jira_ticket":           "[Link]",
+		"design_doc":            "[Link/NA]",
+		"ui_changes":            g.detectUIChanges(analysis),
+		"db_architecture":       g.detectDBChanges(analysis),
+		"dependencies":          g.detectDependencyChanges(analysis),
+		"documentation":         g.detectDocChanges(analysis),
+		"testing_env":           "[Local / Homolog / N/A]",
+		"test_cases":            g.generateTestCases(analysis),
+		"bug_fix_details":       "",
+		"feature_flags":         "(List new feature flags added and how to enable them)",
+		"security":              g.detectSecurityImpact(analysis),
+		"monitoring":            "(List Datadog dashboards, new logs, or specific alerts to watch)",
+		"rollback_safety":       g.assessRollbackSafety(analysis),
+		"production_validation": "How will you confirm success after deployment?",
 	}
 
 	if jiraContext != "" {
-		vars["contexto"] = g.extractContextFromJira(jiraContext)
 		vars["jira_ticket"] = g.extractJiraTicket(jiraContext)
-		vars["client_specific"] = g.extractClientSpecific(jiraContext)
-	} else {
-		vars["contexto"] = g.generateContextFromBranch(branchContext, analysis)
-		vars["jira_ticket"] = ""
-		vars["client_specific"] = ""
 	}
-
-	vars["alteracoes"] = g.generateChanges(analysis)
-
-	vars["evidence_placeholders"] = g.generateEvidencePlaceholders(analysis)
+	if changeType == "Bug Fix" {
+		vars["bug_fix_details"] = "**Severity:** [1-5] | **PR that introduced the bug:** [Link] | **Time in Production:** [Duration]"
+	}
 
 	return vars
 }
@@ -443,55 +445,112 @@ func (g *DescriptionGenerator) generateTitle(branchContext *BranchContext, analy
 	return title
 }
 
-func (g *DescriptionGenerator) generateChecklist(analysis *DiffAnalysis) []string {
-	var checklist []string
+func (g *DescriptionGenerator) detectChangeType(branchContext *BranchContext) string {
+	branch := strings.ToLower(branchContext.SourceBranch)
+
+	if strings.HasPrefix(branch, "fix/") || strings.HasPrefix(branch, "hotfix/") || strings.HasPrefix(branch, "bugfix/") {
+		return "Bug Fix"
+	}
+	if strings.HasPrefix(branch, "feature/") || strings.HasPrefix(branch, "feat/") {
+		return "Feature"
+	}
+	if strings.HasPrefix(branch, "refactor/") {
+		return "Refactor"
+	}
+	if strings.HasPrefix(branch, "chore/") || strings.HasPrefix(branch, "docs/") || strings.HasPrefix(branch, "style/") {
+		return "Chore"
+	}
+
+	return "Feature"
+}
+
+func (g *DescriptionGenerator) detectUIChanges(analysis *DiffAnalysis) string {
+	if contains(analysis.ChangeTypes, "frontend") {
+		return "(Attach screenshots or screen recordings here)"
+	}
+	return "None"
+}
+
+func (g *DescriptionGenerator) detectDBChanges(analysis *DiffAnalysis) string {
+	if contains(analysis.ChangeTypes, "database") {
+		return "Performance/Locking impact? `[Yes / No]` — (Attach database impact screenshots)"
+	}
+	return "None"
+}
+
+func (g *DescriptionGenerator) detectDependencyChanges(analysis *DiffAnalysis) string {
+	if analysis.ConfigChanges {
+		return "(List any new libraries or required config changes)"
+	}
+	return "None"
+}
+
+func (g *DescriptionGenerator) detectDocChanges(analysis *DiffAnalysis) string {
+	if analysis.DocsIncluded {
+		return "Documentation updated"
+	}
+	return "None"
+}
+
+func (g *DescriptionGenerator) detectSecurityImpact(analysis *DiffAnalysis) string {
+	for _, fa := range analysis.FileChanges {
+		for _, pattern := range fa.Patterns {
+			if pattern == "security" {
+				return "Auth/sensitive data/permissions changes detected — review required"
+			}
+		}
+	}
+	return "No security impact detected"
+}
+
+func (g *DescriptionGenerator) assessRollbackSafety(analysis *DiffAnalysis) string {
+	if contains(analysis.ChangeTypes, "database") {
+		return "Caution — includes DB changes, verify rollback safety"
+	}
+	return "Safe to revert — no database migrations"
+}
+
+func (g *DescriptionGenerator) generateTestCases(analysis *DiffAnalysis) string {
+	var cases []string
 
 	for _, changeType := range analysis.ChangeTypes {
 		switch changeType {
 		case "backend":
-			checklist = append(checklist, "✅ Testado localmente")
-			checklist = append(checklist, "✅ Testes unitários executados")
-			checklist = append(checklist, "✅ Documentação atualizada")
+			cases = append(cases, "Unit tests for modified backend logic")
 		case "frontend":
-			checklist = append(checklist, "✅ Testado em diferentes navegadores")
-			checklist = append(checklist, "✅ Responsividade verificada")
-			checklist = append(checklist, "✅ Acessibilidade verificada")
+			cases = append(cases, "UI testing across browsers and screen sizes")
 		case "database":
-			checklist = append(checklist, "✅ Migration testada")
-			checklist = append(checklist, "✅ Backup realizado")
-			checklist = append(checklist, "✅ Rollback testado")
+			cases = append(cases, "Migration up/down tested, rollback verified")
 		case "api":
-			checklist = append(checklist, "✅ Documentação da API atualizada")
-			checklist = append(checklist, "✅ Testes de integração executados")
-			checklist = append(checklist, "✅ Versionamento da API considerado")
-		case "configuration":
-			checklist = append(checklist, "✅ Configurações validadas")
-			checklist = append(checklist, "✅ Variáveis de ambiente documentadas")
-		case "documentation":
-			checklist = append(checklist, "✅ Documentação revisada")
-			checklist = append(checklist, "✅ Links verificados")
+			cases = append(cases, "API integration tests for modified endpoints")
 		}
 	}
 
-	if len(checklist) == 0 {
-		checklist = append(checklist, "✅ Testado localmente")
-		checklist = append(checklist, "✅ Código revisado")
+	if analysis.TestsIncluded {
+		cases = append(cases, "Automated tests included in this PR")
 	}
 
-	return checklist
+	if len(cases) == 0 {
+		return "(Add a list with scenarios, edge cases, and failure cases tested)"
+	}
+
+	return strings.Join(cases, "\n    - ")
 }
 
-func (g *DescriptionGenerator) extractContextFromJira(jiraContext string) string {
-	lines := strings.Split(jiraContext, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "## Contexto") || strings.Contains(line, "## Context") {
-			context := strings.TrimSpace(line)
-			if context != "" {
-				return context
-			}
-		}
+func (g *DescriptionGenerator) generateSummaryFromBranch(branchContext *BranchContext, analysis *DiffAnalysis) string {
+	branchName := branchContext.SourceBranch
+
+	if strings.Contains(branchName, "feature") || strings.Contains(branchName, "feat") {
+		return "Implementation of new functionality"
+	} else if strings.Contains(branchName, "fix") || strings.Contains(branchName, "bug") {
+		return "Bug fix for identified issue"
+	} else if strings.Contains(branchName, "hotfix") {
+		return "Critical production fix"
+	} else if strings.Contains(branchName, "refactor") {
+		return "Code refactoring"
 	}
-	return "Contexto extraído do JIRA"
+
+	return "System improvements"
 }
 
 func (g *DescriptionGenerator) extractJiraTicket(jiraContext string) string {
@@ -506,87 +565,7 @@ func (g *DescriptionGenerator) extractJiraTicket(jiraContext string) string {
 			}
 		}
 	}
-	return ""
-}
-
-func (g *DescriptionGenerator) extractClientSpecific(jiraContext string) string {
-	if strings.Contains(strings.ToLower(jiraContext), "client") || strings.Contains(strings.ToLower(jiraContext), "cliente") {
-		return "Cliente específico"
-	}
-	return ""
-}
-
-func (g *DescriptionGenerator) generateContextFromBranch(branchContext *BranchContext, analysis *DiffAnalysis) string {
-	branchName := branchContext.SourceBranch
-
-	if strings.Contains(branchName, "feature") {
-		return "Implementação de nova funcionalidade"
-	} else if strings.Contains(branchName, "fix") || strings.Contains(branchName, "bug") {
-		return "Correção de bug identificado"
-	} else if strings.Contains(branchName, "hotfix") {
-		return "Correção crítica em produção"
-	} else if strings.Contains(branchName, "refactor") {
-		return "Refatoração de código existente"
-	}
-
-	return "Desenvolvimento de melhorias no sistema"
-}
-
-func (g *DescriptionGenerator) generateChanges(analysis *DiffAnalysis) string {
-	var changes []string
-
-	for _, changeType := range analysis.ChangeTypes {
-		switch changeType {
-		case "backend":
-			changes = append(changes, "• Alterações no backend")
-		case "frontend":
-			changes = append(changes, "• Modificações na interface do usuário")
-		case "database":
-			changes = append(changes, "• Alterações no banco de dados")
-		case "api":
-			changes = append(changes, "• Modificações na API")
-		case "configuration":
-			changes = append(changes, "• Atualizações de configuração")
-		case "documentation":
-			changes = append(changes, "• Atualizações na documentação")
-		case "tests":
-			changes = append(changes, "• Adição/atualização de testes")
-		}
-	}
-
-	if len(changes) == 0 {
-		changes = append(changes, "• Implementação de melhorias no código")
-	}
-
-	return strings.Join(changes, "\n")
-}
-
-func (g *DescriptionGenerator) generateEvidencePlaceholders(analysis *DiffAnalysis) string {
-	var placeholders []string
-
-	for _, changeType := range analysis.ChangeTypes {
-		switch changeType {
-		case "frontend":
-			placeholders = append(placeholders, "- [ ] Screenshots da interface")
-			placeholders = append(placeholders, "- [ ] Testes de responsividade")
-		case "backend":
-			placeholders = append(placeholders, "- [ ] Logs de teste")
-			placeholders = append(placeholders, "- [ ] Resultados de testes unitários")
-		case "database":
-			placeholders = append(placeholders, "- [ ] Scripts de migration")
-			placeholders = append(placeholders, "- [ ] Testes de rollback")
-		case "api":
-			placeholders = append(placeholders, "- [ ] Documentação da API")
-			placeholders = append(placeholders, "- [ ] Testes de integração")
-		}
-	}
-
-	if len(placeholders) == 0 {
-		placeholders = append(placeholders, "- [ ] Evidências de teste")
-		placeholders = append(placeholders, "- [ ] Documentação relevante")
-	}
-
-	return strings.Join(placeholders, "\n")
+	return "[Link]"
 }
 
 func (g *DescriptionGenerator) logStep(message string) {
@@ -601,9 +580,19 @@ func (g *DescriptionGenerator) logStep(message string) {
 		cleaned = strings.ReplaceAll(cleaned, "📝", "")
 		cleaned = strings.ReplaceAll(cleaned, "🎯", "")
 		cleaned = strings.ReplaceAll(cleaned, "✅", "")
+		cleaned = strings.ReplaceAll(cleaned, "🤖", "")
+		cleaned = strings.ReplaceAll(cleaned, "⚠️", "")
+		cleaned = strings.ReplaceAll(cleaned, "🔄", "")
 		cleaned = strings.TrimSpace(cleaned)
 		if cleaned != "" {
 			fmt.Println(cleaned)
 		}
 	}
+}
+
+func coalesce(value, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }

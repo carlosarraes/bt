@@ -162,9 +162,15 @@ func TestCreateCmd_promptForTitle(t *testing.T) {
 func TestCreateCmd_getPRTemplate(t *testing.T) {
 	cmd := &CreateCmd{}
 
-	_, err := cmd.getPRTemplate()
-	if err == nil {
-		t.Errorf("Expected error when no PR template exists")
+	body, err := cmd.getPRTemplate()
+	if err != nil {
+		t.Errorf("getPRTemplate() unexpected error = %v", err)
+	}
+	if body == "" {
+		t.Error("Expected non-empty template body from static fallback")
+	}
+	if !strings.Contains(body, "Context & Description") {
+		t.Error("Expected static template to contain Context section")
 	}
 }
 
