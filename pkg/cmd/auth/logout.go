@@ -18,7 +18,6 @@ type LogoutCmd struct {
 
 // Run executes the auth logout command
 func (cmd *LogoutCmd) Run(ctx context.Context) error {
-	// First, check if user is currently authenticated
 	currentUser, err := cmd.getCurrentAuthStatus(ctx)
 	if err != nil {
 		fmt.Println("❌ No active authentication found")
@@ -26,10 +25,8 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 	}
 
 	fmt.Printf("🔍 Found authentication for: %s (%s)\n", currentUser.DisplayName, currentUser.Username)
-	fmt.Printf("🔐 Method: API Token\n")
-	fmt.Println()
+	fmt.Printf("🔐 Method: API Token\n\n")
 
-	// Confirm logout unless --force flag is used
 	if !cmd.Force {
 		if !cmd.confirmLogout() {
 			fmt.Println("❌ Logout cancelled")
@@ -37,19 +34,30 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	// Perform logout
 	fmt.Println("🔄 Clearing authentication credentials...")
 
-	// Clear stored credentials
-	if err := cmd.clearAuthMethod(); err != nil {
-		fmt.Printf("⚠️  Error clearing stored credentials: %v\n", err)
-	}
-
-	// Clear environment variables (these won't persist, but clear for current session)
 	os.Unsetenv("BITBUCKET_EMAIL")
 	os.Unsetenv("BITBUCKET_API_TOKEN")
-	os.Unsetenv("BITBUCKET_USERNAME") // legacy
-	os.Unsetenv("BITBUCKET_PASSWORD") // legacy
+	os.Unsetenv("BITBUCKET_USERNAME")
+	os.Unsetenv("BITBUCKET_PASSWORD")
+
+	profile, err := detectShellProfile()
+	if err != nil {
+		fmt.Printf("⚠️  %v\n", err)
+		fmt.Println("💡 Remove BITBUCKET_EMAIL and BITBUCKET_API_TOKEN from your shell profile manually")
+	} else {
+		keys := []string{
+			"BITBUCKET_EMAIL", "BITBUCKET_API_TOKEN",
+			"BITBUCKET_USERNAME", "BITBUCKET_PASSWORD",
+		}
+		if err := removeEnvsFromProfile(profile, keys); err != nil {
+			fmt.Printf("⚠️  Could not remove credentials from %s: %v\n", profile, err)
+			fmt.Println("💡 Please remove BITBUCKET_EMAIL and BITBUCKET_API_TOKEN manually")
+		} else {
+			fmt.Printf("💾 Credentials removed from %s\n", profile)
+		}
+		fmt.Printf("💡 Run 'source %s' or open a new terminal for changes to take effect\n", profile)
+	}
 
 	fmt.Println("✅ Successfully logged out from Bitbucket")
 	fmt.Println("💡 Run 'bt auth login' to authenticate again")
@@ -57,7 +65,6 @@ func (cmd *LogoutCmd) Run(ctx context.Context) error {
 	return nil
 }
 
-// getCurrentAuthStatus checks current authentication status
 func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, error) {
 	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 	if err != nil {
@@ -72,12 +79,11 @@ func (cmd *LogoutCmd) getCurrentAuthStatus(ctx context.Context) (*auth.User, err
 	return user, nil
 }
 
-// confirmLogout prompts the user to confirm logout
 func (cmd *LogoutCmd) confirmLogout() bool {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("🤔 Are you sure you want to log out? This will remove all stored credentials [y/N]: ")
+		fmt.Print("🤔 Are you sure you want to log out? This will remove stored credentials [y/N]: ")
 
 		input, err := reader.ReadString('\n')
 		if err != nil {
@@ -95,14 +101,4 @@ func (cmd *LogoutCmd) confirmLogout() bool {
 			fmt.Printf("❌ Invalid response '%s'. Please enter 'y' for yes or 'n' for no.\n", response)
 		}
 	}
-}
-
-// clearAuthMethod clears stored credentials
-func (cmd *LogoutCmd) clearAuthMethod() error {
-	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
-	if err != nil {
-		return err
-	}
-
-	return manager.Logout()
 }

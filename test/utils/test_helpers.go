@@ -518,21 +518,11 @@ func CreateTestAuthManager() (auth.AuthManager, error) {
 	email := GetTestUsername()
 	token := GetTestAppPassword()
 
-	// Set environment variables for API token auth
 	os.Setenv("BITBUCKET_EMAIL", email)
 	os.Setenv("BITBUCKET_API_TOKEN", token)
 
-	// Create storage
-	storage, err := auth.NewFileCredentialStorage()
-	if err != nil {
-		return nil, err
-	}
-
-	// Create config
 	config := auth.DefaultConfig()
-
-	// Create auth manager
-	return auth.NewAuthManager(config, storage)
+	return auth.NewAuthManager(config)
 }
 
 // GetTestLogger returns a logger for testing

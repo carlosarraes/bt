@@ -12,7 +12,6 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/auth"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/config"
 )
 
 // LoginCmd handles auth login command
@@ -22,60 +21,45 @@ type LoginCmd struct {
 
 // Run executes the auth login command
 func (cmd *LoginCmd) Run(ctx context.Context) error {
-	// Load configuration
-	loader := config.NewLoader()
-	cfg, err := loader.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load configuration: %w", err)
-	}
-
-	// Check for environment variables first (highest precedence)
 	if email := os.Getenv("BITBUCKET_EMAIL"); email != "" {
 		if token := os.Getenv("BITBUCKET_API_TOKEN"); token != "" {
-			return cmd.authenticateWithAPIToken(ctx, email, token, "environment variables")
+			return cmd.authenticateAndSave(ctx, email, token, "environment variables")
 		}
 	}
 
-	// Also check legacy environment variables for backward compatibility
 	if email := os.Getenv("BITBUCKET_USERNAME"); email != "" {
 		if token := os.Getenv("BITBUCKET_PASSWORD"); token != "" {
-			return cmd.authenticateWithAPIToken(ctx, email, token, "environment variables")
+			return cmd.authenticateAndSave(ctx, email, token, "environment variables")
 		}
 	}
 
-	// Check for --with-token flag (expects email:token format)
 	if cmd.WithToken != "" {
 		parts := strings.SplitN(cmd.WithToken, ":", 2)
 		if len(parts) != 2 {
 			return fmt.Errorf("--with-token flag requires format: email:token")
 		}
-		return cmd.authenticateWithAPIToken(ctx, parts[0], parts[1], "command line flag")
+		return cmd.authenticateAndSave(ctx, parts[0], parts[1], "command line flag")
 	}
 
 	// Interactive authentication flow
-	return cmd.interactiveLogin(ctx, cfg)
+	return cmd.interactiveLogin(ctx)
 }
 
-// authenticateWithAPIToken handles API token authentication (email + token)
-func (cmd *LoginCmd) authenticateWithAPIToken(ctx context.Context, email, token, source string) error {
+func (cmd *LoginCmd) authenticateAndSave(ctx context.Context, email, token, source string) error {
 	fmt.Printf("🔑 Authenticating with API token from %s...\n", source)
 
-	// Set environment variables for authentication
 	os.Setenv("BITBUCKET_EMAIL", email)
 	os.Setenv("BITBUCKET_API_TOKEN", token)
 
-	// Create API token authenticator
 	manager, err := shared.CreateAuthManagerWithMethod(auth.AuthMethodAPIToken)
 	if err != nil {
 		return fmt.Errorf("failed to create auth manager: %w", err)
 	}
 
-	// Authenticate
 	if err := manager.Authenticate(ctx); err != nil {
 		return fmt.Errorf("authentication failed: %w", err)
 	}
 
-	// Get user information to confirm authentication
 	user, err := manager.GetAuthenticatedUser(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get user information: %w", err)
@@ -84,16 +68,12 @@ func (cmd *LoginCmd) authenticateWithAPIToken(ctx context.Context, email, token,
 	fmt.Printf("✅ Authentication successful!\n")
 	fmt.Printf("👤 Logged in as: %s (%s)\n", user.DisplayName, user.Username)
 	fmt.Printf("📧 Email: %s\n", user.Email)
-	fmt.Printf("🔐 Method: API Token\n")
-	fmt.Printf("\n💡 Tip: You can set environment variables to avoid re-entering credentials:\n")
-	fmt.Printf("   export BITBUCKET_EMAIL=\"%s\"\n", email)
-	fmt.Printf("   export BITBUCKET_API_TOKEN=\"your-api-token\"\n")
+	fmt.Printf("🔐 Method: API Token\n\n")
 
-	return nil
+	return cmd.saveToProfile(email, token)
 }
 
-// interactiveLogin handles interactive authentication flow
-func (cmd *LoginCmd) interactiveLogin(ctx context.Context, cfg *config.Config) error {
+func (cmd *LoginCmd) interactiveLogin(ctx context.Context) error {
 	fmt.Println("🚀 Welcome to Bitbucket CLI Authentication")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println()
@@ -101,38 +81,83 @@ func (cmd *LoginCmd) interactiveLogin(ctx context.Context, cfg *config.Config) e
 	fmt.Println("📋 Create an API token at: https://id.atlassian.com/manage-profile/security/api-tokens")
 	fmt.Println()
 
-	// Setup API token authentication
-	return cmd.setupAPIToken(ctx)
-}
-
-// setupAPIToken handles API token authentication setup (email + token)
-func (cmd *LoginCmd) setupAPIToken(ctx context.Context) error {
 	reader := bufio.NewReader(os.Stdin)
 
-	// Get email
 	fmt.Print("📧 Atlassian account email: ")
 	email, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("failed to read email: %w", err)
 	}
 	email = strings.TrimSpace(email)
-
 	if email == "" {
 		return fmt.Errorf("email cannot be empty")
 	}
 
-	// Get API token (hidden input)
 	fmt.Print("🔑 API token (hidden): ")
 	tokenBytes, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return fmt.Errorf("failed to read token: %w", err)
 	}
 	token := strings.TrimSpace(string(tokenBytes))
-	fmt.Println() // New line after hidden input
-
+	fmt.Println()
 	if token == "" {
 		return fmt.Errorf("API token cannot be empty")
 	}
 
-	return cmd.authenticateWithAPIToken(ctx, email, token, "interactive input")
+	return cmd.authenticateAndSave(ctx, email, token, "interactive input")
+}
+
+func (cmd *LoginCmd) saveToProfile(email, token string) error {
+	profile, err := detectShellProfile()
+	if err != nil {
+		fmt.Printf("⚠️  %v\n", err)
+		cmd.printManualInstructions(email, token)
+		return nil
+	}
+
+	if err := writeEnvsToProfile(profile, [][2]string{
+		{"BITBUCKET_EMAIL", email},
+		{"BITBUCKET_API_TOKEN", token},
+	}); err != nil {
+		return fmt.Errorf("failed to write to %s: %w", profile, err)
+	}
+
+	fmt.Printf("💾 Credentials saved to %s\n", profile)
+
+	cmd.promptSonarCloudToken(profile)
+
+	fmt.Printf("\n💡 Run 'source %s' or open a new terminal for changes to take effect\n", profile)
+	return nil
+}
+
+func (cmd *LoginCmd) promptSonarCloudToken(profile string) {
+	if os.Getenv("SONARCLOUD_TOKEN") != "" {
+		fmt.Println("☁️  SonarCloud token already set in environment")
+		return
+	}
+
+	fmt.Print("\n☁️  SonarCloud token (optional, press Enter to skip): ")
+	sonarBytes, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println()
+	if err != nil {
+		fmt.Printf("⚠️  Could not read SonarCloud token: %v (skipping)\n", err)
+		return
+	}
+	sonarToken := strings.TrimSpace(string(sonarBytes))
+
+	if sonarToken == "" {
+		return
+	}
+
+	if err := writeEnvToProfile(profile, "SONARCLOUD_TOKEN", sonarToken); err != nil {
+		fmt.Printf("⚠️  Failed to save SonarCloud token: %v\n", err)
+		return
+	}
+	fmt.Println("☁️  SonarCloud token saved")
+}
+
+func (cmd *LoginCmd) printManualInstructions(email, token string) {
+	fmt.Println("\n💡 Add these to your shell profile manually:")
+	fmt.Printf("   export BITBUCKET_EMAIL=%q\n", email)
+	fmt.Printf("   export BITBUCKET_API_TOKEN=%q\n", token)
 }

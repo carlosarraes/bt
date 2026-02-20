@@ -64,7 +64,7 @@ func (s *M2PipelineDebugValidationSuite) setupTestEnvironment() {
 		BaseURL: cfg.API.BaseURL,
 		Timeout: int(cfg.API.Timeout.Seconds()),
 	}
-	authManager, err := auth.NewAuthManager(authConfig, nil)
+	authManager, err := auth.NewAuthManager(authConfig)
 	require.NoError(s.t, err, "Failed to create auth manager")
 
 	apiConfig := &api.ClientConfig{
@@ -359,7 +359,7 @@ func BenchmarkPipelineOperations(b *testing.B) {
 		BaseURL: cfg.API.BaseURL,
 		Timeout: int(cfg.API.Timeout.Seconds()),
 	}
-	authManager, _ := auth.NewAuthManager(authConfig, nil)
+	authManager, _ := auth.NewAuthManager(authConfig)
 	apiConfig := api.DefaultClientConfig()
 	client, _ := api.NewClient(authManager, apiConfig)
 	ctx := context.Background()
