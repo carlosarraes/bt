@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -84,60 +83,13 @@ func (cmd *WatchCmd) Run(ctx context.Context) error {
 	}
 
 	// Resolve pipeline ID to UUID
-	pipelineUUID, err := cmd.resolvePipelineUUID(ctx, runCtx)
+	pipelineUUID, err := resolvePipelineUUID(ctx, runCtx, cmd.PipelineID)
 	if err != nil {
 		return err
 	}
 
 	// Start watching the pipeline
 	return cmd.watchPipeline(ctx, runCtx, pipelineUUID)
-}
-
-// resolvePipelineUUID resolves a pipeline ID (build number or UUID) to a full UUID
-func (cmd *WatchCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
-	pipelineID := strings.TrimSpace(cmd.PipelineID)
-
-	// If it's already a UUID (contains hyphens), return as-is
-	if strings.Contains(pipelineID, "-") {
-		return pipelineID, nil
-	}
-
-	// If it starts with #, remove it
-	if strings.HasPrefix(pipelineID, "#") {
-		pipelineID = pipelineID[1:]
-	}
-
-	// Try to parse as build number
-	buildNumber, err := strconv.Atoi(pipelineID)
-	if err != nil {
-		return "", fmt.Errorf("invalid pipeline ID '%s'. Expected build number (e.g., 123, #123) or UUID", cmd.PipelineID)
-	}
-
-	// Search for pipeline by build number
-	options := &api.PipelineListOptions{
-		PageLen: 100, // Search recent pipelines
-		Page:    1,
-		Sort:    "-created_on",
-	}
-
-	result, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return "", handlePipelineAPIError(err)
-	}
-
-	// Parse and search through pipelines
-	pipelines, err := parsePipelineResults(result)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
-	}
-
-	for _, pipeline := range pipelines {
-		if pipeline.BuildNumber == buildNumber {
-			return pipeline.UUID, nil
-		}
-	}
-
-	return "", fmt.Errorf("pipeline with build number %d not found", buildNumber)
 }
 
 // watchPipeline monitors a running pipeline for live updates

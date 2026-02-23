@@ -3,13 +3,11 @@ package run
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/output"
 	"github.com/carlosarraes/bt/pkg/utils"
 )
 
@@ -60,7 +58,7 @@ func (cmd *LogsCmd) Run(ctx context.Context) error {
 	}
 
 	// Convert pipeline ID to UUID if it's a build number
-	pipelineUUID, err := cmd.resolvePipelineUUID(ctx, runCtx)
+	pipelineUUID, err := resolvePipelineUUID(ctx, runCtx, cmd.PipelineID)
 	if err != nil {
 		return err
 	}
@@ -80,192 +78,6 @@ func (cmd *LogsCmd) Run(ctx context.Context) error {
 	return cmd.viewLogs(ctx, runCtx, pipeline)
 }
 
-// resolvePipelineUUID converts build number to UUID or validates UUID (reused from view.go)
-func (cmd *LogsCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
-	pipelineID := strings.TrimSpace(cmd.PipelineID)
-
-	// If it's already a UUID (contains hyphens), return as-is
-	if strings.Contains(pipelineID, "-") {
-		return pipelineID, nil
-	}
-
-	// If it starts with #, remove it
-	if strings.HasPrefix(pipelineID, "#") {
-		pipelineID = pipelineID[1:]
-	}
-
-	// Try to parse as build number
-	buildNumber, err := strconv.Atoi(pipelineID)
-	if err != nil {
-		return "", fmt.Errorf("invalid pipeline ID '%s'. Expected build number (e.g., 123, #123) or UUID", cmd.PipelineID)
-	}
-
-	// Search for pipeline by build number
-	options := &api.PipelineListOptions{
-		PageLen: 100, // Search recent pipelines
-		Page:    1,
-		Sort:    "-created_on",
-	}
-
-	result, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return "", handlePipelineAPIError(err)
-	}
-
-	// Parse and search through pipelines
-	pipelines, err := parsePipelineResults(result)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
-	}
-
-	for _, pipeline := range pipelines {
-		if pipeline.BuildNumber == buildNumber {
-			return pipeline.UUID, nil
-		}
-	}
-
-	return "", fmt.Errorf("pipeline with build number %d not found", buildNumber)
-}
-
-// displayStepInfo shows useful information about a step
-func (cmd *LogsCmd) displayStepInfo(step *api.PipelineStep) {
-	fmt.Printf("\n=== Step: %s ===\n", step.Name)
-
-	if step.State != nil {
-		status := step.State.Name
-		if step.State.Result != nil && step.State.Result.Name != "" {
-			status = step.State.Result.Name
-		}
-		fmt.Printf("Status: %s\n", status)
-	}
-
-	if step.StartedOn != nil {
-		fmt.Printf("Started: %s\n", step.StartedOn.Format("2006-01-02 15:04:05"))
-	}
-
-	if step.CompletedOn != nil {
-		fmt.Printf("Completed: %s\n", step.CompletedOn.Format("2006-01-02 15:04:05"))
-	}
-
-	if step.BuildSecondsUsed > 0 {
-		fmt.Printf("Duration: %s\n", output.FormatDuration(step.BuildSecondsUsed))
-	}
-
-	if step.Image != nil {
-		fmt.Printf("Image: %s\n", step.Image.Name)
-	}
-
-	// Show setup commands
-	if len(step.SetupCommands) > 0 {
-		fmt.Printf("\nSetup Commands:\n")
-		for _, cmd := range step.SetupCommands {
-			fmt.Printf("  - %s\n", cmd.Command)
-		}
-	}
-
-	// Show script commands
-	if len(step.ScriptCommands) > 0 {
-		fmt.Printf("\nScript Commands:\n")
-		for _, cmd := range step.ScriptCommands {
-			fmt.Printf("  - %s\n", cmd.Command)
-		}
-	}
-
-	fmt.Println()
-}
-
-// displayTestResults shows test results and failures for a step
-func (cmd *LogsCmd) displayTestResults(ctx context.Context, runCtx *RunContext, pipeline *api.Pipeline, step *api.PipelineStep) {
-	// Get test reports summary
-	reports, err := runCtx.Client.Pipelines.GetStepTestReports(ctx, runCtx.Workspace, runCtx.Repository, pipeline.UUID, step.UUID)
-	if err != nil {
-		fmt.Printf("No test reports available: %v\n", err)
-		return
-	}
-
-	if len(reports) == 0 {
-		fmt.Printf("No test reports found for this step\n")
-		return
-	}
-
-	// Display test summary
-	fmt.Printf("\n🧪 Test Reports Summary:\n")
-	totalPassed := 0
-	totalFailed := 0
-	totalSkipped := 0
-
-	for _, report := range reports {
-		fmt.Printf("  Report: %s\n", report.Name)
-		fmt.Printf("    Status: %s\n", report.Status)
-		if report.Total > 0 {
-			fmt.Printf("    Tests: %d total, %d passed, %d failed, %d skipped\n",
-				report.Total, report.Passed, report.Failed, report.Skipped)
-			totalPassed += report.Passed
-			totalFailed += report.Failed
-			totalSkipped += report.Skipped
-		}
-		if report.Duration > 0 {
-			fmt.Printf("    Duration: %.2fs\n", report.Duration)
-		}
-		fmt.Println()
-	}
-
-	// If there are failures, get detailed test cases
-	if totalFailed > 0 {
-		fmt.Printf("❌ Getting details for %d failed test(s)...\n\n", totalFailed)
-
-		testCases, err := runCtx.Client.Pipelines.GetStepTestCases(ctx, runCtx.Workspace, runCtx.Repository, pipeline.UUID, step.UUID)
-		if err != nil {
-			fmt.Printf("Could not get detailed test cases: %v\n", err)
-			return
-		}
-
-		failedTests := 0
-		for _, testCase := range testCases {
-			if testCase.Status == "FAILED" || testCase.Result == "FAILED" {
-				failedTests++
-				fmt.Printf("❌ Test Failed: %s\n", testCase.Name)
-				if testCase.ClassName != "" {
-					fmt.Printf("   Class: %s\n", testCase.ClassName)
-				}
-				if testCase.TestSuite != "" {
-					fmt.Printf("   Suite: %s\n", testCase.TestSuite)
-				}
-				if testCase.Duration > 0 {
-					fmt.Printf("   Duration: %.2fs\n", testCase.Duration)
-				}
-				if testCase.Message != "" {
-					fmt.Printf("   Message: %s\n", testCase.Message)
-				}
-				if testCase.Stacktrace != "" {
-					fmt.Printf("   Stacktrace:\n%s\n", testCase.Stacktrace)
-				}
-
-				// Try to get more detailed reasons
-				reasons, err := runCtx.Client.Pipelines.GetTestCaseReasons(ctx, runCtx.Workspace, runCtx.Repository, pipeline.UUID, step.UUID, testCase.UUID)
-				if err == nil && len(reasons) > 0 {
-					fmt.Printf("   Detailed Output:\n")
-					for _, reason := range reasons {
-						if reason.Message != "" {
-							fmt.Printf("     %s\n", reason.Message)
-						}
-						if reason.Output != "" {
-							fmt.Printf("     %s\n", reason.Output)
-						}
-					}
-				}
-				fmt.Println()
-			}
-		}
-
-		if failedTests == 0 {
-			fmt.Printf("Could not find detailed information for failed tests\n")
-		}
-	} else {
-		fmt.Printf("✅ All tests passed!\n")
-	}
-}
-
 // viewLogs displays logs for a completed or stopped pipeline
 func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *api.Pipeline) error {
 	// Get pipeline steps
@@ -277,9 +89,9 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 	// Filter steps if specific step requested
 	filteredSteps := steps
 	if cmd.Step != "" {
-		filteredSteps = cmd.filterStepsByName(steps, cmd.Step)
+		filteredSteps = filterStepsByName(steps, cmd.Step)
 		if len(filteredSteps) == 0 {
-			return fmt.Errorf("step '%s' not found. Available steps: %s", cmd.Step, cmd.getAvailableStepNames(steps))
+			return fmt.Errorf("step '%s' not found. Available steps: %s", cmd.Step, getAvailableStepNames(steps))
 		}
 	}
 
@@ -291,8 +103,8 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 		if cmd.Tests {
 			// Show test results instead of logs
 			if cmd.Output == "text" {
-				cmd.displayStepInfo(step)
-				cmd.displayTestResults(ctx, runCtx, pipeline, step)
+				displayStepInfo(step)
+				displayTestResults(ctx, runCtx, pipeline, step)
 			}
 			// Create a dummy result for this step
 			result := &utils.LogAnalysisResult{
@@ -310,14 +122,12 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 		logReader, err := runCtx.Client.Pipelines.GetStepLogs(ctx, runCtx.Workspace, runCtx.Repository, pipeline.UUID, step.UUID)
 		if err != nil {
 			if cmd.Output == "text" {
-				cmd.displayStepInfo(step)
+				displayStepInfo(step)
 				fmt.Printf("Note: Raw logs not available through API for step '%s': %v\n", step.Name, err)
 
-				// Try to show test results as fallback
 				fmt.Printf("Checking for test results...\n")
-				cmd.displayTestResults(ctx, runCtx, pipeline, step)
+				displayTestResults(ctx, runCtx, pipeline, step)
 			}
-			// Create a dummy result for this step
 			result := &utils.LogAnalysisResult{
 				TotalLines:   0,
 				ErrorCount:   0,
@@ -329,13 +139,12 @@ func (cmd *LogsCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipeline *
 			allResults = append(allResults, result)
 			continue
 		}
-		defer logReader.Close()
 
-		// Analyze logs with error detection
 		parser := utils.NewLogParser()
 		parser.SetContextLines(cmd.Context)
 
 		result, err := parser.AnalyzeLog(logReader, step.Name)
+		logReader.Close()
 		if err != nil {
 			fmt.Printf("Warning: Could not analyze logs for step '%s': %v\n", step.Name, err)
 			continue
@@ -389,7 +198,7 @@ func (cmd *LogsCmd) followLogs(ctx context.Context, runCtx *RunContext, pipeline
 
 			// Process new or updated steps
 			for _, step := range steps {
-				if cmd.Step != "" && !cmd.matchesStepName(step.Name, cmd.Step) {
+				if cmd.Step != "" && !matchesStepName(step.Name, cmd.Step) {
 					continue
 				}
 
@@ -499,51 +308,6 @@ func (cmd *LogsCmd) containsError(line string, parser *utils.LogParser) bool {
 		}
 	}
 	return false
-}
-
-// filterStepsByName filters steps by name with fuzzy matching
-func (cmd *LogsCmd) filterStepsByName(steps []*api.PipelineStep, stepName string) []*api.PipelineStep {
-	var filtered []*api.PipelineStep
-
-	for _, step := range steps {
-		if cmd.matchesStepName(step.Name, stepName) {
-			filtered = append(filtered, step)
-		}
-	}
-
-	return filtered
-}
-
-// matchesStepName checks if a step name matches the requested name (with fuzzy matching)
-func (cmd *LogsCmd) matchesStepName(stepName, requestedName string) bool {
-	stepNameLower := strings.ToLower(stepName)
-	requestedLower := strings.ToLower(requestedName)
-
-	// Exact match
-	if stepNameLower == requestedLower {
-		return true
-	}
-
-	// Contains match
-	if strings.Contains(stepNameLower, requestedLower) {
-		return true
-	}
-
-	// Prefix match
-	if strings.HasPrefix(stepNameLower, requestedLower) {
-		return true
-	}
-
-	return false
-}
-
-// getAvailableStepNames returns a comma-separated list of available step names
-func (cmd *LogsCmd) getAvailableStepNames(steps []*api.PipelineStep) string {
-	names := make([]string, len(steps))
-	for i, step := range steps {
-		names[i] = step.Name
-	}
-	return strings.Join(names, ", ")
 }
 
 // formatOutput formats and displays the log analysis results

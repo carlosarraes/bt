@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
@@ -38,7 +37,7 @@ func (cmd *CancelCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	pipelineUUID, err := cmd.resolvePipelineUUID(ctx, runCtx)
+	pipelineUUID, err := resolvePipelineUUID(ctx, runCtx, cmd.PipelineID)
 	if err != nil {
 		return err
 	}
@@ -64,49 +63,6 @@ func (cmd *CancelCmd) Run(ctx context.Context) error {
 	}
 
 	return cmd.outputSuccess(runCtx, pipeline)
-}
-
-func (cmd *CancelCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
-	pipelineID := strings.TrimSpace(cmd.PipelineID)
-
-	if strings.Contains(pipelineID, "-") {
-		return pipelineID, nil
-	}
-
-	if strings.HasPrefix(pipelineID, "#") {
-		pipelineID = pipelineID[1:]
-	}
-
-	buildNumber, err := strconv.Atoi(pipelineID)
-	if err != nil {
-		return "", fmt.Errorf("invalid pipeline ID '%s'. Expected build number (e.g., 123, #123) or UUID", cmd.PipelineID)
-	}
-
-	options := &api.PipelineListOptions{
-		PageLen: 50,
-	}
-
-	resp, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return "", fmt.Errorf("failed to search for pipeline: %w", err)
-	}
-
-	pipelines, err := cmd.parsePipelineResults(resp)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
-	}
-
-	for _, pipeline := range pipelines {
-		if pipeline.BuildNumber == buildNumber {
-			return pipeline.UUID, nil
-		}
-	}
-
-	return "", fmt.Errorf("pipeline with build number %d not found", buildNumber)
-}
-
-func (cmd *CancelCmd) parsePipelineResults(result *api.PaginatedResponse) ([]*api.Pipeline, error) {
-	return shared.ParsePaginatedResults[api.Pipeline](result)
 }
 
 func (cmd *CancelCmd) validateCancellable(pipeline *api.Pipeline) error {

@@ -367,8 +367,7 @@ func BenchmarkViewCmd_GetStatusIcon(b *testing.B) {
 	}
 }
 
-func BenchmarkViewCmd_ResolvePipelineUUID(b *testing.B) {
-	cmd := &ViewCmd{}
+func BenchmarkResolvePipelineUUID(b *testing.B) {
 	uuids := []string{
 		"12345678-1234-1234-1234-123456789abc",
 		"87654321-4321-4321-4321-cba987654321",
@@ -377,8 +376,6 @@ func BenchmarkViewCmd_ResolvePipelineUUID(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cmd.PipelineID = uuids[i%len(uuids)]
-		// This will return immediately for UUID format
-		cmd.resolvePipelineUUID(context.Background(), nil)
+		resolvePipelineUUID(context.Background(), nil, uuids[i%len(uuids)])
 	}
 }

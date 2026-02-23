@@ -140,17 +140,8 @@ func TestRerunCmd_resolvePipelineUUID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := &RerunCmd{
-				PipelineID: tt.pipelineID,
-				Force:      true,
-				Output:     "table",
-				NoColor:    true,
-				Workspace:  "test-workspace",
-				Repository: "test-repo",
-			}
-
 			if strings.Contains(tt.pipelineID, "-") {
-				result, err := cmd.resolvePipelineUUID(context.Background(), nil)
+				result, err := resolvePipelineUUID(context.Background(), nil, tt.pipelineID)
 				if tt.expectError {
 					assert.Error(t, err)
 					if tt.errorMsg != "" {
@@ -411,12 +402,6 @@ func TestRerunCmd_confirmRerun(t *testing.T) {
 }
 
 func TestRerunCmd_parsePipelineResults(t *testing.T) {
-	cmd := &RerunCmd{
-		PipelineID: "123",
-		Force:      true,
-		Output:     "table",
-		NoColor:    true,
-	}
 
 	tests := []struct {
 		name        string
@@ -450,7 +435,7 @@ func TestRerunCmd_parsePipelineResults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pipelines, err := cmd.parsePipelineResults(tt.response)
+			pipelines, err := parsePipelineResults(tt.response)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -519,16 +504,14 @@ func TestRerunCmd_outputSuccess(t *testing.T) {
 }
 
 func BenchmarkRerunCmd_resolvePipelineUUID(b *testing.B) {
-	cmd := &RerunCmd{
-		PipelineID: "12345678-1234-1234-1234-123456789012",
-		Force:      true,
-		Output:     "table",
-		NoColor:    true,
+	uuids := []string{
+		"12345678-1234-1234-1234-123456789012",
+		"87654321-4321-4321-4321-210987654321",
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = cmd.resolvePipelineUUID(context.Background(), nil)
+		_, _ = resolvePipelineUUID(context.Background(), nil, uuids[i%len(uuids)])
 	}
 }
 

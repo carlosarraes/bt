@@ -59,7 +59,7 @@ func (cmd *ReportCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("pipeline ID is required")
 	}
 
-	pipelineUUID, err := cmd.resolvePipelineUUID(ctx, runCtx)
+	pipelineUUID, err := resolvePipelineUUID(ctx, runCtx, cmd.PipelineID)
 	if err != nil {
 		return err
 	}
@@ -101,47 +101,6 @@ func (cmd *ReportCmd) Run(ctx context.Context) error {
 	}
 
 	return cmd.generateReport(ctx, runCtx, sonarCloudService, pipeline)
-}
-
-func (cmd *ReportCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
-	pipelineID := strings.TrimSpace(cmd.PipelineID)
-
-	if strings.Contains(pipelineID, "-") {
-		return pipelineID, nil
-	}
-
-	if strings.HasPrefix(pipelineID, "#") {
-		pipelineID = pipelineID[1:]
-	}
-
-	buildNumber, err := strconv.Atoi(pipelineID)
-	if err != nil {
-		return "", fmt.Errorf("invalid pipeline ID '%s'. Expected build number (e.g., 123, #123) or UUID", cmd.PipelineID)
-	}
-
-	options := &api.PipelineListOptions{
-		PageLen: 100,
-		Page:    1,
-		Sort:    "-created_on",
-	}
-
-	result, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return "", handlePipelineAPIError(err)
-	}
-
-	pipelines, err := parsePipelineResults(result)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
-	}
-
-	for _, pipeline := range pipelines {
-		if pipeline.BuildNumber == buildNumber {
-			return pipeline.UUID, nil
-		}
-	}
-
-	return "", fmt.Errorf("pipeline with build number %d not found", buildNumber)
 }
 
 func (cmd *ReportCmd) createSonarCloudService(ctx context.Context, runCtx *RunContext) (*sonarcloud.Service, error) {

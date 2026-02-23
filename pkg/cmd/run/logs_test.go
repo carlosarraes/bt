@@ -84,9 +84,7 @@ func TestLogsCmd_ValidatePipelineID(t *testing.T) {
 	}
 }
 
-func TestLogsCmd_MatchesStepName(t *testing.T) {
-	cmd := &LogsCmd{}
-
+func TestMatchesStepName(t *testing.T) {
 	tests := []struct {
 		stepName      string
 		requestedName string
@@ -105,15 +103,13 @@ func TestLogsCmd_MatchesStepName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.stepName+"_vs_"+tt.requestedName, func(t *testing.T) {
-			result := cmd.matchesStepName(tt.stepName, tt.requestedName)
+			result := matchesStepName(tt.stepName, tt.requestedName)
 			assert.Equal(t, tt.shouldMatch, result, "Step name '%s' should match '%s': %v", tt.stepName, tt.requestedName, tt.shouldMatch)
 		})
 	}
 }
 
-func TestLogsCmd_FilterStepsByName(t *testing.T) {
-	cmd := &LogsCmd{}
-
+func TestFilterStepsByName(t *testing.T) {
 	steps := []*api.PipelineStep{
 		{Name: "build", UUID: "step1"},
 		{Name: "test-unit", UUID: "step2"},
@@ -151,7 +147,7 @@ func TestLogsCmd_FilterStepsByName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			filtered := cmd.filterStepsByName(steps, tt.stepFilter)
+			filtered := filterStepsByName(steps, tt.stepFilter)
 
 			assert.Equal(t, len(tt.expectedUUIDs), len(filtered), "Filtered step count mismatch")
 
@@ -164,16 +160,14 @@ func TestLogsCmd_FilterStepsByName(t *testing.T) {
 	}
 }
 
-func TestLogsCmd_GetAvailableStepNames(t *testing.T) {
-	cmd := &LogsCmd{}
-
+func TestGetAvailableStepNames(t *testing.T) {
 	steps := []*api.PipelineStep{
 		{Name: "build"},
 		{Name: "test"},
 		{Name: "deploy"},
 	}
 
-	result := cmd.getAvailableStepNames(steps)
+	result := getAvailableStepNames(steps)
 	expected := "build, test, deploy"
 
 	assert.Equal(t, expected, result)
@@ -468,8 +462,7 @@ func TestLogsCmd_Integration(t *testing.T) {
 }
 
 // Benchmark tests
-func BenchmarkLogsCmd_MatchesStepName(b *testing.B) {
-	cmd := &LogsCmd{}
+func BenchmarkMatchesStepName(b *testing.B) {
 	stepNames := []string{"build", "test-unit", "test-integration", "deploy", "cleanup"}
 	requestedNames := []string{"build", "test", "deploy", "missing"}
 
@@ -477,14 +470,11 @@ func BenchmarkLogsCmd_MatchesStepName(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		stepName := stepNames[i%len(stepNames)]
 		requestedName := requestedNames[i%len(requestedNames)]
-		cmd.matchesStepName(stepName, requestedName)
+		matchesStepName(stepName, requestedName)
 	}
 }
 
-func BenchmarkLogsCmd_FilterStepsByName(b *testing.B) {
-	cmd := &LogsCmd{}
-
-	// Create a large set of steps
+func BenchmarkFilterStepsByName(b *testing.B) {
 	steps := make([]*api.PipelineStep, 100)
 	for i := 0; i < 100; i++ {
 		steps[i] = &api.PipelineStep{
@@ -495,7 +485,7 @@ func BenchmarkLogsCmd_FilterStepsByName(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		cmd.filterStepsByName(steps, "step")
+		filterStepsByName(steps, "step")
 	}
 }
 

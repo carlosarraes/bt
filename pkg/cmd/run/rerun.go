@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/carlosarraes/bt/pkg/api"
@@ -41,7 +40,7 @@ func (cmd *RerunCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	pipelineUUID, err := cmd.resolvePipelineUUID(ctx, runCtx)
+	pipelineUUID, err := resolvePipelineUUID(ctx, runCtx, cmd.PipelineID)
 	if err != nil {
 		return err
 	}
@@ -126,76 +125,6 @@ func (cmd *RerunCmd) findPullRequestByCommit(ctx context.Context, runCtx *RunCon
 
 func (cmd *RerunCmd) parsePullRequestResults(result *api.PaginatedResponse) ([]*api.PullRequest, error) {
 	return shared.ParsePaginatedResults[api.PullRequest](result)
-}
-
-func (cmd *RerunCmd) resolvePipelineUUID(ctx context.Context, runCtx *RunContext) (string, error) {
-	pipelineID := strings.TrimSpace(cmd.PipelineID)
-
-	if strings.Contains(pipelineID, "-") {
-		return pipelineID, nil
-	}
-
-	if strings.HasPrefix(pipelineID, "#") {
-		pipelineID = pipelineID[1:]
-	}
-
-	buildNumber, err := strconv.Atoi(pipelineID)
-	if err != nil {
-		return "", fmt.Errorf("invalid pipeline ID '%s'. Expected build number (e.g., 123, #123) or UUID", cmd.PipelineID)
-	}
-
-	options := &api.PipelineListOptions{
-		PageLen: 100,
-		Sort:    "-created_on",
-	}
-
-	fmt.Printf("🔍 Searching for pipeline #%d in workspace '%s', repository '%s'\n", buildNumber, runCtx.Workspace, runCtx.Repository)
-
-	resp, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return "", fmt.Errorf("failed to search for pipeline: %w", err)
-	}
-
-	pipelines, err := cmd.parsePipelineResults(resp)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse pipeline results: %w", err)
-	}
-
-	fmt.Printf("📋 Found %d pipelines. Looking for build number %d:\n", len(pipelines), buildNumber)
-
-	for i, pipeline := range pipelines {
-		stateName := "UNKNOWN"
-		resultName := "UNKNOWN"
-		displayStatus := "UNKNOWN"
-		if pipeline.State != nil {
-			stateName = pipeline.State.Name
-			if pipeline.State.Result != nil {
-				resultName = pipeline.State.Result.Name
-				displayStatus = resultName
-			} else {
-				displayStatus = stateName
-			}
-		}
-
-		if cmd.Debug {
-			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s, Result: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, stateName, resultName)
-		} else {
-			fmt.Printf("  [%d] Pipeline #%d (UUID: %s, State: %s)\n", i+1, pipeline.BuildNumber, pipeline.UUID, displayStatus)
-		}
-
-		if pipeline.BuildNumber == buildNumber {
-			fmt.Printf("✅ Found matching pipeline: #%d -> %s\n", buildNumber, pipeline.UUID)
-			return pipeline.UUID, nil
-		}
-	}
-
-	fmt.Printf("❌ Pipeline #%d not found in the %d recent pipelines\n", buildNumber, len(pipelines))
-	fmt.Printf("💡 Try using the full UUID instead, or check if the pipeline is older than the %d most recent ones.\n", len(pipelines))
-	return "", fmt.Errorf("pipeline with build number %d not found in the %d most recent pipelines", buildNumber, len(pipelines))
-}
-
-func (cmd *RerunCmd) parsePipelineResults(result *api.PaginatedResponse) ([]*api.Pipeline, error) {
-	return shared.ParsePaginatedResults[api.Pipeline](result)
 }
 
 func (cmd *RerunCmd) validateRerunnable(pipeline *api.Pipeline) error {
