@@ -36,8 +36,8 @@ Thumbs.db
 # Build artifacts
 build/
 dist/
-bt
-bt.exe
+/bt
+/bt.exe
 
 # Test artifacts
 coverage.out
