@@ -1,6 +1,8 @@
 package run
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/carlosarraes/bt/pkg/api"
@@ -286,6 +288,202 @@ func TestFormatDuration(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestIsClientSideStatus(t *testing.T) {
+	tests := []struct {
+		status   string
+		expected bool
+	}{
+		{"PENDING", true},
+		{"pending", true},
+		{"IN_PROGRESS", true},
+		{"in_progress", true},
+		{"FAILED", false},
+		{"SUCCESSFUL", false},
+		{"ERROR", false},
+		{"STOPPED", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isClientSideStatus(tt.status))
+		})
+	}
+}
+
+func TestFilterPipelines(t *testing.T) {
+	pipelines := []*api.Pipeline{
+		{
+			BuildNumber: 1,
+			State:       &api.PipelineState{Name: "PENDING"},
+			Creator:     &api.User{DisplayName: "Alice Smith"},
+		},
+		{
+			BuildNumber: 2,
+			State:       &api.PipelineState{Name: "IN_PROGRESS"},
+			Creator:     &api.User{DisplayName: "Bob Jones"},
+		},
+		{
+			BuildNumber: 3,
+			State:       &api.PipelineState{Name: "COMPLETED"},
+			Creator:     &api.User{DisplayName: "Alice Wonder"},
+		},
+		{
+			BuildNumber: 4,
+			State:       &api.PipelineState{Name: "PENDING"},
+			Creator:     nil,
+		},
+	}
+
+	t.Run("filter by PENDING status", func(t *testing.T) {
+		result := filterPipelines(pipelines, "PENDING", "")
+		assert.Len(t, result, 2)
+		assert.Equal(t, 1, result[0].BuildNumber)
+		assert.Equal(t, 4, result[1].BuildNumber)
+	})
+
+	t.Run("filter by creator", func(t *testing.T) {
+		result := filterPipelines(pipelines, "", "alice")
+		assert.Len(t, result, 2)
+		assert.Equal(t, 1, result[0].BuildNumber)
+		assert.Equal(t, 3, result[1].BuildNumber)
+	})
+
+	t.Run("filter by status and creator", func(t *testing.T) {
+		result := filterPipelines(pipelines, "PENDING", "alice")
+		assert.Len(t, result, 1)
+		assert.Equal(t, 1, result[0].BuildNumber)
+	})
+
+	t.Run("no matches", func(t *testing.T) {
+		result := filterPipelines(pipelines, "PENDING", "nobody")
+		assert.Empty(t, result)
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		result := filterPipelines(nil, "PENDING", "")
+		assert.Empty(t, result)
+	})
+
+	t.Run("no filters applied for non-client-side status", func(t *testing.T) {
+		result := filterPipelines(pipelines, "FAILED", "")
+		assert.Len(t, result, 4)
+	})
+
+	t.Run("creator case insensitive substring", func(t *testing.T) {
+		result := filterPipelines(pipelines, "", "ALICE")
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("nil creator filtered out", func(t *testing.T) {
+		result := filterPipelines(pipelines, "", "bob")
+		assert.Len(t, result, 1)
+		assert.Equal(t, 2, result[0].BuildNumber)
+	})
+}
+
+func TestPaginationFilterAccumulation(t *testing.T) {
+	makePage := func(buildNumbers []int, stateName string, hasNext bool) *api.PaginatedResponse {
+		var entries []string
+		for _, bn := range buildNumbers {
+			entries = append(entries, fmt.Sprintf(
+				`{"build_number":%d,"uuid":"{uuid-%d}","state":{"name":"%s"}}`,
+				bn, bn, stateName,
+			))
+		}
+		next := ""
+		if hasNext {
+			next = "https://api.bitbucket.org/next"
+		}
+		return &api.PaginatedResponse{
+			Values: []byte("[" + strings.Join(entries, ",") + "]"),
+			Next:   next,
+		}
+	}
+
+	t.Run("accumulates across pages and stops at limit", func(t *testing.T) {
+		pages := []*api.PaginatedResponse{
+			makePage([]int{1, 2, 3}, "PENDING", true),
+			makePage([]int{4, 5, 6}, "PENDING", true),
+			makePage([]int{7, 8, 9}, "PENDING", false),
+		}
+
+		limit := 5
+		var accumulated []*api.Pipeline
+		for _, page := range pages {
+			parsed, err := parsePipelineResults(page)
+			assert.NoError(t, err)
+			filtered := filterPipelines(parsed, "PENDING", "")
+			accumulated = append(accumulated, filtered...)
+			if len(accumulated) >= limit || page.Next == "" {
+				break
+			}
+		}
+		if len(accumulated) > limit {
+			accumulated = accumulated[:limit]
+		}
+
+		assert.Len(t, accumulated, 5)
+		assert.Equal(t, 1, accumulated[0].BuildNumber)
+		assert.Equal(t, 5, accumulated[4].BuildNumber)
+	})
+
+	t.Run("stops when Next is empty", func(t *testing.T) {
+		pages := []*api.PaginatedResponse{
+			makePage([]int{1, 2}, "PENDING", false),
+		}
+
+		limit := 10
+		var accumulated []*api.Pipeline
+		for _, page := range pages {
+			parsed, err := parsePipelineResults(page)
+			assert.NoError(t, err)
+			filtered := filterPipelines(parsed, "PENDING", "")
+			accumulated = append(accumulated, filtered...)
+			if len(accumulated) >= limit || page.Next == "" {
+				break
+			}
+		}
+
+		assert.Len(t, accumulated, 2)
+	})
+
+	t.Run("filters across pages with mixed statuses", func(t *testing.T) {
+		page1 := &api.PaginatedResponse{
+			Values: []byte(`[
+				{"build_number":1,"uuid":"{u1}","state":{"name":"PENDING"}},
+				{"build_number":2,"uuid":"{u2}","state":{"name":"COMPLETED"}},
+				{"build_number":3,"uuid":"{u3}","state":{"name":"PENDING"}}
+			]`),
+			Next: "https://api.bitbucket.org/next",
+		}
+		page2 := &api.PaginatedResponse{
+			Values: []byte(`[
+				{"build_number":4,"uuid":"{u4}","state":{"name":"COMPLETED"}},
+				{"build_number":5,"uuid":"{u5}","state":{"name":"PENDING"}}
+			]`),
+			Next: "",
+		}
+
+		limit := 10
+		var accumulated []*api.Pipeline
+		for _, page := range []*api.PaginatedResponse{page1, page2} {
+			parsed, err := parsePipelineResults(page)
+			assert.NoError(t, err)
+			filtered := filterPipelines(parsed, "PENDING", "")
+			accumulated = append(accumulated, filtered...)
+			if len(accumulated) >= limit || page.Next == "" {
+				break
+			}
+		}
+
+		assert.Len(t, accumulated, 3)
+		assert.Equal(t, 1, accumulated[0].BuildNumber)
+		assert.Equal(t, 3, accumulated[1].BuildNumber)
+		assert.Equal(t, 5, accumulated[2].BuildNumber)
+	})
 }
 
 func TestPipelineStateColor(t *testing.T) {

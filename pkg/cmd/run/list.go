@@ -13,6 +13,7 @@ import (
 type ListCmd struct {
 	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
 	Branch     string `help:"Filter by branch name"`
+	Creator    string `help:"Filter by pipeline creator (display name)"`
 	Limit      int    `help:"Maximum number of runs to show" default:"10"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor    bool
@@ -56,36 +57,56 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("limit cannot exceed 100")
 	}
 
-	// Prepare pipeline list options
+	needsClientFilter := cmd.Creator != "" || isClientSideStatus(cmd.Status)
+
 	options := &api.PipelineListOptions{
 		PageLen: cmd.Limit,
 		Page:    1,
 		Sort:    "-created_on",
 	}
 
-	// Add status filter if specified
-	if cmd.Status != "" {
+	if cmd.Status != "" && !isClientSideStatus(cmd.Status) {
 		options.Status = strings.ToUpper(cmd.Status)
 	}
 
-	// Add branch filter if specified
 	if cmd.Branch != "" {
 		options.Branch = cmd.Branch
 	}
 
-	// List pipelines
-	result, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
-	if err != nil {
-		return handlePipelineAPIError(err)
+	if needsClientFilter {
+		options.PageLen = 100
 	}
 
-	// Parse the pipeline results
-	pipelines, err := parsePipelineResults(result)
-	if err != nil {
-		return fmt.Errorf("failed to parse pipeline results: %w", err)
+	var pipelines []*api.Pipeline
+
+	for {
+		result, err := runCtx.Client.Pipelines.ListPipelines(ctx, runCtx.Workspace, runCtx.Repository, options)
+		if err != nil {
+			return handlePipelineAPIError(err)
+		}
+
+		page, err := parsePipelineResults(result)
+		if err != nil {
+			return fmt.Errorf("failed to parse pipeline results: %w", err)
+		}
+
+		if needsClientFilter {
+			page = filterPipelines(page, cmd.Status, cmd.Creator)
+		}
+
+		pipelines = append(pipelines, page...)
+
+		if len(pipelines) >= cmd.Limit || result.Next == "" {
+			break
+		}
+
+		options.Page++
 	}
 
-	// Format and display output
+	if len(pipelines) > cmd.Limit {
+		pipelines = pipelines[:cmd.Limit]
+	}
+
 	return cmd.formatOutput(runCtx, pipelines)
 }
 
@@ -209,4 +230,30 @@ func validateStatus(status string) error {
 
 func handlePipelineAPIError(err error) error {
 	return shared.HandleAPIError(err, shared.DomainPipeline)
+}
+
+func isClientSideStatus(status string) bool {
+	upper := strings.ToUpper(status)
+	return upper == "PENDING" || upper == "IN_PROGRESS"
+}
+
+func filterPipelines(pipelines []*api.Pipeline, status, creator string) []*api.Pipeline {
+	var filtered []*api.Pipeline
+	statusUpper := strings.ToUpper(status)
+	creatorLower := strings.ToLower(creator)
+
+	for _, p := range pipelines {
+		if statusUpper != "" && isClientSideStatus(statusUpper) {
+			if p.State == nil || strings.ToUpper(p.State.Name) != statusUpper {
+				continue
+			}
+		}
+		if creator != "" {
+			if p.Creator == nil || !strings.Contains(strings.ToLower(p.Creator.DisplayName), creatorLower) {
+				continue
+			}
+		}
+		filtered = append(filtered, p)
+	}
+	return filtered
 }
