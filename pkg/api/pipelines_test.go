@@ -46,6 +46,37 @@ func TestGetStepLogsValidation(t *testing.T) {
 	assert.Contains(t, err.Error(), "step UUID")
 }
 
+func TestMapStatusToAPI(t *testing.T) {
+	tests := []struct {
+		input     string
+		expected  string
+		expectErr bool
+	}{
+		{"SUCCESSFUL", "PASSED", false},
+		{"successful", "PASSED", false},
+		{"FAILED", "FAILED", false},
+		{"ERROR", "ERROR", false},
+		{"STOPPED", "STOPPED", false},
+		{"PENDING", "", true},
+		{"IN_PROGRESS", "", true},
+		{"UNKNOWN", "", true},
+		{"", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result, err := mapStatusToAPI(tt.input)
+			if tt.expectErr {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), "unsupported API status filter")
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
+		})
+	}
+}
+
 func TestGetStepLogsEndpointTrying(t *testing.T) {
 	// Track which endpoints were called
 	var calledEndpoints []string

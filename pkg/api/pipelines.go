@@ -37,7 +37,11 @@ func (p *PipelineService) ListPipelines(ctx context.Context, workspace, repoSlug
 		params := make([]string, 0)
 
 		if options.Status != "" {
-			params = append(params, fmt.Sprintf("state.name=%s", url.QueryEscape(options.Status)))
+			apiStatus, err := mapStatusToAPI(options.Status)
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, fmt.Sprintf("status=%s", url.QueryEscape(apiStatus)))
 		}
 
 		if options.Branch != "" {
@@ -67,6 +71,21 @@ func (p *PipelineService) ListPipelines(ctx context.Context, workspace, repoSlug
 	}
 
 	return &result, nil
+}
+
+func mapStatusToAPI(status string) (string, error) {
+	switch strings.ToUpper(status) {
+	case "SUCCESSFUL":
+		return "PASSED", nil
+	case "FAILED":
+		return "FAILED", nil
+	case "ERROR":
+		return "ERROR", nil
+	case "STOPPED":
+		return "STOPPED", nil
+	default:
+		return "", fmt.Errorf("unsupported API status filter: %s", status)
+	}
 }
 
 // GetPipeline retrieves detailed information about a specific pipeline
