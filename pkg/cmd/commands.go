@@ -9,6 +9,7 @@ import (
 	"github.com/carlosarraes/bt/pkg/cmd/pr"
 	"github.com/carlosarraes/bt/pkg/cmd/run"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
+	"github.com/carlosarraes/bt/pkg/cmd/skill"
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
@@ -984,3 +985,41 @@ func (s *StatusCmd) Run(ctx context.Context) error {
 	return fmt.Errorf("status command not yet implemented")
 }
 
+type SkillCmd struct {
+	Add    SkillAddCmd    `cmd:""`
+	Update SkillUpdateCmd `cmd:""`
+	Remove SkillRemoveCmd `cmd:""`
+	Status SkillStatusCmd `cmd:""`
+}
+
+type SkillAddCmd struct {
+	Force bool `short:"f" help:"Force overwrite existing non-symlink skill directories"`
+}
+
+func (s *SkillAddCmd) Run(ctx context.Context) error {
+	cmd := &skill.AddCmd{
+		Force: s.Force,
+	}
+	return cmd.Run(ctx)
+}
+
+type SkillUpdateCmd struct{}
+
+func (s *SkillUpdateCmd) Run(ctx context.Context) error {
+	cmd := &skill.UpdateCmd{}
+	return cmd.Run(ctx)
+}
+
+type SkillRemoveCmd struct{}
+
+func (s *SkillRemoveCmd) Run(ctx context.Context) error {
+	cmd := &skill.RemoveCmd{}
+	return cmd.Run(ctx)
+}
+
+type SkillStatusCmd struct{}
+
+func (s *SkillStatusCmd) Run(ctx context.Context) error {
+	cmd := &skill.StatusCmd{}
+	return cmd.Run(ctx)
+}

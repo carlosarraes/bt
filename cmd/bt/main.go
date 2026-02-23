@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/carlosarraes/bt/pkg/cmd"
+	"github.com/carlosarraes/bt/pkg/cmd/skill"
 	"github.com/carlosarraes/bt/pkg/version"
 )
 
@@ -27,6 +28,7 @@ var cli struct {
 	Config  cmd.ConfigCmd  `cmd:""`
 	Repo    cmd.RepoCmd    `cmd:""`
 	PR      cmd.PRCmd      `cmd:""`
+	Skill   cmd.SkillCmd   `cmd:""`
 }
 
 func main() {
@@ -74,6 +76,9 @@ func main() {
 			return
 		case "config":
 			showConfigHelp()
+			return
+		case "skill":
+			showSkillHelp()
 			return
 		}
 	}
@@ -124,6 +129,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	skill.CheckForUpdate()
 }
 
 func showMainHelp() {
@@ -140,6 +147,7 @@ CORE COMMANDS
 
 ADDITIONAL COMMANDS
   config:        Manage configuration for bt
+  skill:         Manage AI agent skills (Claude, Cursor, Codex)
   version:       Show bt version
 
 FLAGS
@@ -304,6 +312,38 @@ EXAMPLES
 
 LEARN MORE
   Use 'bt config <command> --help' for more information about a command.
+`)
+}
+
+func showSkillHelp() {
+	fmt.Print(`Manage AI agent skills for bt.
+
+USAGE
+  bt skill <command> [flags]
+
+AVAILABLE COMMANDS
+  add:           Install the bt skill and link to detected AI agents
+  update:        Update the bt skill to the latest version
+  remove:        Remove the bt skill and unlink from all agents
+  status:        Show skill installation and version info
+
+FLAGS
+  --help   Show help for command
+
+SUPPORTED AGENTS
+  Claude Code    ~/.claude/skills/bt
+  Cursor         ~/.cursor/skills/bt
+  Codex          ~/.codex/skills/bt
+
+EXAMPLES
+  $ bt skill add
+  $ bt skill status
+  $ bt skill update
+  $ bt skill remove
+
+LEARN MORE
+  The skill teaches AI agents how to use bt for pipeline debugging,
+  log analysis, and test coverage review.
 `)
 }
 
