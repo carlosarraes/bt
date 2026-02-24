@@ -39,6 +39,7 @@ gh pr list       → bt pr list
 gh run list      → bt run list      # Main differentiator: enhanced pipeline debugging
 gh run view      → bt run view      # Enhanced with log analysis
 gh config        → bt config        # Advanced configuration management
+(no gh equivalent) → bt pick          # Rebase-safe cherry-pick between PRD/HML branches
 ` + "```" + `
 
 ## Pipeline Debugging Workflow (Killer Feature)
@@ -190,10 +191,24 @@ Error patterns are automatically highlighted and extracted for faster diagnosis.
 4. **Start with failed pipelines** using --status failed filter
 5. **Use --log-failed flag** for fastest error identification
 
+## Cherry Pick Workflow (bt pick)
+Rebase-safe cherry-picking between PRD and HML branches using commit signatures (author+date+message) instead of hashes.
+` + "```bash" + `
+bt pick show                     # Preview unpicked commits
+bt pick show -l                  # Show my latest commits
+bt pick show --today             # Today's commits only
+bt pick run                      # Execute cherry-pick
+bt pick run -l                   # Pick my latest commits
+bt pick run -r --count 3         # Pick 3 from HML to PRD
+bt pick continue                 # Resume after conflict
+` + "```" + `
+Use ` + "`bt pick --llm`" + ` for detailed LLM guidance on pick commands.
+
 ## Command Categories by Priority
 1. **Critical**: run (pipeline view + SonarCloud report)
 2. **Important**: pr, auth (standard Git operations)
-3. **Utility**: config (configuration management)
+3. **Useful**: pick (cherry-pick between PRD/HML branches)
+4. **Utility**: config (configuration management)
 
 bt excels at pipeline debugging and provides 5x faster error diagnosis compared to web UI navigation.
 `
@@ -214,6 +229,8 @@ func showCommandLLMHelp(command string) {
 		showRepoLLMHelp()
 	case "config":
 		showConfigLLMHelp()
+	case "pick":
+		showPickLLMHelp()
 	default:
 		fmt.Printf("No specific LLM guidance available for command: %s\n", command)
 		fmt.Println("Use 'bt --llm' for general guidance.")
@@ -632,6 +649,86 @@ bt config get nonexistent.key
 4. **Handle errors gracefully** with proper validation feedback
 
 Note: Configuration is automatically saved to ~/.config/bt/config.yml with secure atomic operations.
+`
+
+	fmt.Print(help)
+}
+
+func showPickLLMHelp() {
+	help := `# bt pick - Cherry Pick (LLM Guide)
+
+## Overview
+Rebase-safe cherry-picking between PRD and HML branches. Matches commits by signature (author + date + message) instead of hashes, so it works correctly after rebases.
+
+## Workflow
+` + "```bash" + `
+# 1. Preview what will be picked (dry run)
+bt pick show
+
+# 2. Execute the cherry-pick
+bt pick run
+
+# 3. If conflicts occur, resolve them, then continue
+bt pick continue
+` + "```" + `
+
+## Commands
+
+### bt pick show (preview)
+` + "```bash" + `
+bt pick show                     # Preview unpicked PRD → HML commits
+bt pick show -l                  # Show current user's latest (up to 100)
+bt pick show -r                  # Reverse: HML → PRD
+bt pick show --today             # Today's commits only
+bt pick show --yesterday         # Yesterday's commits only
+bt pick show --since 2024-01-01  # Since date
+bt pick show --count 10          # Limit to 10
+bt pick show --no-filter         # Skip smart deduplication
+bt pick show --debug             # Debug output
+` + "```" + `
+
+### bt pick run (execute)
+Same flags as show. Displays commits then cherry-picks them.
+` + "```bash" + `
+bt pick run                      # Pick all unpicked commits
+bt pick run -l                   # Pick my latest
+bt pick run -r --count 3         # Pick 3 from HML to PRD
+bt pick run --today              # Pick today's commits
+` + "```" + `
+
+### bt pick continue
+Resume cherry-picking after resolving conflicts:
+` + "```bash" + `
+# 1. Resolve conflicts in files
+# 2. git add <resolved-files>
+# 3. bt pick continue
+` + "```" + `
+
+## Branch Convention
+Requires branches following: ` + "`{prefix}{identifier}{suffix}`" + `
+Default: ` + "`ZUP-123-prd`" + ` and ` + "`ZUP-123-hml`" + `
+
+You must be on one of the pair branches (PRD or HML) when running pick.
+
+## Configuration
+` + "```bash" + `
+bt config set pick.prefix ZUP-
+bt config set pick.suffix_prd -prd
+bt config set pick.suffix_hml -hml
+` + "```" + `
+
+## Environment Variables
+` + "```bash" + `
+BT_PICK_PREFIX=ZUP-
+BT_PICK_SUFFIX_PRD=-prd
+BT_PICK_SUFFIX_HML=-hml
+` + "```" + `
+
+## How Deduplication Works
+Commits are matched by signature (author + date + first line of message), not by hash. This means:
+- Rebased branches still match correctly
+- Already-picked commits are automatically excluded
+- Use ` + "`--no-filter`" + ` to skip deduplication if needed
 `
 
 	fmt.Print(help)

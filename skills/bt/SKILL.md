@@ -1,6 +1,6 @@
 ---
 name: bt
-description: Debug Bitbucket pipeline failures and analyze test coverage using the `bt` CLI. Use this skill whenever the user mentions pipeline failures, failed tests, test coverage, uncovered lines, SonarCloud reports, Bitbucket pipelines, or asks to debug CI/CD issues. Also trigger when the user says "check pipeline", "why did the build fail", "what tests failed", "check coverage", "run report", or references `bt run`, `bt pr report`, or pipeline IDs. This skill is essential for any Bitbucket pipeline debugging workflow.
+description: Debug Bitbucket pipeline failures, analyze test coverage, and manage CI/CD using the `bt` CLI. Use this skill whenever the user mentions pipelines, builds, CI/CD, test failures, test coverage, uncovered lines, SonarCloud, or quality gates. Trigger on natural phrases like "check pipeline", "check my PR", "why did the build fail", "build is broken", "CI failed", "tests are red", "what tests failed", "check coverage", "what lines need tests", "improve coverage", "missing tests", "is the pipeline done", "rerun the pipeline", "retry the build", "run report", "sonar", or "quality gate". Also trigger when referencing `bt run`, `bt pr report`, pipeline IDs, or PR numbers in a debugging context. This skill is essential for any Bitbucket pipeline or PR quality workflow — when in doubt about whether to use it, use it.
 ---
 
 # bt Pipeline Debugging

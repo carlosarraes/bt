@@ -45,6 +45,12 @@ bt run list                   # List recent runs
 bt run view 1234 --log-failed # View failed step logs
 bt run watch 1234             # Watch running pipeline
 bt run report 1234 --coverage # SonarCloud coverage summary
+
+# Cherry pick (PRD → HML)
+bt pick show                  # Preview unpicked commits
+bt pick show -l               # Show my latest commits
+bt pick run                   # Execute cherry-pick
+bt pick continue              # Resume after conflict
 ```
 
 ## Commands
@@ -91,6 +97,16 @@ bt run report 1234 --coverage # SonarCloud coverage summary
 | `run rerun <id>` | Rerun a pipeline (`--failed`, `--step`) (in progress) |
 | `run report <id>` | SonarCloud quality report |
 
+### Cherry Pick
+
+| Command | Description |
+|---------|-------------|
+| `pick show` | Preview unpicked commits (dry run) |
+| `pick run` | Execute cherry-pick of unpicked commits |
+| `pick continue` | Resume after conflict resolution |
+
+Common flags: `-r` reverse, `-l` latest, `-c N` count, `--today`, `--yesterday`, `--since`, `--until`
+
 ### Configuration
 
 | Command | Description |
@@ -113,6 +129,10 @@ pr:
   branch_suffix_mapping:
     hml: homolog   # -hml branches target homolog
     prd: main      # -prd branches target main
+pick:
+  prefix: ZUP-       # Branch prefix (e.g. ZUP-123-prd)
+  suffix_prd: -prd   # Production branch suffix
+  suffix_hml: -hml   # Homologation branch suffix
 ```
 
 ## Environment Variables
@@ -124,6 +144,9 @@ pr:
 | `SONARCLOUD_TOKEN` | SonarCloud token (required for reports) |
 | `BT_OUTPUT_FORMAT` | Default output format |
 | `BT_NO_COLOR` | Disable colors |
+| `BT_PICK_PREFIX` | Override pick branch prefix |
+| `BT_PICK_SUFFIX_PRD` | Override pick PRD suffix |
+| `BT_PICK_SUFFIX_HML` | Override pick HML suffix |
 
 ## Troubleshooting
 
