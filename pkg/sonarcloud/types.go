@@ -1,6 +1,31 @@
 package sonarcloud
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+type SonarTime struct {
+	time.Time
+}
+
+func (st *SonarTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" || s == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err == nil {
+		st.Time = t
+		return nil
+	}
+	t, err = time.Parse("2006-01-02T15:04:05-0700", s)
+	if err == nil {
+		st.Time = t
+		return nil
+	}
+	return err
+}
 
 type ComponentMeasure struct {
 	Component struct {
@@ -104,13 +129,21 @@ type Issue struct {
 	Transitions        []string            `json:"transitions"`
 	Actions            []string            `json:"actions"`
 	Comments           []Comment           `json:"comments"`
-	CreationDate       time.Time           `json:"creationDate"`
-	UpdateDate         time.Time           `json:"updateDate"`
-	CloseDate          *time.Time          `json:"closeDate,omitempty"`
+	CreationDate       SonarTime           `json:"creationDate"`
+	UpdateDate         SonarTime           `json:"updateDate"`
+	CloseDate          *SonarTime          `json:"closeDate,omitempty"`
 	Type               string              `json:"type"`
 	Scope              string              `json:"scope,omitempty"`
-	QuickFixAvailable  bool                `json:"quickFixAvailable,omitempty"`
-	MessageFormattings []MessageFormatting `json:"messageFormattings,omitempty"`
+	QuickFixAvailable          bool                `json:"quickFixAvailable,omitempty"`
+	MessageFormattings         []MessageFormatting `json:"messageFormattings,omitempty"`
+	Impacts                    []IssueImpact       `json:"impacts,omitempty"`
+	CleanCodeAttribute         string              `json:"cleanCodeAttribute,omitempty"`
+	CleanCodeAttributeCategory string              `json:"cleanCodeAttributeCategory,omitempty"`
+}
+
+type IssueImpact struct {
+	SoftwareQuality string `json:"softwareQuality"`
+	Severity        string `json:"severity"`
 }
 
 type TextRange struct {
@@ -143,7 +176,7 @@ type Comment struct {
 	HTMLText  string    `json:"htmlText"`
 	Markdown  string    `json:"markdown"`
 	Updatable bool      `json:"updatable"`
-	CreatedAt time.Time `json:"createdAt"`
+	CreatedAt SonarTime `json:"createdAt"`
 }
 
 type Rule struct {
@@ -197,6 +230,7 @@ type Report struct {
 	Timestamp     time.Time        `json:"timestamp"`
 	QualityGate   *QualityGateInfo `json:"qualityGate,omitempty"`
 	Coverage      *CoverageData    `json:"coverage,omitempty"`
+	Duplications  *DuplicationData `json:"duplications,omitempty"`
 	Issues        *IssuesData      `json:"issues,omitempty"`
 	Metrics       *MetricsData     `json:"metrics,omitempty"`
 	Warnings      []error          `json:"warnings,omitempty"`
@@ -207,7 +241,16 @@ type QualityGateInfo struct {
 	Passed           bool                   `json:"passed"`
 	Conditions       []QualityGateCondition `json:"conditions"`
 	FailedConditions []QualityGateCondition `json:"failedConditions"`
+	Summary          *QualityGateSummary    `json:"summary,omitempty"`
 	Error            string                 `json:"error,omitempty"`
+}
+
+type QualityGateSummary struct {
+	NewIssues            int     `json:"newIssues"`
+	AcceptedIssues       int     `json:"acceptedIssues"`
+	NewSecurityHotspots  int     `json:"newSecurityHotspots"`
+	NewCoverage          float64 `json:"newCoverage"`
+	NewDuplicatedDensity float64 `json:"newDuplicatedDensity"`
 }
 
 type QualityGateCondition struct {
@@ -294,23 +337,28 @@ type ProcessedIssue struct {
 	Message       string    `json:"message"`
 	Effort        string    `json:"effort,omitempty"`
 	TechnicalDebt string    `json:"technicalDebt,omitempty"`
-	IsNew         bool      `json:"isNew"`
-	CreatedAt     time.Time `json:"createdAt"`
+	IsNew                      bool          `json:"isNew"`
+	CreatedAt                  SonarTime     `json:"createdAt"`
+	Impacts                    []IssueImpact `json:"impacts,omitempty"`
+	CleanCodeAttribute         string        `json:"cleanCodeAttribute,omitempty"`
+	CleanCodeAttributeCategory string        `json:"cleanCodeAttributeCategory,omitempty"`
 }
 
 type IssuesSummary struct {
-	BySeverity    map[string]int `json:"bySeverity"`
-	ByType        map[string]int `json:"byType"`
-	ByLanguage    map[string]int `json:"byLanguage"`
-	TechnicalDebt time.Duration  `json:"technicalDebt"`
+	BySeverity        map[string]int `json:"bySeverity"`
+	ByType            map[string]int `json:"byType"`
+	ByLanguage        map[string]int `json:"byLanguage"`
+	BySoftwareQuality map[string]int `json:"bySoftwareQuality"`
+	TechnicalDebt     time.Duration  `json:"technicalDebt"`
 }
 
 type MetricsData struct {
 	Available   bool              `json:"available"`
 	Metrics     map[string]string `json:"metrics"`
 	Ratings     map[string]string `json:"ratings"`
-	Duplication float64           `json:"duplication"`
-	Error       string            `json:"error,omitempty"`
+	Duplication          float64           `json:"duplication"`
+	NewDuplicatedDensity float64           `json:"newDuplicatedDensity"`
+	Error                string            `json:"error,omitempty"`
 }
 
 type PaginationStrategy struct {
@@ -321,8 +369,9 @@ type PaginationStrategy struct {
 }
 
 type FilterOptions struct {
-	IncludeCoverage   bool     `json:"includeCoverage"`
-	IncludeIssues     bool     `json:"includeIssues"`
+	IncludeCoverage     bool     `json:"includeCoverage"`
+	IncludeIssues       bool     `json:"includeIssues"`
+	IncludeDuplications bool     `json:"includeDuplications"`
 	CoverageThreshold float64  `json:"coverageThreshold"`
 	Limit             int      `json:"limit"`
 	NewCodeOnly       bool     `json:"newCodeOnly"`
@@ -337,4 +386,55 @@ type FilterOptions struct {
 	NoLineDetails     bool     `json:"noLineDetails"`
 	TruncateLines     int      `json:"truncateLines"`
 	Debug             bool     `json:"debug"`
+}
+
+type DuplicationData struct {
+	Available          bool                `json:"available"`
+	OverallDuplication float64             `json:"overallDuplication"`
+	NewCodeDuplication float64             `json:"newCodeDuplication"`
+	DuplicatedLines    int                 `json:"duplicatedLines"`
+	DuplicatedBlocks   int                 `json:"duplicatedBlocks"`
+	Files              []DuplicatedFile    `json:"files"`
+	Details            []DuplicationDetail `json:"details"`
+	Error              string              `json:"error,omitempty"`
+}
+
+type DuplicatedFile struct {
+	Path              string  `json:"path"`
+	Name              string  `json:"name"`
+	DuplicatedDensity float64 `json:"duplicatedDensity"`
+	DuplicatedLines   int     `json:"duplicatedLines"`
+	DuplicatedBlocks  int     `json:"duplicatedBlocks"`
+	Language          string  `json:"language"`
+	ComponentKey      string  `json:"componentKey"`
+}
+
+type DuplicationDetail struct {
+	FilePath          string            `json:"filePath"`
+	FileName          string            `json:"fileName"`
+	DuplicatedDensity float64           `json:"duplicatedDensity"`
+	Blocks            []DuplicatedBlock `json:"blocks"`
+}
+
+type DuplicatedBlock struct {
+	From       int    `json:"from"`
+	Size       int    `json:"size"`
+	TargetFile string `json:"targetFile"`
+	TargetFrom int    `json:"targetFrom"`
+	TargetSize int    `json:"targetSize"`
+}
+
+type DuplicationsResponse struct {
+	Duplications []struct {
+		Blocks []struct {
+			From int    `json:"from"`
+			Size int    `json:"size"`
+			Key  string `json:"_ref"`
+		} `json:"blocks"`
+	} `json:"duplications"`
+	Files map[string]struct {
+		Key       string `json:"key"`
+		Name      string `json:"name"`
+		ProjectID string `json:"projectId"`
+	} `json:"files"`
 }
