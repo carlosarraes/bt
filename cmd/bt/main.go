@@ -28,6 +28,7 @@ var cli struct {
 	Config  cmd.ConfigCmd  `cmd:""`
 	Repo    cmd.RepoCmd    `cmd:""`
 	PR      cmd.PRCmd      `cmd:""`
+	Pick    cmd.PickCmd    `cmd:""`
 	Skill   cmd.SkillCmd   `cmd:""`
 }
 
@@ -76,6 +77,9 @@ func main() {
 			return
 		case "config":
 			showConfigHelp()
+			return
+		case "pick":
+			showPickHelp()
 			return
 		case "skill":
 			showSkillHelp()
@@ -141,6 +145,7 @@ USAGE
 
 CORE COMMANDS
   auth:          Authenticate bt and git with Bitbucket
+  pick:          Cherry-pick commits between PRD/HML branches
   pr:            Manage pull requests
   repo:          Manage repositories (not yet implemented)
   run:           View and manage pipeline runs
@@ -344,6 +349,55 @@ EXAMPLES
 LEARN MORE
   The skill teaches AI agents how to use bt for pipeline debugging,
   log analysis, and test coverage review.
+`)
+}
+
+func showPickHelp() {
+	fmt.Print(`Cherry-pick commits between production and homologation branches.
+
+USAGE
+  bt pick <command> [flags]
+
+AVAILABLE COMMANDS
+  show:          Preview unpicked commits (dry run)
+  run:           Execute cherry-pick of unpicked commits
+  continue:      Resume cherry-picking after conflict resolution
+
+SHARED FLAGS (show, run)
+  -r, --reverse       Pick HML to PRD instead of PRD to HML
+  -l, --latest        Current user's commits (up to 100)
+  -c, --count N       Limit commits (default: 5)
+  --no-filter         Skip smart deduplication
+  --today             Commits from today only
+  --yesterday         Commits from yesterday only
+  --since DATE        Since date (YYYY-MM-DD)
+  --until DATE        Until date (YYYY-MM-DD)
+  --prefix            Override branch prefix
+  --suffix-prd        Override PRD suffix
+  --suffix-hml        Override HML suffix
+  --debug             Show debug output
+
+CONFIGURATION
+  bt config set pick.prefix ZUP-
+  bt config set pick.suffix_prd -prd
+  bt config set pick.suffix_hml -hml
+
+ENVIRONMENT VARIABLES
+  BT_PICK_PREFIX       Override branch prefix
+  BT_PICK_SUFFIX_PRD   Override PRD suffix
+  BT_PICK_SUFFIX_HML   Override HML suffix
+
+EXAMPLES
+  $ bt pick show                    # Preview commits to pick
+  $ bt pick show -l                 # Show my latest commits
+  $ bt pick show --today            # Show today's commits
+  $ bt pick run                     # Cherry-pick commits
+  $ bt pick run -l                  # Cherry-pick my latest
+  $ bt pick run --reverse --count 3 # Pick 3 from HML to PRD
+  $ bt pick continue                # Resume after conflict
+
+LEARN MORE
+  Use 'bt pick <command> --help' for more information about a command.
 `)
 }
 
