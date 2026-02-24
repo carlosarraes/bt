@@ -19,6 +19,7 @@ type ReportCmd struct {
 	NoColor           bool
 	Coverage          bool     `help:"Show only coverage-related information"`
 	Issues            bool     `help:"Show only code quality issues"`
+	Duplications      bool     `help:"Show duplicated code analysis"`
 	Web               bool     `help:"Open SonarCloud dashboard in browser"`
 	URL               bool     `help:"Print SonarCloud URL instead of opening browser"`
 	CoverageThreshold int      `name:"coverage-threshold" help:"Show only files below N% coverage"`
@@ -193,26 +194,28 @@ func (cmd *ReportCmd) launchBrowser(url string) error {
 }
 
 func (cmd *ReportCmd) generateReport(ctx context.Context, runCtx *RunContext, service *sonarcloud.Service, pipeline *api.Pipeline) error {
+	hasFilter := cmd.Coverage || cmd.Issues || cmd.Duplications
 	filters := sonarcloud.FilterOptions{
-		IncludeCoverage:   !cmd.Issues || cmd.Coverage,
-		IncludeIssues:     !cmd.Coverage || cmd.Issues,
-		CoverageThreshold: float64(cmd.CoverageThreshold),
-		Limit:             cmd.Limit,
-		NewCodeOnly:       cmd.NewCodeOnly,
-		SeverityFilter:    cmd.Severity,
-		ShowWorstFirst:    true,
-		ShowAllLines:      cmd.ShowAllLines,
-		LinesPerFile:      cmd.LinesPerFile,
-		NewLinesOnly:      cmd.NewLinesOnly,
-		MinUncoveredLines: cmd.MinUncoveredLines,
-		MaxUncoveredLines: cmd.MaxUncoveredLines,
-		FilePattern:       cmd.FilePattern,
-		NoLineDetails:     cmd.NoLineDetails,
-		TruncateLines:     cmd.TruncateLines,
-		Debug:             cmd.Debug,
+		IncludeCoverage:     !hasFilter || cmd.Coverage,
+		IncludeIssues:       !hasFilter || cmd.Issues,
+		IncludeDuplications: cmd.Duplications,
+		CoverageThreshold:   float64(cmd.CoverageThreshold),
+		Limit:               cmd.Limit,
+		NewCodeOnly:         cmd.NewCodeOnly,
+		SeverityFilter:      cmd.Severity,
+		ShowWorstFirst:      true,
+		ShowAllLines:        cmd.ShowAllLines,
+		LinesPerFile:        cmd.LinesPerFile,
+		NewLinesOnly:        cmd.NewLinesOnly,
+		MinUncoveredLines:   cmd.MinUncoveredLines,
+		MaxUncoveredLines:   cmd.MaxUncoveredLines,
+		FilePattern:         cmd.FilePattern,
+		NoLineDetails:       cmd.NoLineDetails,
+		TruncateLines:       cmd.TruncateLines,
+		Debug:               cmd.Debug,
 	}
 
-	if !cmd.Coverage && !cmd.Issues {
+	if !hasFilter {
 		filters.IncludeCoverage = true
 		filters.IncludeIssues = true
 	}
@@ -240,10 +243,12 @@ func (cmd *ReportCmd) formatOutput(runCtx *RunContext, report *sonarcloud.Report
 
 func (cmd *ReportCmd) formatTable(runCtx *RunContext, report *sonarcloud.Report, pipeline *api.Pipeline, filters sonarcloud.FilterOptions) error {
 	reportType := "SonarCloud Quality Report"
-	if cmd.Coverage && !cmd.Issues {
+	if cmd.Coverage && !cmd.Issues && !cmd.Duplications {
 		reportType = "Coverage Analysis"
-	} else if cmd.Issues && !cmd.Coverage {
+	} else if cmd.Issues && !cmd.Coverage && !cmd.Duplications {
 		reportType = "Issues Analysis"
+	} else if cmd.Duplications && !cmd.Coverage && !cmd.Issues {
+		reportType = "Duplications Analysis"
 	}
 
 	fmt.Printf("=== %s: Pipeline #%d ===\n\n", reportType, pipeline.BuildNumber)
@@ -271,6 +276,17 @@ func (cmd *ReportCmd) formatTable(runCtx *RunContext, report *sonarcloud.Report,
 			}
 			fmt.Println()
 		}
+
+		if report.QualityGate.Summary != nil {
+			s := report.QualityGate.Summary
+			fmt.Printf("📋 Quality Gate Summary:\n")
+			fmt.Printf("┌──────────────┬───────────────────┬───────────────────┬──────────┬──────────────┐\n")
+			fmt.Printf("│ New Issues   │ Accepted Issues   │ Security Hotspots │ Coverage │ Duplications │\n")
+			fmt.Printf("├──────────────┼───────────────────┼───────────────────┼──────────┼──────────────┤\n")
+			fmt.Printf("│ %12d │ %17d │ %17d │ %7.1f%% │ %11.1f%% │\n",
+				s.NewIssues, s.AcceptedIssues, s.NewSecurityHotspots, s.NewCoverage, s.NewDuplicatedDensity)
+			fmt.Printf("└──────────────┴───────────────────┴───────────────────┴──────────┴──────────────┘\n\n")
+		}
 	}
 
 	if filters.IncludeCoverage && report.Coverage != nil && report.Coverage.Available {
@@ -278,7 +294,11 @@ func (cmd *ReportCmd) formatTable(runCtx *RunContext, report *sonarcloud.Report,
 	}
 
 	if filters.IncludeIssues && report.Issues != nil && report.Issues.Available {
-		cmd.formatIssuesSection(report.Issues, filters)
+		cmd.formatIssuesSection(report.Issues, report.Metrics, filters)
+	}
+
+	if filters.IncludeDuplications && report.Duplications != nil && report.Duplications.Available {
+		cmd.formatDuplicationsSection(report.Duplications, filters)
 	}
 
 	if filters.IncludeCoverage && filters.IncludeIssues {
@@ -436,23 +456,35 @@ func (cmd *ReportCmd) displayUncoveredLinesDetails(coverageDetails []sonarcloud.
 	}
 }
 
-func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters sonarcloud.FilterOptions) {
-	fmt.Printf("🐛 Issues Breakdown:\n")
-	fmt.Printf("┌──────────────┬───────┬─────────────────┐\n")
-	fmt.Printf("│ Type         │ Count │ New in PR       │\n")
-	fmt.Printf("├──────────────┼───────┼─────────────────┤\n")
+func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, metrics *sonarcloud.MetricsData, filters sonarcloud.FilterOptions) {
+	if len(issues.Summary.BySoftwareQuality) > 0 {
+		fmt.Printf("🏗  Software Quality:\n")
+		fmt.Printf("┌─────────────────────┬───────┐\n")
+		fmt.Printf("│ Quality             │ Count │\n")
+		fmt.Printf("├─────────────────────┼───────┤\n")
+		for _, quality := range []string{"SECURITY", "RELIABILITY", "MAINTAINABILITY"} {
+			count := issues.Summary.BySoftwareQuality[quality]
+			fmt.Printf("│ %-19s │ %5d │\n", quality, count)
+		}
+		fmt.Printf("└─────────────────────┴───────┘\n\n")
+	}
 
-	fmt.Printf("│ Bugs         │ %5d │ %15d │\n", issues.Bugs, issues.NewIssues)
-	fmt.Printf("│ Vulnerabilities │ %2d │ %15d │\n", issues.Vulnerabilities, 0)
-	fmt.Printf("│ Code Smells  │ %5d │ %15d │\n", issues.CodeSmells, 0)
-	fmt.Printf("│ Security Hotspots │ %2d │ %15d │\n", issues.SecurityHotspots, 0)
-	fmt.Printf("└──────────────┴───────┴─────────────────┘\n\n")
+	fmt.Printf("🐛 Severity Breakdown:\n")
+	fmt.Printf("┌──────────────┬───────┐\n")
+	fmt.Printf("│ Severity     │ Count │\n")
+	fmt.Printf("├──────────────┼───────┤\n")
+	for _, sev := range []string{"BLOCKER", "HIGH", "MEDIUM", "LOW", "INFO"} {
+		count := issues.Summary.BySeverity[sev]
+		icon := runSeverityIcon(sev)
+		fmt.Printf("│ %s %-8s │ %5d │\n", icon, sev, count)
+	}
+	fmt.Printf("└──────────────┴───────┘\n\n")
 
 	if len(issues.Issues) > 0 {
-		fmt.Printf("🔥 Critical Issues:\n")
-		fmt.Printf("┌──────────────┬─────────────────────────────────────────┬──────┬─────────────────────────────────────────────────────┐\n")
-		fmt.Printf("│ Severity     │ File                                    │ Line │ Description                                         │\n")
-		fmt.Printf("├──────────────┼─────────────────────────────────────────┼──────┼─────────────────────────────────────────────────────┤\n")
+		fmt.Printf("🔥 Issues:\n")
+		fmt.Printf("┌────────────────────┬─────────────────────────────────────────┬──────┬──────────┬──────────────────────────────────────────┐\n")
+		fmt.Printf("│ Impact             │ File                                    │ Line │ Effort   │ Description                              │\n")
+		fmt.Printf("├────────────────────┼─────────────────────────────────────────┼──────┼──────────┼──────────────────────────────────────────┤\n")
 
 		displayedIssues := 0
 		for _, issue := range issues.Issues {
@@ -471,30 +503,26 @@ func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters
 			}
 
 			description := issue.Message
-			if len(description) > 51 {
-				description = description[:48] + "..."
+			if len(description) > 40 {
+				description = description[:37] + "..."
 			}
 
-			severityIcon := ""
-			switch issue.Severity {
-			case "BLOCKER":
-				severityIcon = "🚫 BLOCKER"
-			case "CRITICAL":
-				severityIcon = "🔴 CRITICAL"
-			case "MAJOR":
-				severityIcon = "🟠 MAJOR"
-			case "MINOR":
-				severityIcon = "🟡 MINOR"
-			default:
-				severityIcon = issue.Severity
+			effort := issue.Effort
+			if effort == "" {
+				effort = "-"
+			}
+			if len(effort) > 8 {
+				effort = effort[:8]
 			}
 
-			fmt.Printf("│ %-12s │ %-39s │ %4s │ %-51s │\n",
-				severityIcon, fileName, lineStr, description)
+			impact := runFormatImpact(issue.Impacts)
+
+			fmt.Printf("│ %-18s │ %-39s │ %4s │ %-8s │ %-40s │\n",
+				impact, fileName, lineStr, effort, description)
 			displayedIssues++
 		}
 
-		fmt.Printf("└──────────────┴─────────────────────────────────────────┴──────┴─────────────────────────────────────────────────────┘\n\n")
+		fmt.Printf("└────────────────────┴─────────────────────────────────────────┴──────┴──────────┴──────────────────────────────────────────┘\n\n")
 	}
 
 	if len(issues.Issues) > 0 {
@@ -505,10 +533,78 @@ func (cmd *ReportCmd) formatIssuesSection(issues *sonarcloud.IssuesData, filters
 				break
 			}
 		}
-
 		fmt.Printf("💰 Technical Debt: %s\n", totalDebt)
 
-		fmt.Printf("📈 Maintainability Rating: B (target: A) ❌\n\n")
+		rating := runRatingFromMetrics(metrics, "sqale_rating")
+		status := "❌"
+		if rating == "A" {
+			status = "✅"
+		}
+		fmt.Printf("📈 Maintainability Rating: %s (target: A) %s\n\n", rating, status)
+	}
+}
+
+func runFormatImpact(impacts []sonarcloud.IssueImpact) string {
+	if len(impacts) == 0 {
+		return "-"
+	}
+	i := impacts[0]
+	icon := runSeverityIcon(i.Severity)
+	qual := "Unknown"
+	if i.SoftwareQuality != "" {
+		qual = strings.ToTitle(strings.ToLower(i.SoftwareQuality[:1])) + strings.ToLower(i.SoftwareQuality[1:])
+		if len(qual) > 8 {
+			qual = qual[:8]
+		}
+	}
+	sev := i.Severity
+	if sev == "" {
+		sev = "-"
+	}
+	return fmt.Sprintf("%s %s %s", icon, qual, sev)
+}
+
+func runSeverityIcon(severity string) string {
+	switch severity {
+	case "BLOCKER":
+		return "🚫"
+	case "HIGH", "CRITICAL":
+		return "🔴"
+	case "MEDIUM", "MAJOR":
+		return "🟠"
+	case "LOW", "MINOR":
+		return "🟡"
+	case "INFO":
+		return "🔵"
+	default:
+		return "⚪"
+	}
+}
+
+func runRatingFromMetrics(metrics *sonarcloud.MetricsData, key string) string {
+	if metrics == nil {
+		return "?"
+	}
+	if r, ok := metrics.Ratings[key]; ok {
+		return runRatingNumberToLetter(r)
+	}
+	return "?"
+}
+
+func runRatingNumberToLetter(value string) string {
+	switch value {
+	case "1.0", "1":
+		return "A"
+	case "2.0", "2":
+		return "B"
+	case "3.0", "3":
+		return "C"
+	case "4.0", "4":
+		return "D"
+	case "5.0", "5":
+		return "E"
+	default:
+		return value
 	}
 }
 
@@ -543,11 +639,68 @@ func (cmd *ReportCmd) formatOverviewSection(report *sonarcloud.Report, pipeline 
 	}
 
 	if report.Metrics != nil {
+		newDup := fmt.Sprintf("%.1f%%", report.Metrics.NewDuplicatedDensity)
+		dupStatus := "✅"
+		if report.Metrics.Duplication > 3.0 {
+			dupStatus = "❌"
+		}
 		fmt.Printf("│ Duplications        │ %6.1f%% │ %-11s │ %6s │\n",
-			report.Metrics.Duplication, "0.0%", "✅")
+			report.Metrics.Duplication, newDup, dupStatus)
 	}
 
 	fmt.Printf("└─────────────────────┴─────────┴─────────────┴────────┘\n\n")
+}
+
+func (cmd *ReportCmd) formatDuplicationsSection(duplications *sonarcloud.DuplicationData, filters sonarcloud.FilterOptions) {
+	fmt.Printf("📋 Duplications Summary:\n")
+	fmt.Printf("  Overall: %.1f%% | New Code: %.1f%%\n", duplications.OverallDuplication, duplications.NewCodeDuplication)
+	fmt.Printf("  Duplicated Lines: %d | Duplicated Blocks: %d\n\n", duplications.DuplicatedLines, duplications.DuplicatedBlocks)
+
+	if len(duplications.Files) > 0 {
+		fmt.Printf("📁 Files with Duplications:\n")
+		fmt.Printf("┌─────────────────────────────────────────┬──────────────┬─────────┬────────┐\n")
+		fmt.Printf("│ File                                    │ Duplication  │ Lines   │ Blocks │\n")
+		fmt.Printf("├─────────────────────────────────────────┼──────────────┼─────────┼────────┤\n")
+
+		displayed := 0
+		for _, file := range duplications.Files {
+			if displayed >= filters.Limit {
+				break
+			}
+			fileName := file.Name
+			if len(fileName) > 39 {
+				fileName = fileName[:36] + "..."
+			}
+			fmt.Printf("│ %-39s │ %11.1f%% │ %7d │ %6d │\n",
+				fileName, file.DuplicatedDensity, file.DuplicatedLines, file.DuplicatedBlocks)
+			displayed++
+		}
+
+		fmt.Printf("└─────────────────────────────────────────┴──────────────┴─────────┴────────┘\n\n")
+	}
+
+	if len(duplications.Details) > 0 {
+		fmt.Printf("🔍 Duplicated Blocks:\n\n")
+
+		displayed := 0
+		for _, detail := range duplications.Details {
+			if displayed >= filters.Limit {
+				break
+			}
+			if len(detail.Blocks) == 0 {
+				continue
+			}
+
+			fmt.Printf("%s (%.1f%% duplication):\n", detail.FilePath, detail.DuplicatedDensity)
+			for _, block := range detail.Blocks {
+				fmt.Printf("  ▶ Lines %d-%d (%d lines) → %s lines %d-%d\n",
+					block.From, block.From+block.Size-1, block.Size,
+					block.TargetFile, block.TargetFrom, block.TargetFrom+block.TargetSize-1)
+			}
+			fmt.Println()
+			displayed++
+		}
+	}
 }
 
 func (cmd *ReportCmd) formatLinksSection(report *sonarcloud.Report) {
