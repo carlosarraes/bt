@@ -240,6 +240,7 @@ type RunReportCmd struct {
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Coverage          bool     `help:"Show only coverage-related information"`
 	Issues            bool     `help:"Show only code quality issues"`
+	Duplications      bool     `help:"Show duplicated code analysis"`
 	Web               bool     `help:"Open SonarCloud dashboard in browser"`
 	URL               bool     `help:"Print SonarCloud URL instead of opening browser"`
 	CoverageThreshold int      `name:"coverage-threshold" help:"Show only files below N% coverage"`
@@ -268,6 +269,7 @@ func (r *RunReportCmd) Run(ctx context.Context) error {
 		NoColor:           noColor,
 		Coverage:          r.Coverage,
 		Issues:            r.Issues,
+		Duplications:      r.Duplications,
 		Web:               r.Web,
 		URL:               r.URL,
 		CoverageThreshold: r.CoverageThreshold,
@@ -859,6 +861,7 @@ type PRReportCmd struct {
 	Output            string   `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Coverage          bool     `help:"Show only coverage-related information"`
 	Issues            bool     `help:"Show only code quality issues"`
+	Duplications      bool     `help:"Show duplicated code analysis"`
 	Web               bool     `help:"Open SonarCloud dashboard in browser"`
 	URL               bool     `help:"Print SonarCloud URL instead of opening browser"`
 	CoverageThreshold int      `name:"coverage-threshold" help:"Show only files below N% coverage"`
@@ -885,6 +888,7 @@ func (p *PRReportCmd) Run(ctx context.Context) error {
 		Output:            p.Output,
 		Coverage:          p.Coverage,
 		Issues:            p.Issues,
+		Duplications:      p.Duplications,
 		Web:               p.Web,
 		URL:               p.URL,
 		CoverageThreshold: p.CoverageThreshold,
