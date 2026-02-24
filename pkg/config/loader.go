@@ -144,6 +144,12 @@ func (l *Loader) transformEnvKey(key string) string {
 		return "defaults.output_format"
 	case "LLM_MODEL":
 		return "llm.model"
+	case "PICK_PREFIX":
+		return "pick.prefix"
+	case "PICK_SUFFIX_PRD":
+		return "pick.suffix_prd"
+	case "PICK_SUFFIX_HML":
+		return "pick.suffix_hml"
 	default:
 		return key
 	}
@@ -158,4 +164,7 @@ const (
 	EnvDefaultWorkspace    = "BT_AUTH_DEFAULT_WORKSPACE"
 	EnvDefaultOutputFormat = "BT_DEFAULTS_OUTPUT_FORMAT"
 	EnvLLMModel            = "BT_LLM_MODEL"
+	EnvPickPrefix          = "BT_PICK_PREFIX"
+	EnvPickSuffixPrd       = "BT_PICK_SUFFIX_PRD"
+	EnvPickSuffixHml       = "BT_PICK_SUFFIX_HML"
 )

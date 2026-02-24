@@ -12,4 +12,7 @@ var (
 	ErrConfigNotFound      = errors.New("configuration file not found")
 	ErrConfigLoad          = errors.New("failed to load configuration")
 	ErrConfigSave          = errors.New("failed to save configuration")
+	ErrEmptyPickPrefix     = errors.New("pick prefix cannot be empty")
+	ErrEmptyPickSuffixPrd  = errors.New("pick PRD suffix cannot be empty")
+	ErrEmptyPickSuffixHml  = errors.New("pick HML suffix cannot be empty")
 )

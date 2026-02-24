@@ -163,6 +163,10 @@ func (cm *ConfigManager) GetAllValues() map[string]interface{} {
 
 	result["llm.model"] = cm.config.LLM.Model
 
+	result["pick.prefix"] = cm.config.Pick.Prefix
+	result["pick.suffix_prd"] = cm.config.Pick.SuffixPrd
+	result["pick.suffix_hml"] = cm.config.Pick.SuffixHml
+
 	// Version
 	result["version"] = cm.config.Version
 
@@ -227,6 +231,14 @@ func toCamelCase(s string) string {
 		return "LLM"
 	case "model":
 		return "Model"
+	case "pick":
+		return "Pick"
+	case "prefix":
+		return "Prefix"
+	case "suffix_prd":
+		return "SuffixPrd"
+	case "suffix_hml":
+		return "SuffixHml"
 	}
 
 	// Generic conversion for other cases

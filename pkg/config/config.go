@@ -12,6 +12,7 @@ type Config struct {
 	Defaults DefaultConfig `koanf:"defaults" yaml:"defaults"`
 	PR       PRConfig      `koanf:"pr" yaml:"pr"`
 	LLM      LLMConfig     `koanf:"llm" yaml:"llm"`
+	Pick     PickConfig    `koanf:"pick" yaml:"pick"`
 }
 
 // AuthConfig holds authentication-related configuration
@@ -39,6 +40,12 @@ type LLMConfig struct {
 	Model string `koanf:"model" yaml:"model"`
 }
 
+type PickConfig struct {
+	Prefix    string `koanf:"prefix" yaml:"prefix"`
+	SuffixPrd string `koanf:"suffix_prd" yaml:"suffix_prd"`
+	SuffixHml string `koanf:"suffix_hml" yaml:"suffix_hml"`
+}
+
 // NewDefaultConfig returns a new Config with sensible defaults
 func NewDefaultConfig() *Config {
 	return &Config{
@@ -62,6 +69,11 @@ func NewDefaultConfig() *Config {
 		},
 		LLM: LLMConfig{
 			Model: "gpt-5-mini",
+		},
+		Pick: PickConfig{
+			Prefix:    "ZUP-",
+			SuffixPrd: "-prd",
+			SuffixHml: "-hml",
 		},
 	}
 }
@@ -90,6 +102,16 @@ func (c *Config) Validate() error {
 		if !isValidOutputFormat(c.Defaults.OutputFormat) {
 			return ErrInvalidOutputFormat
 		}
+	}
+
+	if c.Pick.Prefix == "" {
+		return ErrEmptyPickPrefix
+	}
+	if c.Pick.SuffixPrd == "" {
+		return ErrEmptyPickSuffixPrd
+	}
+	if c.Pick.SuffixHml == "" {
+		return ErrEmptyPickSuffixHml
 	}
 
 	return nil
