@@ -117,6 +117,15 @@ func (s *Service) GenerateReportForPR(ctx context.Context, prID int, workspace, 
 		}
 	}
 
+	if filters.IncludeDuplications {
+		if duplications, err := s.GetDuplicationData(ctx, apiContext, filters); err != nil {
+			errors = append(errors, fmt.Errorf("duplications: %w", err))
+			report.Duplications = &DuplicationData{Available: false, Error: err.Error()}
+		} else {
+			report.Duplications = duplications
+		}
+	}
+
 	if metrics, err := s.GetMetricsData(ctx, apiContext); err != nil {
 		errors = append(errors, fmt.Errorf("metrics: %w", err))
 		report.Metrics = &MetricsData{Available: false, Error: err.Error()}
@@ -190,6 +199,15 @@ func (s *Service) GenerateReport(ctx context.Context, pipeline *api.Pipeline, wo
 		}
 	}
 
+	if filters.IncludeDuplications {
+		if duplications, err := s.GetDuplicationData(ctx, apiContext, filters); err != nil {
+			errors = append(errors, fmt.Errorf("duplications: %w", err))
+			report.Duplications = &DuplicationData{Available: false, Error: err.Error()}
+		} else {
+			report.Duplications = duplications
+		}
+	}
+
 	if metrics, err := s.GetMetricsData(ctx, apiContext); err != nil {
 		errors = append(errors, fmt.Errorf("metrics: %w", err))
 		report.Metrics = &MetricsData{Available: false, Error: err.Error()}
@@ -241,7 +259,82 @@ func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext) (*Q
 		}
 	}
 
+	if apiContext.IsPullRequest {
+		if summary, err := s.getQualityGateSummary(ctx, apiContext); err == nil {
+			info.Summary = summary
+		}
+	}
+
 	return info, nil
+}
+
+func (s *Service) getQualityGateSummary(ctx context.Context, apiContext APIContext) (*QualityGateSummary, error) {
+	params := make(map[string]string)
+	for k, v := range apiContext.BaseParams {
+		params[k] = v
+	}
+	params["metricKeys"] = "new_violations,accepted_issues,new_security_hotspots,new_coverage,new_duplicated_lines_density"
+
+	var measure ComponentMeasure
+	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
+		return nil, err
+	}
+
+	summary := &QualityGateSummary{}
+	for _, metric := range measure.Component.Measures {
+		switch metric.Metric {
+		case "new_violations":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				summary.NewIssues = v
+			}
+		case "accepted_issues":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				summary.AcceptedIssues = v
+			}
+		case "new_security_hotspots":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				summary.NewSecurityHotspots = v
+			}
+		case "new_coverage":
+			if v, err := s.parseMetricFloat(metric.Value, metric.Periods); err == nil {
+				summary.NewCoverage = v
+			}
+		case "new_duplicated_lines_density":
+			if v, err := s.parseMetricFloat(metric.Value, metric.Periods); err == nil {
+				summary.NewDuplicatedDensity = v
+			}
+		}
+	}
+
+	return summary, nil
+}
+
+func (s *Service) parseMetricInt(value string, periods []struct {
+	Index     int    `json:"index"`
+	Value     string `json:"value"`
+	BestValue bool   `json:"bestValue"`
+}) (int, error) {
+	if v, err := strconv.Atoi(value); err == nil {
+		return v, nil
+	}
+	if len(periods) > 0 {
+		return strconv.Atoi(periods[0].Value)
+	}
+	return 0, fmt.Errorf("no value")
+}
+
+func (s *Service) parseMetricFloat(value string, periods []struct {
+	Index     int    `json:"index"`
+	Value     string `json:"value"`
+	BestValue bool   `json:"bestValue"`
+}) (float64, error) {
+	if v, err := strconv.ParseFloat(value, 64); err == nil {
+		return v, nil
+	}
+	if len(periods) > 0 {
+		return strconv.ParseFloat(periods[0].Value, 64)
+	}
+	return 0, fmt.Errorf("no value")
 }
 
 func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, filters FilterOptions) (*CoverageData, error) {
@@ -676,9 +769,10 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 		Available: true,
 		Issues:    make([]ProcessedIssue, 0),
 		Summary: IssuesSummary{
-			BySeverity: make(map[string]int),
-			ByType:     make(map[string]int),
-			ByLanguage: make(map[string]int),
+			BySeverity:        make(map[string]int),
+			ByType:            make(map[string]int),
+			ByLanguage:        make(map[string]int),
+			BySoftwareQuality: make(map[string]int),
 		},
 	}
 
@@ -719,18 +813,21 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 
 	for _, issue := range issues.Issues {
 		processedIssue := ProcessedIssue{
-			Key:           issue.Key,
-			Type:          issue.Type,
-			Severity:      issue.Severity,
-			Rule:          issue.Rule,
-			RuleName:      ruleNames[issue.Rule],
-			Component:     issue.Component,
-			File:          s.extractFileFromComponent(issue.Component),
-			Line:          issue.Line,
-			Message:       issue.Message,
-			Effort:        issue.Effort,
-			TechnicalDebt: issue.Debt,
-			CreatedAt:     issue.CreationDate,
+			Key:                        issue.Key,
+			Type:                       issue.Type,
+			Severity:                   issue.Severity,
+			Rule:                       issue.Rule,
+			RuleName:                   ruleNames[issue.Rule],
+			Component:                  issue.Component,
+			File:                       s.extractFileFromComponent(issue.Component),
+			Line:                       issue.Line,
+			Message:                    issue.Message,
+			Effort:                     issue.Effort,
+			TechnicalDebt:              issue.Debt,
+			CreatedAt:                  issue.CreationDate,
+			Impacts:                    issue.Impacts,
+			CleanCodeAttribute:         issue.CleanCodeAttribute,
+			CleanCodeAttributeCategory: issue.CleanCodeAttributeCategory,
 		}
 
 		data.Summary.ByType[issue.Type]++
@@ -745,7 +842,22 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 			data.SecurityHotspots++
 		}
 
-		data.Summary.BySeverity[issue.Severity]++
+		for _, impact := range issue.Impacts {
+			data.Summary.BySoftwareQuality[impact.SoftwareQuality]++
+			data.Summary.BySeverity[impact.Severity]++
+		}
+		if len(issue.Impacts) == 0 && issue.Severity != "" {
+			mapped := issue.Severity
+			switch mapped {
+			case "CRITICAL":
+				mapped = "HIGH"
+			case "MAJOR":
+				mapped = "MEDIUM"
+			case "MINOR":
+				mapped = "LOW"
+			}
+			data.Summary.BySeverity[mapped]++
+		}
 
 		data.Issues = append(data.Issues, processedIssue)
 	}
@@ -759,7 +871,7 @@ func (s *Service) GetMetricsData(ctx context.Context, apiContext APIContext) (*M
 		params[k] = v
 	}
 
-	params["metricKeys"] = "duplicated_lines_density,reliability_rating,security_rating,sqale_rating"
+	params["metricKeys"] = "duplicated_lines_density,new_duplicated_lines_density,reliability_rating,security_rating,sqale_rating,new_maintainability_rating,new_reliability_rating,new_security_rating"
 
 	var measure ComponentMeasure
 	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
@@ -778,7 +890,16 @@ func (s *Service) GetMetricsData(ctx context.Context, apiContext APIContext) (*M
 			if dup, err := strconv.ParseFloat(metric.Value, 64); err == nil {
 				data.Duplication = dup
 			}
-		case "reliability_rating", "security_rating", "sqale_rating":
+		case "new_duplicated_lines_density":
+			if len(metric.Periods) > 0 {
+				if dup, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
+					data.NewDuplicatedDensity = dup
+				}
+			} else if dup, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				data.NewDuplicatedDensity = dup
+			}
+		case "reliability_rating", "security_rating", "sqale_rating",
+			"new_maintainability_rating", "new_reliability_rating", "new_security_rating":
 			data.Ratings[metric.Metric] = metric.Value
 		default:
 			data.Metrics[metric.Metric] = metric.Value
@@ -801,10 +922,15 @@ func (s *Service) getMetricDisplayName(metricKey string) string {
 		"new_security_hotspots":        "Security Hotspots on New Code",
 		"security_hotspots":            "Security Hotspots",
 		"duplicated_lines_density":     "Duplicated Lines",
-		"new_duplicated_lines_density": "Duplicated Lines on New Code",
-		"sqale_rating":                 "Maintainability Rating",
-		"reliability_rating":           "Reliability Rating",
-		"security_rating":              "Security Rating",
+		"new_duplicated_lines_density":  "Duplicated Lines on New Code",
+		"sqale_rating":                  "Maintainability Rating",
+		"new_maintainability_rating":    "Maintainability Rating on New Code",
+		"reliability_rating":            "Reliability Rating",
+		"new_reliability_rating":        "Reliability Rating on New Code",
+		"security_rating":               "Security Rating",
+		"new_security_rating":           "Security Rating on New Code",
+		"new_violations":                "New Issues",
+		"accepted_issues":               "Accepted Issues",
 	}
 
 	if displayName, exists := displayNames[metricKey]; exists {
@@ -820,6 +946,221 @@ func (s *Service) extractFileFromComponent(component string) string {
 		return parts[1]
 	}
 	return component
+}
+
+func (s *Service) GetDuplicationData(ctx context.Context, apiContext APIContext, filters FilterOptions) (*DuplicationData, error) {
+	data := &DuplicationData{
+		Available: true,
+		Files:     make([]DuplicatedFile, 0),
+		Details:   make([]DuplicationDetail, 0),
+	}
+
+	if err := s.getProjectDuplication(ctx, apiContext, data); err != nil {
+		return nil, err
+	}
+
+	if err := s.getFileDuplication(ctx, apiContext, data, filters); err != nil {
+		return nil, err
+	}
+
+	if !filters.NoLineDetails && len(data.Files) > 0 {
+		s.getDuplicationDetails(ctx, apiContext, data, filters)
+	}
+
+	return data, nil
+}
+
+func (s *Service) getProjectDuplication(ctx context.Context, apiContext APIContext, data *DuplicationData) error {
+	params := make(map[string]string)
+	for k, v := range apiContext.BaseParams {
+		params[k] = v
+	}
+	params["metricKeys"] = "duplicated_lines_density,duplicated_lines,duplicated_blocks,new_duplicated_lines_density"
+
+	var measure ComponentMeasure
+	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
+		return err
+	}
+
+	for _, metric := range measure.Component.Measures {
+		switch metric.Metric {
+		case "duplicated_lines_density":
+			if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				data.OverallDuplication = v
+			}
+		case "duplicated_lines":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				data.DuplicatedLines = v
+			}
+		case "duplicated_blocks":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				data.DuplicatedBlocks = v
+			}
+		case "new_duplicated_lines_density":
+			if len(metric.Periods) > 0 {
+				if v, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
+					data.NewCodeDuplication = v
+				}
+			} else if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				data.NewCodeDuplication = v
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) getFileDuplication(ctx context.Context, apiContext APIContext, data *DuplicationData, filters FilterOptions) error {
+	params := make(map[string]string)
+	for k, v := range apiContext.BaseParams {
+		params[k] = v
+	}
+	params["qualifiers"] = "FIL"
+	params["metricKeys"] = "duplicated_lines_density,duplicated_lines,duplicated_blocks"
+	params["s"] = "metric"
+	params["metricSort"] = "duplicated_lines_density"
+	params["asc"] = "false"
+
+	pageSize := filters.Limit
+	if pageSize <= 0 || pageSize > 500 {
+		pageSize = 100
+	}
+	params["ps"] = strconv.Itoa(pageSize)
+
+	var tree ComponentTree
+	if err := s.client.GetJSON(ctx, "measures/component_tree", params, apiContext, &tree); err != nil {
+		return err
+	}
+
+	for _, component := range tree.Components {
+		file := DuplicatedFile{
+			Path:         component.Path,
+			Name:         component.Name,
+			Language:     component.Language,
+			ComponentKey: component.Key,
+		}
+
+		for _, measure := range component.Measures {
+			switch measure.Metric {
+			case "duplicated_lines_density":
+				if v, err := strconv.ParseFloat(measure.Value, 64); err == nil {
+					file.DuplicatedDensity = v
+				}
+			case "duplicated_lines":
+				if v, err := strconv.Atoi(measure.Value); err == nil {
+					file.DuplicatedLines = v
+				}
+			case "duplicated_blocks":
+				if v, err := strconv.Atoi(measure.Value); err == nil {
+					file.DuplicatedBlocks = v
+				}
+			}
+		}
+
+		if file.DuplicatedDensity > 0 || file.DuplicatedLines > 0 {
+			if filters.FilePattern != "" {
+				matched, err := s.matchFilePattern(file.Path, filters.FilePattern)
+				if err != nil || !matched {
+					continue
+				}
+			}
+			data.Files = append(data.Files, file)
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) getDuplicationDetails(ctx context.Context, apiContext APIContext, data *DuplicationData, filters FilterOptions) {
+	limit := filters.Limit
+	if limit <= 0 {
+		limit = 10
+	}
+	files := data.Files
+	if len(files) > limit {
+		files = files[:limit]
+	}
+
+	batchSize := 5
+	for i := 0; i < len(files); i += batchSize {
+		end := i + batchSize
+		if end > len(files) {
+			end = len(files)
+		}
+		batch := files[i:end]
+
+		var mu sync.Mutex
+		var wg sync.WaitGroup
+
+		for _, file := range batch {
+			wg.Add(1)
+			go func(f DuplicatedFile) {
+				defer wg.Done()
+
+				detail, err := s.getDuplicationDetailForFile(ctx, f, apiContext)
+				if err != nil {
+					return
+				}
+
+				mu.Lock()
+				data.Details = append(data.Details, *detail)
+				mu.Unlock()
+			}(file)
+		}
+
+		wg.Wait()
+
+		if i+batchSize < len(files) {
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+}
+
+func (s *Service) getDuplicationDetailForFile(ctx context.Context, file DuplicatedFile, apiContext APIContext) (*DuplicationDetail, error) {
+	params := make(map[string]string)
+	for k, v := range apiContext.BaseParams {
+		params[k] = v
+	}
+	params["key"] = file.ComponentKey
+
+	var dupResp DuplicationsResponse
+	if err := s.client.GetJSON(ctx, "duplications/show", params, apiContext, &dupResp); err != nil {
+		return nil, err
+	}
+
+	detail := &DuplicationDetail{
+		FilePath:          file.Path,
+		FileName:          file.Name,
+		DuplicatedDensity: file.DuplicatedDensity,
+		Blocks:            make([]DuplicatedBlock, 0),
+	}
+
+	fileNames := make(map[string]string)
+	for ref, f := range dupResp.Files {
+		fileNames[ref] = s.extractFileFromComponent(f.Key)
+	}
+
+	for _, dup := range dupResp.Duplications {
+		if len(dup.Blocks) < 2 {
+			continue
+		}
+		source := dup.Blocks[0]
+		for _, target := range dup.Blocks[1:] {
+			targetFile := fileNames[target.Key]
+			if targetFile == "" {
+				targetFile = target.Key
+			}
+			detail.Blocks = append(detail.Blocks, DuplicatedBlock{
+				From:       source.From,
+				Size:       source.Size,
+				TargetFile: targetFile,
+				TargetFrom: target.From,
+				TargetSize: target.Size,
+			})
+		}
+	}
+
+	return detail, nil
 }
 
 func (s *Service) GetProjectKeyStrategies() []string {
