@@ -9,19 +9,19 @@ import (
 )
 
 type RunCmd struct {
-	Reverse     bool
-	Latest      bool
-	Count       int
-	NoFilter    bool
-	Today       bool
-	Yesterday   bool
-	Since       string
-	Until       string
-	Prefix      string
-	SuffixPrd   string
-	SuffixHml   string
-	Debug       bool
-	NoColor     bool
+	Reverse   bool
+	Latest    bool
+	Count     int
+	NoFilter  bool
+	Today     bool
+	Yesterday bool
+	Since     string
+	Until     string
+	Prefix    string
+	SuffixPrd string
+	SuffixHml string
+	Debug     bool
+	NoColor   bool
 }
 
 func (cmd *RunCmd) Run(ctx context.Context) error {

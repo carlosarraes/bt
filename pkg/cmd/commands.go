@@ -1071,36 +1071,36 @@ func (p *PickShowCmd) Run(ctx context.Context) error {
 }
 
 type PickRunCmd struct {
-	Reverse     bool   `short:"r" help:"Reverse direction: pick from HML to PRD"`
-	Latest      bool   `short:"l" help:"Pick current user's latest commits (up to 100)"`
-	Count       int    `short:"c" help:"Limit number of commits" default:"5"`
-	NoFilter    bool   `name:"no-filter" help:"Skip smart deduplication"`
-	Today       bool   `help:"Pick commits from today only"`
-	Yesterday   bool   `help:"Pick commits from yesterday only"`
-	Since       string `help:"Pick commits since date (YYYY-MM-DD)"`
-	Until       string `help:"Pick commits until date (YYYY-MM-DD)"`
-	Prefix      string `help:"Override branch prefix"`
-	SuffixPrd   string `name:"suffix-prd" help:"Override production branch suffix"`
-	SuffixHml   string `name:"suffix-hml" help:"Override homologation branch suffix"`
-	Debug       bool   `help:"Show debug output"`
+	Reverse   bool   `short:"r" help:"Reverse direction: pick from HML to PRD"`
+	Latest    bool   `short:"l" help:"Pick current user's latest commits (up to 100)"`
+	Count     int    `short:"c" help:"Limit number of commits" default:"5"`
+	NoFilter  bool   `name:"no-filter" help:"Skip smart deduplication"`
+	Today     bool   `help:"Pick commits from today only"`
+	Yesterday bool   `help:"Pick commits from yesterday only"`
+	Since     string `help:"Pick commits since date (YYYY-MM-DD)"`
+	Until     string `help:"Pick commits until date (YYYY-MM-DD)"`
+	Prefix    string `help:"Override branch prefix"`
+	SuffixPrd string `name:"suffix-prd" help:"Override production branch suffix"`
+	SuffixHml string `name:"suffix-hml" help:"Override homologation branch suffix"`
+	Debug     bool   `help:"Show debug output"`
 }
 
 func (p *PickRunCmd) Run(ctx context.Context) error {
 	noColor := shared.GetNoColor(ctx)
 	cmd := &pick.RunCmd{
-		Reverse:     p.Reverse,
-		Latest:      p.Latest,
-		Count:       p.Count,
-		NoFilter:    p.NoFilter,
-		Today:       p.Today,
-		Yesterday:   p.Yesterday,
-		Since:       p.Since,
-		Until:       p.Until,
-		Prefix:      p.Prefix,
-		SuffixPrd:   p.SuffixPrd,
-		SuffixHml:   p.SuffixHml,
-		Debug:       p.Debug,
-		NoColor:     noColor,
+		Reverse:   p.Reverse,
+		Latest:    p.Latest,
+		Count:     p.Count,
+		NoFilter:  p.NoFilter,
+		Today:     p.Today,
+		Yesterday: p.Yesterday,
+		Since:     p.Since,
+		Until:     p.Until,
+		Prefix:    p.Prefix,
+		SuffixPrd: p.SuffixPrd,
+		SuffixHml: p.SuffixHml,
+		Debug:     p.Debug,
+		NoColor:   noColor,
 	}
 	return cmd.Run(ctx)
 }

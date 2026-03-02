@@ -110,30 +110,30 @@ type IssuesSearch struct {
 }
 
 type Issue struct {
-	Key                string              `json:"key"`
-	Rule               string              `json:"rule"`
-	Severity           string              `json:"severity"`
-	Component          string              `json:"component"`
-	Project            string              `json:"project"`
-	Line               *int                `json:"line,omitempty"`
-	Hash               string              `json:"hash"`
-	TextRange          *TextRange          `json:"textRange,omitempty"`
-	Flows              []Flow              `json:"flows"`
-	Resolution         string              `json:"resolution,omitempty"`
-	Status             string              `json:"status"`
-	Message            string              `json:"message"`
-	Effort             string              `json:"effort,omitempty"`
-	Debt               string              `json:"debt,omitempty"`
-	Author             string              `json:"author,omitempty"`
-	Tags               []string            `json:"tags"`
-	Transitions        []string            `json:"transitions"`
-	Actions            []string            `json:"actions"`
-	Comments           []Comment           `json:"comments"`
-	CreationDate       SonarTime           `json:"creationDate"`
-	UpdateDate         SonarTime           `json:"updateDate"`
-	CloseDate          *SonarTime          `json:"closeDate,omitempty"`
-	Type               string              `json:"type"`
-	Scope              string              `json:"scope,omitempty"`
+	Key                        string              `json:"key"`
+	Rule                       string              `json:"rule"`
+	Severity                   string              `json:"severity"`
+	Component                  string              `json:"component"`
+	Project                    string              `json:"project"`
+	Line                       *int                `json:"line,omitempty"`
+	Hash                       string              `json:"hash"`
+	TextRange                  *TextRange          `json:"textRange,omitempty"`
+	Flows                      []Flow              `json:"flows"`
+	Resolution                 string              `json:"resolution,omitempty"`
+	Status                     string              `json:"status"`
+	Message                    string              `json:"message"`
+	Effort                     string              `json:"effort,omitempty"`
+	Debt                       string              `json:"debt,omitempty"`
+	Author                     string              `json:"author,omitempty"`
+	Tags                       []string            `json:"tags"`
+	Transitions                []string            `json:"transitions"`
+	Actions                    []string            `json:"actions"`
+	Comments                   []Comment           `json:"comments"`
+	CreationDate               SonarTime           `json:"creationDate"`
+	UpdateDate                 SonarTime           `json:"updateDate"`
+	CloseDate                  *SonarTime          `json:"closeDate,omitempty"`
+	Type                       string              `json:"type"`
+	Scope                      string              `json:"scope,omitempty"`
 	QuickFixAvailable          bool                `json:"quickFixAvailable,omitempty"`
 	MessageFormattings         []MessageFormatting `json:"messageFormattings,omitempty"`
 	Impacts                    []IssueImpact       `json:"impacts,omitempty"`
@@ -326,17 +326,17 @@ type IssuesData struct {
 }
 
 type ProcessedIssue struct {
-	Key           string    `json:"key"`
-	Type          string    `json:"type"`
-	Severity      string    `json:"severity"`
-	Rule          string    `json:"rule"`
-	RuleName      string    `json:"ruleName"`
-	Component     string    `json:"component"`
-	File          string    `json:"file"`
-	Line          *int      `json:"line,omitempty"`
-	Message       string    `json:"message"`
-	Effort        string    `json:"effort,omitempty"`
-	TechnicalDebt string    `json:"technicalDebt,omitempty"`
+	Key                        string        `json:"key"`
+	Type                       string        `json:"type"`
+	Severity                   string        `json:"severity"`
+	Rule                       string        `json:"rule"`
+	RuleName                   string        `json:"ruleName"`
+	Component                  string        `json:"component"`
+	File                       string        `json:"file"`
+	Line                       *int          `json:"line,omitempty"`
+	Message                    string        `json:"message"`
+	Effort                     string        `json:"effort,omitempty"`
+	TechnicalDebt              string        `json:"technicalDebt,omitempty"`
 	IsNew                      bool          `json:"isNew"`
 	CreatedAt                  SonarTime     `json:"createdAt"`
 	Impacts                    []IssueImpact `json:"impacts,omitempty"`
@@ -353,9 +353,9 @@ type IssuesSummary struct {
 }
 
 type MetricsData struct {
-	Available   bool              `json:"available"`
-	Metrics     map[string]string `json:"metrics"`
-	Ratings     map[string]string `json:"ratings"`
+	Available            bool              `json:"available"`
+	Metrics              map[string]string `json:"metrics"`
+	Ratings              map[string]string `json:"ratings"`
 	Duplication          float64           `json:"duplication"`
 	NewDuplicatedDensity float64           `json:"newDuplicatedDensity"`
 	Error                string            `json:"error,omitempty"`
@@ -372,20 +372,20 @@ type FilterOptions struct {
 	IncludeCoverage     bool     `json:"includeCoverage"`
 	IncludeIssues       bool     `json:"includeIssues"`
 	IncludeDuplications bool     `json:"includeDuplications"`
-	CoverageThreshold float64  `json:"coverageThreshold"`
-	Limit             int      `json:"limit"`
-	NewCodeOnly       bool     `json:"newCodeOnly"`
-	SeverityFilter    []string `json:"severityFilter"`
-	ShowWorstFirst    bool     `json:"showWorstFirst"`
-	ShowAllLines      bool     `json:"showAllLines"`
-	LinesPerFile      int      `json:"linesPerFile"`
-	NewLinesOnly      bool     `json:"newLinesOnly"`
-	MinUncoveredLines int      `json:"minUncoveredLines"`
-	MaxUncoveredLines int      `json:"maxUncoveredLines"`
-	FilePattern       string   `json:"filePattern"`
-	NoLineDetails     bool     `json:"noLineDetails"`
-	TruncateLines     int      `json:"truncateLines"`
-	Debug             bool     `json:"debug"`
+	CoverageThreshold   float64  `json:"coverageThreshold"`
+	Limit               int      `json:"limit"`
+	NewCodeOnly         bool     `json:"newCodeOnly"`
+	SeverityFilter      []string `json:"severityFilter"`
+	ShowWorstFirst      bool     `json:"showWorstFirst"`
+	ShowAllLines        bool     `json:"showAllLines"`
+	LinesPerFile        int      `json:"linesPerFile"`
+	NewLinesOnly        bool     `json:"newLinesOnly"`
+	MinUncoveredLines   int      `json:"minUncoveredLines"`
+	MaxUncoveredLines   int      `json:"maxUncoveredLines"`
+	FilePattern         string   `json:"filePattern"`
+	NoLineDetails       bool     `json:"noLineDetails"`
+	TruncateLines       int      `json:"truncateLines"`
+	Debug               bool     `json:"debug"`
 }
 
 type DuplicationData struct {

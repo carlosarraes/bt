@@ -476,10 +476,10 @@ func (cmd *ViewCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipelineUU
 	}
 
 	type stepLog struct {
-		Step     *api.PipelineStep `json:"step"`
-		Lines    []string          `json:"lines,omitempty"`
-		Error    string            `json:"error,omitempty"`
-		Truncated bool            `json:"truncated,omitempty"`
+		Step      *api.PipelineStep `json:"step"`
+		Lines     []string          `json:"lines,omitempty"`
+		Error     string            `json:"error,omitempty"`
+		Truncated bool              `json:"truncated,omitempty"`
 	}
 	var stepLogs []stepLog
 
@@ -555,5 +555,3 @@ func (cmd *ViewCmd) viewLogs(ctx context.Context, runCtx *RunContext, pipelineUU
 
 	return nil
 }
-
-

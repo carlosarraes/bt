@@ -207,16 +207,16 @@ func validateDate(dateStr string) error {
 }
 
 var (
-	indexStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
-	hashStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	ownAuthor    = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	otherAuthor  = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	dateStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
-	msgDefault   = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
-	msgFeat      = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	msgFix       = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	msgDocs      = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
-	msgRefactor  = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
+	indexStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
+	hashStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	ownAuthor   = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	otherAuthor = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	dateStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("12"))
+	msgDefault  = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	msgFeat     = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	msgFix      = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	msgDocs     = lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+	msgRefactor = lipgloss.NewStyle().Foreground(lipgloss.Color("13"))
 )
 
 func displayCommits(commits []git.PickCommit, currentUser string, noColor bool) {
