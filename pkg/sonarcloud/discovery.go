@@ -12,6 +12,17 @@ import (
 	"github.com/carlosarraes/bt/pkg/api"
 )
 
+var (
+	projectKeyURLPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`[?&]id=([^&]+)`),
+		regexp.MustCompile(`/project/([^/?]+)`),
+		regexp.MustCompile(`/dashboard/([^/?]+)`),
+	}
+	sanitizeInvalidChars = regexp.MustCompile(`[^a-zA-Z0-9\-_.]`)
+	sanitizeMultiUnder   = regexp.MustCompile(`_+`)
+	validProjectKeyRegex = regexp.MustCompile(`^[a-zA-Z0-9\-_.]+$`)
+)
+
 type ProjectKeyDiscovery struct {
 	bitbucketClient *api.Client
 }
@@ -107,14 +118,7 @@ func (d *ProjectKeyDiscovery) extractFromBitbucketReports(ctx context.Context, w
 
 func (d *ProjectKeyDiscovery) extractProjectKeyFromURL(url string) string {
 
-	patterns := []string{
-		`[?&]id=([^&]+)`,
-		`/project/([^/?]+)`,
-		`/dashboard/([^/?]+)`,
-	}
-
-	for _, pattern := range patterns {
-		re := regexp.MustCompile(pattern)
+	for _, re := range projectKeyURLPatterns {
 		matches := re.FindStringSubmatch(url)
 		if len(matches) > 1 {
 			projectKey := matches[1]
@@ -278,11 +282,8 @@ func (d *ProjectKeyDiscovery) generateHeuristicName(ctx context.Context, workspa
 }
 
 func (d *ProjectKeyDiscovery) sanitizeProjectKey(key string) string {
-	re := regexp.MustCompile(`[^a-zA-Z0-9\-_.]`)
-	sanitized := re.ReplaceAllString(key, "_")
-
-	re = regexp.MustCompile(`_+`)
-	sanitized = re.ReplaceAllString(sanitized, "_")
+	sanitized := sanitizeInvalidChars.ReplaceAllString(key, "_")
+	sanitized = sanitizeMultiUnder.ReplaceAllString(sanitized, "_")
 
 	sanitized = strings.Trim(sanitized, "_")
 
@@ -298,8 +299,7 @@ func (d *ProjectKeyDiscovery) isValidProjectKey(key string) bool {
 		return false
 	}
 
-	re := regexp.MustCompile(`^[a-zA-Z0-9\-_.]+$`)
-	return re.MatchString(key)
+	return validProjectKeyRegex.MatchString(key)
 }
 
 func (d *ProjectKeyDiscovery) GetProjectKeyStrategies() []string {
