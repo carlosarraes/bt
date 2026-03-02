@@ -94,6 +94,11 @@ func main() {
 			filteredArgs = append(filteredArgs, arg)
 		}
 	}
+	// Insert -- before config set values starting with - so Kong treats them as positional args
+	if len(filteredArgs) >= 5 && filteredArgs[1] == "config" && filteredArgs[2] == "set" && strings.HasPrefix(filteredArgs[4], "-") {
+		filteredArgs = append(filteredArgs[:4], append([]string{"--"}, filteredArgs[4:]...)...)
+	}
+
 	os.Args = filteredArgs
 
 	ctx := kong.Parse(&cli,
@@ -339,6 +344,7 @@ SUPPORTED AGENTS
   Claude Code    ~/.claude/skills/bt
   Cursor         ~/.cursor/skills/bt
   Codex          ~/.codex/skills/bt
+  Pi             ~/.pi/agent/skills/bt
 
 EXAMPLES
   $ bt skill add
