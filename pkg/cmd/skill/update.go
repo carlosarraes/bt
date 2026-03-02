@@ -32,7 +32,7 @@ func (cmd *UpdateCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to update skill: %w", err)
 	}
 
-	linked, err := createSymlinks(false)
+	linked, _, err := createSymlinks(false)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to update symlinks: %v\n", err)
 	} else if agents, err := detectAgents(); err == nil && len(linked) < len(agents) {

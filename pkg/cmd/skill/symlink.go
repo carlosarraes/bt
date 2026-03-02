@@ -20,6 +20,7 @@ func agentList() ([]agent, error) {
 		{Name: "Claude", SkillDir: filepath.Join(homeDir, ".claude", "skills")},
 		{Name: "Cursor", SkillDir: filepath.Join(homeDir, ".cursor", "skills")},
 		{Name: "Codex", SkillDir: filepath.Join(homeDir, ".codex", "skills")},
+		{Name: "Pi", SkillDir: filepath.Join(homeDir, ".pi", "agent", "skills")},
 	}, nil
 }
 
@@ -37,25 +38,28 @@ func detectAgents() ([]agent, error) {
 	return detected, nil
 }
 
-func createSymlinks(force bool) ([]string, error) {
+func createSymlinks(force bool) (linked []string, skipped int, err error) {
 	dir, err := skillDir()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	target := filepath.Join(dir, "bt")
 
 	agents, err := detectAgents()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	var linked []string
 	for _, a := range agents {
 		linkPath := filepath.Join(a.SkillDir, "bt")
 
 		info, err := os.Lstat(linkPath)
 		if err == nil {
 			if info.Mode()&os.ModeSymlink != 0 {
+				if dest, err := os.Readlink(linkPath); err == nil && dest == target {
+					skipped++
+					continue
+				}
 				if err := os.Remove(linkPath); err != nil {
 					fmt.Fprintf(os.Stderr, "Warning: failed to remove existing symlink for %s: %v\n", a.Name, err)
 					continue
@@ -77,7 +81,7 @@ func createSymlinks(force bool) ([]string, error) {
 		}
 		linked = append(linked, a.Name)
 	}
-	return linked, nil
+	return linked, skipped, nil
 }
 
 func removeSymlinks() ([]string, error) {

@@ -11,7 +11,23 @@ type AddCmd struct {
 
 func (cmd *AddCmd) Run(ctx context.Context) error {
 	if isInstalled() {
-		return fmt.Errorf("skill already installed. Use 'bt skill update' to update or 'bt skill remove' first")
+		version, _ := installedVersion()
+
+		linked, skipped, err := createSymlinks(cmd.Force)
+		if err != nil {
+			return fmt.Errorf("failed to create symlinks: %w", err)
+		}
+
+		if len(linked) > 0 {
+			fmt.Printf("bt skill v%s already installed\n", version)
+			fmt.Println("Linked to:")
+			for _, name := range linked {
+				fmt.Printf("  - %s\n", name)
+			}
+		} else if skipped > 0 {
+			fmt.Printf("bt skill v%s installed, all agents linked\n", version)
+		}
+		return nil
 	}
 
 	fmt.Println("Fetching bt skill from GitHub...")
@@ -20,7 +36,7 @@ func (cmd *AddCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch skill: %w", err)
 	}
 
-	linked, err := createSymlinks(cmd.Force)
+	linked, skipped, err := createSymlinks(cmd.Force)
 	if err != nil {
 		return fmt.Errorf("failed to create symlinks: %w", err)
 	}
@@ -31,6 +47,8 @@ func (cmd *AddCmd) Run(ctx context.Context) error {
 		for _, name := range linked {
 			fmt.Printf("  - %s\n", name)
 		}
+	} else if skipped > 0 {
+		fmt.Println("All agents already linked")
 	} else {
 		fmt.Println("No AI agents detected. Install Claude, Cursor, or Codex and run 'bt skill add' again.")
 	}
