@@ -182,17 +182,11 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 	mergeableResults := cmd.checkMergeableStatusConcurrently(prCtx, pullRequests)
 
 	for i, pr := range pullRequests {
-		title := pr.Title
-		if len(title) > 50 {
-			title = title[:47] + "..."
-		}
+		title := shared.Truncate(pr.Title, 50)
 
 		sourceBranch := "-"
 		if pr.Source != nil && pr.Source.Branch != nil {
-			sourceBranch = pr.Source.Branch.Name
-			if len(sourceBranch) > 20 {
-				sourceBranch = sourceBranch[:17] + "..."
-			}
+			sourceBranch = shared.Truncate(pr.Source.Branch.Name, 20)
 		}
 
 		author := "-"
@@ -202,9 +196,7 @@ func (cmd *ListCmd) formatTable(prCtx *PRContext, pullRequests []*api.PullReques
 			} else if pr.Author.Username != "" {
 				author = pr.Author.Username
 			}
-			if len(author) > 15 {
-				author = author[:12] + "..."
-			}
+			author = shared.Truncate(author, 15)
 		}
 
 		state := pr.State

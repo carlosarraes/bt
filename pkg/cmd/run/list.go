@@ -162,10 +162,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 			} else if pipeline.Target.PullRequestId != nil {
 				ref = fmt.Sprintf("PR #%d", *pipeline.Target.PullRequestId)
 			} else if pipeline.Target.RefName != "" {
-				ref = pipeline.Target.RefName
-				if len(ref) > 15 {
-					ref = ref[:12] + "..."
-				}
+				ref = shared.Truncate(pipeline.Target.RefName, 15)
 			} else if pipeline.Target.Type == "pipeline_branch_target" {
 				// This is a branch pipeline but no ref_name, try to infer from trigger
 				ref = "branch"
@@ -179,10 +176,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 			} else if pipeline.Creator.Username != "" {
 				startedBy = pipeline.Creator.Username
 			}
-			// Truncate long names
-			if len(startedBy) > 15 {
-				startedBy = startedBy[:12] + "..."
-			}
+			startedBy = shared.Truncate(startedBy, 15)
 		}
 
 		rows[i] = []string{

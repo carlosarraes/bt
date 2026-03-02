@@ -297,30 +297,18 @@ func (cmd *ListAllCmd) formatTable(prCtx *PRContext, prs []*PRWithRepo) error {
 		pr := prWithRepo.PullRequest
 		repo := prWithRepo.Repository
 
-		repoName := repo.Name
-		if len(repoName) > 15 {
-			repoName = repoName[:12] + "..."
-		}
+		repoName := shared.Truncate(repo.Name, 15)
 
-		title := pr.Title
-		if len(title) > 40 {
-			title = title[:37] + "..."
-		}
+		title := shared.Truncate(pr.Title, 40)
 
 		sourceBranch := "-"
 		if pr.Source != nil && pr.Source.Branch != nil {
-			sourceBranch = pr.Source.Branch.Name
-			if len(sourceBranch) > 15 {
-				sourceBranch = sourceBranch[:12] + "..."
-			}
+			sourceBranch = shared.Truncate(pr.Source.Branch.Name, 15)
 		}
 
 		targetBranch := "-"
 		if pr.Destination != nil && pr.Destination.Branch != nil {
-			targetBranch = pr.Destination.Branch.Name
-			if len(targetBranch) > 15 {
-				targetBranch = targetBranch[:12] + "..."
-			}
+			targetBranch = shared.Truncate(pr.Destination.Branch.Name, 15)
 		}
 
 		state := pr.State

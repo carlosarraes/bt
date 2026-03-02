@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -110,23 +108,10 @@ func (cmd *ViewCmd) ParsePRID() (int, error) {
 
 // openInBrowser opens the PR in the default browser
 func (cmd *ViewCmd) openInBrowser(prCtx *PRContext, prID int) error {
-	// Construct Bitbucket web URL
 	url := fmt.Sprintf("https://bitbucket.org/%s/%s/pull-requests/%d",
 		prCtx.Workspace, prCtx.Repository, prID)
 
-	var err error
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		return fmt.Errorf("unsupported platform for opening browser")
-	}
-
-	if err != nil {
+	if err := shared.LaunchBrowser(url); err != nil {
 		return fmt.Errorf("failed to open browser: %w", err)
 	}
 

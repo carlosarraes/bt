@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
@@ -266,10 +264,7 @@ func (cmd *ViewCmd) formatTable(runCtx *RunContext, pipeline *api.Pipeline, step
 	// Commit information
 	if pipeline.Target != nil && pipeline.Target.Commit != nil {
 		commit := pipeline.Target.Commit
-		commitMsg := commit.Message
-		if len(commitMsg) > 50 {
-			commitMsg = commitMsg[:47] + "..."
-		}
+		commitMsg := shared.Truncate(commit.Message, 50)
 		fmt.Printf("Commit:      %s (%s)\n", commit.Hash[:8], commitMsg)
 	}
 
@@ -386,29 +381,7 @@ func (cmd *ViewCmd) openInBrowser(ctx context.Context, runCtx *RunContext, pipel
 		return nil
 	}
 
-	return cmd.launchBrowser(url)
-}
-
-func (cmd *ViewCmd) launchBrowser(url string) error {
-	var cmdName string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmdName = "cmd"
-		args = []string{"/c", "start", url}
-	case "darwin":
-		cmdName = "open"
-		args = []string{url}
-	case "linux":
-		cmdName = "xdg-open"
-		args = []string{url}
-	default:
-		return fmt.Errorf("unsupported platform")
-	}
-
-	execCmd := exec.Command(cmdName, args...)
-	return execCmd.Start()
+	return shared.LaunchBrowser(url)
 }
 
 // viewLogs displays logs and test results for pipeline steps

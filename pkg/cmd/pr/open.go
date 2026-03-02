@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -213,29 +211,7 @@ func (cmd *OpenCmd) handleURL(url string) error {
 		return nil
 	}
 
-	return cmd.openInBrowser(url)
-}
-
-func (cmd *OpenCmd) openInBrowser(url string) error {
-	var cmdName string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmdName = "cmd"
-		args = []string{"/c", "start", url}
-	case "darwin":
-		cmdName = "open"
-		args = []string{url}
-	case "linux":
-		cmdName = "xdg-open"
-		args = []string{url}
-	default:
-		return fmt.Errorf("unsupported platform")
-	}
-
-	execCmd := exec.Command(cmdName, args...)
-	return execCmd.Start()
+	return shared.LaunchBrowser(url)
 }
 
 func (cmd *OpenCmd) createMinimalContext(ctx context.Context, outputFormat string, noColor bool) (*PRContext, error) {
