@@ -358,7 +358,33 @@ type MetricsData struct {
 	Ratings              map[string]string `json:"ratings"`
 	Duplication          float64           `json:"duplication"`
 	NewDuplicatedDensity float64           `json:"newDuplicatedDensity"`
+	TechnicalDebtMinutes int               `json:"technicalDebtMinutes"`
+	NewBugs              int               `json:"newBugs"`
+	NewVulnerabilities   int               `json:"newVulnerabilities"`
+	NewCodeSmells        int               `json:"newCodeSmells"`
+	NewSecurityHotspots  int               `json:"newSecurityHotspots"`
 	Error                string            `json:"error,omitempty"`
+}
+
+// AllMeasures holds pre-fetched measures/component data from a single consolidated API call.
+type AllMeasures struct {
+	Coverage             float64
+	UncoveredLines       int
+	NewCoverage          float64
+	NewUncoveredLines    int
+	DuplicatedDensity    float64
+	DuplicatedLines      int
+	DuplicatedBlocks     int
+	NewDuplicatedDensity float64
+	NewViolations        int
+	AcceptedIssues       int
+	Ratings              map[string]string
+	TechnicalDebtMinutes int
+	NewBugs              int
+	NewVulnerabilities   int
+	NewCodeSmells        int
+	NewSecurityHotspots  int
+	Metrics              map[string]string
 }
 
 type PaginationStrategy struct {
