@@ -10,7 +10,7 @@ import (
 type RemoveCmd struct{}
 
 func (cmd *RemoveCmd) Run(ctx context.Context) error {
-	if !isInstalled() {
+	if _, ok := isInstalled(); !ok {
 		return fmt.Errorf("skill is not installed")
 	}
 

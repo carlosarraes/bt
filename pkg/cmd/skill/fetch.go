@@ -110,15 +110,18 @@ func installedVersion() (string, error) {
 	return strings.TrimSpace(string(data)), nil
 }
 
-func isInstalled() bool {
+func isInstalled() (string, bool) {
 	dir, err := skillDir()
 	if err != nil {
-		return false
+		return "", false
 	}
-	if _, err := installedVersion(); err != nil {
-		return false
+	version, err := installedVersion()
+	if err != nil {
+		return "", false
 	}
-	// Also verify skill content directory exists
 	info, err := os.Stat(filepath.Join(dir, "bt"))
-	return err == nil && info.IsDir()
+	if err != nil || !info.IsDir() {
+		return "", false
+	}
+	return version, true
 }

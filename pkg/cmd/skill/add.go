@@ -10,9 +10,7 @@ type AddCmd struct {
 }
 
 func (cmd *AddCmd) Run(ctx context.Context) error {
-	if isInstalled() {
-		version, _ := installedVersion()
-
+	if version, ok := isInstalled(); ok {
 		linked, skipped, err := createSymlinks(cmd.Force)
 		if err != nil {
 			return fmt.Errorf("failed to create symlinks: %w", err)

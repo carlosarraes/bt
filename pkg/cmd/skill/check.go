@@ -12,7 +12,8 @@ import (
 const checkInterval = 24 * time.Hour
 
 func CheckForUpdate() {
-	if !isInstalled() {
+	currentVersion, ok := isInstalled()
+	if !ok {
 		return
 	}
 
@@ -27,11 +28,6 @@ func CheckForUpdate() {
 	}
 
 	remoteVersion, err := fetchRemoteVersion(2 * time.Second)
-	if err != nil {
-		return
-	}
-
-	currentVersion, err := installedVersion()
 	if err != nil {
 		return
 	}
