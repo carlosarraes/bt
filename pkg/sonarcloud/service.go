@@ -25,6 +25,15 @@ func NewService(client *Client, bitbucketClient *api.Client) *Service {
 	}
 }
 
+// DiscoverProjectKey returns only the project key without fetching any report data.
+func (s *Service) DiscoverProjectKey(ctx context.Context, workspace, repo, commitHash string) (string, error) {
+	result, err := s.discovery.DiscoverProjectKey(ctx, workspace, repo, commitHash)
+	if err != nil {
+		return "", fmt.Errorf("failed to discover SonarCloud project key: %w", err)
+	}
+	return result.ProjectKey, nil
+}
+
 func (s *Service) buildAPIContext(pipeline *api.Pipeline, projectKey string) APIContext {
 	context := APIContext{
 		ProjectKey: projectKey,
@@ -55,6 +64,174 @@ func (s *Service) buildAPIContext(pipeline *api.Pipeline, projectKey string) API
 	}
 
 	return context
+}
+
+func (s *Service) fetchAllMeasures(ctx context.Context, apiContext APIContext) (*AllMeasures, error) {
+	params := make(map[string]string)
+	for k, v := range apiContext.BaseParams {
+		params[k] = v
+	}
+
+	params["metricKeys"] = "coverage,uncovered_lines,new_coverage,new_uncovered_lines," +
+		"duplicated_lines_density,duplicated_lines,duplicated_blocks,new_duplicated_lines_density," +
+		"new_violations,accepted_issues,new_security_hotspots," +
+		"reliability_rating,security_rating,sqale_rating,sqale_index," +
+		"new_maintainability_rating,new_reliability_rating,new_security_rating," +
+		"new_bugs,new_vulnerabilities,new_code_smells"
+
+	var measure ComponentMeasure
+	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
+		return nil, err
+	}
+
+	m := &AllMeasures{
+		Ratings: make(map[string]string),
+		Metrics: make(map[string]string),
+	}
+
+	for _, metric := range measure.Component.Measures {
+		switch metric.Metric {
+		case "coverage":
+			if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				m.Coverage = v
+			}
+		case "uncovered_lines":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				m.UncoveredLines = v
+			}
+		case "new_coverage":
+			if v, err := s.parseMetricFloat(metric.Value, metric.Periods); err == nil {
+				m.NewCoverage = v
+			}
+		case "new_uncovered_lines":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				m.NewUncoveredLines = v
+			}
+		case "duplicated_lines_density":
+			if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				m.DuplicatedDensity = v
+			}
+		case "duplicated_lines":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				m.DuplicatedLines = v
+			}
+		case "duplicated_blocks":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				m.DuplicatedBlocks = v
+			}
+		case "new_duplicated_lines_density":
+			if len(metric.Periods) > 0 {
+				if v, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
+					m.NewDuplicatedDensity = v
+				}
+			} else if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
+				m.NewDuplicatedDensity = v
+			}
+		case "new_violations":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				m.NewViolations = v
+			}
+		case "accepted_issues":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				m.AcceptedIssues = v
+			}
+		case "sqale_index":
+			if v, err := strconv.Atoi(metric.Value); err == nil {
+				m.TechnicalDebtMinutes = v
+			}
+		case "new_bugs":
+			m.NewBugs = parseNewCodeInt(metric)
+		case "new_vulnerabilities":
+			m.NewVulnerabilities = parseNewCodeInt(metric)
+		case "new_code_smells":
+			m.NewCodeSmells = parseNewCodeInt(metric)
+		case "new_security_hotspots":
+			m.NewSecurityHotspots = parseNewCodeInt(metric)
+		case "reliability_rating", "security_rating", "sqale_rating",
+			"new_maintainability_rating", "new_reliability_rating", "new_security_rating":
+			m.Ratings[metric.Metric] = metric.Value
+		default:
+			m.Metrics[metric.Metric] = metric.Value
+		}
+	}
+
+	return m, nil
+}
+
+func (s *Service) fetchReportSections(ctx context.Context, apiContext APIContext, filters FilterOptions, measures *AllMeasures, report *Report) {
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var errors []error
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		qg, err := s.GetQualityGate(ctx, apiContext, measures)
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			errors = append(errors, fmt.Errorf("quality gate: %w", err))
+			report.QualityGate = &QualityGateInfo{Status: "UNKNOWN", Error: err.Error()}
+		} else {
+			report.QualityGate = qg
+		}
+	}()
+
+	if filters.IncludeCoverage {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cov, err := s.GetCoverageData(ctx, apiContext, filters, measures)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errors = append(errors, fmt.Errorf("coverage: %w", err))
+				report.Coverage = &CoverageData{Available: false, Error: err.Error()}
+			} else {
+				report.Coverage = cov
+			}
+		}()
+	}
+
+	if filters.IncludeIssues {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			iss, err := s.GetIssuesData(ctx, apiContext, filters)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errors = append(errors, fmt.Errorf("issues: %w", err))
+				report.Issues = &IssuesData{Available: false, Error: err.Error()}
+			} else {
+				report.Issues = iss
+			}
+		}()
+	}
+
+	if filters.IncludeDuplications {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			dup, err := s.GetDuplicationData(ctx, apiContext, filters, measures)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil {
+				errors = append(errors, fmt.Errorf("duplications: %w", err))
+				report.Duplications = &DuplicationData{Available: false, Error: err.Error()}
+			} else {
+				report.Duplications = dup
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	report.Metrics = metricsDataFromMeasures(measures)
+
+	if len(errors) > 0 {
+		report.Warnings = errors
+	}
 }
 
 func (s *Service) GenerateReportForPR(ctx context.Context, prID int, workspace, repo string, filters FilterOptions) (*Report, error) {
@@ -90,53 +267,12 @@ func (s *Service) GenerateReportForPR(ctx context.Context, prID int, workspace, 
 		PullRequestID: &prID,
 	}
 
-	var errors []error
-
-	if qualityGate, err := s.GetQualityGate(ctx, apiContext); err != nil {
-		errors = append(errors, fmt.Errorf("quality gate: %w", err))
-		report.QualityGate = &QualityGateInfo{Status: "UNKNOWN", Error: err.Error()}
-	} else {
-		report.QualityGate = qualityGate
+	measures, err := s.fetchAllMeasures(ctx, apiContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch measures: %w", err)
 	}
 
-	if filters.IncludeCoverage {
-		if coverage, err := s.GetCoverageData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("coverage: %w", err))
-			report.Coverage = &CoverageData{Available: false, Error: err.Error()}
-		} else {
-			report.Coverage = coverage
-		}
-	}
-
-	if filters.IncludeIssues {
-		if issues, err := s.GetIssuesData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("issues: %w", err))
-			report.Issues = &IssuesData{Available: false, Error: err.Error()}
-		} else {
-			report.Issues = issues
-		}
-	}
-
-	if filters.IncludeDuplications {
-		if duplications, err := s.GetDuplicationData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("duplications: %w", err))
-			report.Duplications = &DuplicationData{Available: false, Error: err.Error()}
-		} else {
-			report.Duplications = duplications
-		}
-	}
-
-	if metrics, err := s.GetMetricsData(ctx, apiContext); err != nil {
-		errors = append(errors, fmt.Errorf("metrics: %w", err))
-		report.Metrics = &MetricsData{Available: false, Error: err.Error()}
-	} else {
-		report.Metrics = metrics
-	}
-
-	if len(errors) > 0 {
-		report.Warnings = errors
-	}
-
+	s.fetchReportSections(ctx, apiContext, filters, measures, report)
 	return report, nil
 }
 
@@ -172,57 +308,16 @@ func (s *Service) GenerateReport(ctx context.Context, pipeline *api.Pipeline, wo
 		report.PullRequestID = &apiContext.PullRequestID
 	}
 
-	var errors []error
-
-	if qualityGate, err := s.GetQualityGate(ctx, apiContext); err != nil {
-		errors = append(errors, fmt.Errorf("quality gate: %w", err))
-		report.QualityGate = &QualityGateInfo{Status: "UNKNOWN", Error: err.Error()}
-	} else {
-		report.QualityGate = qualityGate
+	measures, err := s.fetchAllMeasures(ctx, apiContext)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch measures: %w", err)
 	}
 
-	if filters.IncludeCoverage {
-		if coverage, err := s.GetCoverageData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("coverage: %w", err))
-			report.Coverage = &CoverageData{Available: false, Error: err.Error()}
-		} else {
-			report.Coverage = coverage
-		}
-	}
-
-	if filters.IncludeIssues {
-		if issues, err := s.GetIssuesData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("issues: %w", err))
-			report.Issues = &IssuesData{Available: false, Error: err.Error()}
-		} else {
-			report.Issues = issues
-		}
-	}
-
-	if filters.IncludeDuplications {
-		if duplications, err := s.GetDuplicationData(ctx, apiContext, filters); err != nil {
-			errors = append(errors, fmt.Errorf("duplications: %w", err))
-			report.Duplications = &DuplicationData{Available: false, Error: err.Error()}
-		} else {
-			report.Duplications = duplications
-		}
-	}
-
-	if metrics, err := s.GetMetricsData(ctx, apiContext); err != nil {
-		errors = append(errors, fmt.Errorf("metrics: %w", err))
-		report.Metrics = &MetricsData{Available: false, Error: err.Error()}
-	} else {
-		report.Metrics = metrics
-	}
-
-	if len(errors) > 0 {
-		report.Warnings = errors
-	}
-
+	s.fetchReportSections(ctx, apiContext, filters, measures, report)
 	return report, nil
 }
 
-func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext) (*QualityGateInfo, error) {
+func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext, measures *AllMeasures) (*QualityGateInfo, error) {
 	params := make(map[string]string)
 	for k, v := range apiContext.BaseParams {
 		params[k] = v
@@ -259,54 +354,21 @@ func (s *Service) GetQualityGate(ctx context.Context, apiContext APIContext) (*Q
 		}
 	}
 
-	if apiContext.IsPullRequest {
-		if summary, err := s.getQualityGateSummary(ctx, apiContext); err == nil {
-			info.Summary = summary
-		}
+	if apiContext.IsPullRequest && measures != nil {
+		info.Summary = qualityGateSummaryFromMeasures(measures)
 	}
 
 	return info, nil
 }
 
-func (s *Service) getQualityGateSummary(ctx context.Context, apiContext APIContext) (*QualityGateSummary, error) {
-	params := make(map[string]string)
-	for k, v := range apiContext.BaseParams {
-		params[k] = v
+func qualityGateSummaryFromMeasures(m *AllMeasures) *QualityGateSummary {
+	return &QualityGateSummary{
+		NewIssues:            m.NewViolations,
+		AcceptedIssues:       m.AcceptedIssues,
+		NewSecurityHotspots:  m.NewSecurityHotspots,
+		NewCoverage:          m.NewCoverage,
+		NewDuplicatedDensity: m.NewDuplicatedDensity,
 	}
-	params["metricKeys"] = "new_violations,accepted_issues,new_security_hotspots,new_coverage,new_duplicated_lines_density"
-
-	var measure ComponentMeasure
-	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
-		return nil, err
-	}
-
-	summary := &QualityGateSummary{}
-	for _, metric := range measure.Component.Measures {
-		switch metric.Metric {
-		case "new_violations":
-			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
-				summary.NewIssues = v
-			}
-		case "accepted_issues":
-			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
-				summary.AcceptedIssues = v
-			}
-		case "new_security_hotspots":
-			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
-				summary.NewSecurityHotspots = v
-			}
-		case "new_coverage":
-			if v, err := s.parseMetricFloat(metric.Value, metric.Periods); err == nil {
-				summary.NewCoverage = v
-			}
-		case "new_duplicated_lines_density":
-			if v, err := s.parseMetricFloat(metric.Value, metric.Periods); err == nil {
-				summary.NewDuplicatedDensity = v
-			}
-		}
-	}
-
-	return summary, nil
 }
 
 func (s *Service) parseMetricInt(value string, periods []struct {
@@ -337,16 +399,14 @@ func (s *Service) parseMetricFloat(value string, periods []struct {
 	return 0, fmt.Errorf("no value")
 }
 
-func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, filters FilterOptions) (*CoverageData, error) {
+func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, filters FilterOptions, measures *AllMeasures) (*CoverageData, error) {
 	data := &CoverageData{
 		Available:      true,
 		Files:          make([]CoverageFile, 0),
 		UncoveredLines: make([]UncoveredLine, 0),
 	}
 
-	if err := s.getProjectCoverage(ctx, apiContext, data); err != nil {
-		return nil, err
-	}
+	projectCoverageFromMeasures(measures, data)
 
 	if err := s.getFileCoverage(ctx, apiContext, data, filters); err != nil {
 		return nil, err
@@ -366,49 +426,11 @@ func (s *Service) GetCoverageData(ctx context.Context, apiContext APIContext, fi
 	return data, nil
 }
 
-func (s *Service) getProjectCoverage(ctx context.Context, apiContext APIContext, data *CoverageData) error {
-	params := make(map[string]string)
-	for k, v := range apiContext.BaseParams {
-		params[k] = v
-	}
-
-	metrics := []string{"coverage", "uncovered_lines"}
-	if apiContext.IsPullRequest {
-		metrics = append(metrics, "new_coverage", "new_uncovered_lines")
-	}
-	params["metricKeys"] = strings.Join(metrics, ",")
-
-	var measure ComponentMeasure
-	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
-		return err
-	}
-
-	for _, metric := range measure.Component.Measures {
-		switch metric.Metric {
-		case "coverage":
-			if coverage, err := strconv.ParseFloat(metric.Value, 64); err == nil {
-				data.OverallCoverage = coverage
-			}
-		case "new_coverage":
-			if len(metric.Periods) > 0 {
-				if coverage, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
-					data.NewCodeCoverage = coverage
-				}
-			}
-		case "uncovered_lines":
-			if lines, err := strconv.Atoi(metric.Value); err == nil {
-				data.Summary.UncoveredLines = lines
-			}
-		case "new_uncovered_lines":
-			if len(metric.Periods) > 0 {
-				if lines, err := strconv.Atoi(metric.Periods[0].Value); err == nil {
-					data.Summary.NewUncoveredLines = lines
-				}
-			}
-		}
-	}
-
-	return nil
+func projectCoverageFromMeasures(m *AllMeasures, data *CoverageData) {
+	data.OverallCoverage = m.Coverage
+	data.NewCodeCoverage = m.NewCoverage
+	data.Summary.UncoveredLines = m.UncoveredLines
+	data.Summary.NewUncoveredLines = m.NewUncoveredLines
 }
 
 func (s *Service) getFileCoverage(ctx context.Context, apiContext APIContext, data *CoverageData, filters FilterOptions) error {
@@ -724,9 +746,10 @@ func (s *Service) shouldPreserveHTMLTags(filePath string) bool {
 	return false
 }
 
+var htmlTagRegex = regexp.MustCompile(`<[^>]*>`)
+
 func (s *Service) cleanHTMLTags(code string) string {
-	re := regexp.MustCompile(`<[^>]*>`)
-	cleaned := re.ReplaceAllString(code, "")
+	cleaned := htmlTagRegex.ReplaceAllString(code, "")
 
 	cleaned = strings.ReplaceAll(cleaned, "  ", " ")
 	cleaned = strings.TrimSpace(cleaned)
@@ -865,78 +888,77 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 	return data, nil
 }
 
-func (s *Service) GetMetricsData(ctx context.Context, apiContext APIContext) (*MetricsData, error) {
-	params := make(map[string]string)
-	for k, v := range apiContext.BaseParams {
-		params[k] = v
-	}
-
-	params["metricKeys"] = "duplicated_lines_density,new_duplicated_lines_density,reliability_rating,security_rating,sqale_rating,new_maintainability_rating,new_reliability_rating,new_security_rating"
-
-	var measure ComponentMeasure
-	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
-		return nil, err
-	}
-
+func metricsDataFromMeasures(m *AllMeasures) *MetricsData {
 	data := &MetricsData{
-		Available: true,
-		Metrics:   make(map[string]string),
-		Ratings:   make(map[string]string),
+		Available:            true,
+		Metrics:              make(map[string]string),
+		Ratings:              make(map[string]string),
+		Duplication:          m.DuplicatedDensity,
+		NewDuplicatedDensity: m.NewDuplicatedDensity,
+		TechnicalDebtMinutes: m.TechnicalDebtMinutes,
+		NewBugs:              m.NewBugs,
+		NewVulnerabilities:   m.NewVulnerabilities,
+		NewCodeSmells:        m.NewCodeSmells,
+		NewSecurityHotspots:  m.NewSecurityHotspots,
 	}
+	for k, v := range m.Ratings {
+		data.Ratings[k] = v
+	}
+	for k, v := range m.Metrics {
+		data.Metrics[k] = v
+	}
+	return data
+}
 
-	for _, metric := range measure.Component.Measures {
-		switch metric.Metric {
-		case "duplicated_lines_density":
-			if dup, err := strconv.ParseFloat(metric.Value, 64); err == nil {
-				data.Duplication = dup
-			}
-		case "new_duplicated_lines_density":
-			if len(metric.Periods) > 0 {
-				if dup, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
-					data.NewDuplicatedDensity = dup
-				}
-			} else if dup, err := strconv.ParseFloat(metric.Value, 64); err == nil {
-				data.NewDuplicatedDensity = dup
-			}
-		case "reliability_rating", "security_rating", "sqale_rating",
-			"new_maintainability_rating", "new_reliability_rating", "new_security_rating":
-			data.Ratings[metric.Metric] = metric.Value
-		default:
-			data.Metrics[metric.Metric] = metric.Value
+// parseNewCodeInt parses an integer from a "new code" metric, checking Periods first then Value.
+func parseNewCodeInt(metric struct {
+	Metric    string `json:"metric"`
+	Value     string `json:"value"`
+	BestValue bool   `json:"bestValue"`
+	Periods   []struct {
+		Index     int    `json:"index"`
+		Value     string `json:"value"`
+		BestValue bool   `json:"bestValue"`
+	} `json:"periods,omitempty"`
+}) int {
+	if len(metric.Periods) > 0 {
+		if v, err := strconv.Atoi(metric.Periods[0].Value); err == nil {
+			return v
 		}
 	}
+	if v, err := strconv.Atoi(metric.Value); err == nil {
+		return v
+	}
+	return 0
+}
 
-	return data, nil
+var metricDisplayNames = map[string]string{
+	"new_coverage":                 "Coverage on New Code",
+	"coverage":                     "Coverage",
+	"new_bugs":                     "Bugs on New Code",
+	"bugs":                         "Bugs",
+	"new_vulnerabilities":          "Vulnerabilities on New Code",
+	"vulnerabilities":              "Vulnerabilities",
+	"new_code_smells":              "Code Smells on New Code",
+	"code_smells":                  "Code Smells",
+	"new_security_hotspots":        "Security Hotspots on New Code",
+	"security_hotspots":            "Security Hotspots",
+	"duplicated_lines_density":     "Duplicated Lines",
+	"new_duplicated_lines_density": "Duplicated Lines on New Code",
+	"sqale_rating":                 "Maintainability Rating",
+	"new_maintainability_rating":   "Maintainability Rating on New Code",
+	"reliability_rating":           "Reliability Rating",
+	"new_reliability_rating":       "Reliability Rating on New Code",
+	"security_rating":              "Security Rating",
+	"new_security_rating":          "Security Rating on New Code",
+	"new_violations":               "New Issues",
+	"accepted_issues":              "Accepted Issues",
 }
 
 func (s *Service) getMetricDisplayName(metricKey string) string {
-	displayNames := map[string]string{
-		"new_coverage":                 "Coverage on New Code",
-		"coverage":                     "Coverage",
-		"new_bugs":                     "Bugs on New Code",
-		"bugs":                         "Bugs",
-		"new_vulnerabilities":          "Vulnerabilities on New Code",
-		"vulnerabilities":              "Vulnerabilities",
-		"new_code_smells":              "Code Smells on New Code",
-		"code_smells":                  "Code Smells",
-		"new_security_hotspots":        "Security Hotspots on New Code",
-		"security_hotspots":            "Security Hotspots",
-		"duplicated_lines_density":     "Duplicated Lines",
-		"new_duplicated_lines_density": "Duplicated Lines on New Code",
-		"sqale_rating":                 "Maintainability Rating",
-		"new_maintainability_rating":   "Maintainability Rating on New Code",
-		"reliability_rating":           "Reliability Rating",
-		"new_reliability_rating":       "Reliability Rating on New Code",
-		"security_rating":              "Security Rating",
-		"new_security_rating":          "Security Rating on New Code",
-		"new_violations":               "New Issues",
-		"accepted_issues":              "Accepted Issues",
-	}
-
-	if displayName, exists := displayNames[metricKey]; exists {
+	if displayName, exists := metricDisplayNames[metricKey]; exists {
 		return displayName
 	}
-
 	return metricKey
 }
 
@@ -948,16 +970,14 @@ func (s *Service) extractFileFromComponent(component string) string {
 	return component
 }
 
-func (s *Service) GetDuplicationData(ctx context.Context, apiContext APIContext, filters FilterOptions) (*DuplicationData, error) {
+func (s *Service) GetDuplicationData(ctx context.Context, apiContext APIContext, filters FilterOptions, measures *AllMeasures) (*DuplicationData, error) {
 	data := &DuplicationData{
 		Available: true,
 		Files:     make([]DuplicatedFile, 0),
 		Details:   make([]DuplicationDetail, 0),
 	}
 
-	if err := s.getProjectDuplication(ctx, apiContext, data); err != nil {
-		return nil, err
-	}
+	projectDuplicationFromMeasures(measures, data)
 
 	if err := s.getFileDuplication(ctx, apiContext, data, filters); err != nil {
 		return nil, err
@@ -970,44 +990,11 @@ func (s *Service) GetDuplicationData(ctx context.Context, apiContext APIContext,
 	return data, nil
 }
 
-func (s *Service) getProjectDuplication(ctx context.Context, apiContext APIContext, data *DuplicationData) error {
-	params := make(map[string]string)
-	for k, v := range apiContext.BaseParams {
-		params[k] = v
-	}
-	params["metricKeys"] = "duplicated_lines_density,duplicated_lines,duplicated_blocks,new_duplicated_lines_density"
-
-	var measure ComponentMeasure
-	if err := s.client.GetJSON(ctx, "measures/component", params, apiContext, &measure); err != nil {
-		return err
-	}
-
-	for _, metric := range measure.Component.Measures {
-		switch metric.Metric {
-		case "duplicated_lines_density":
-			if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
-				data.OverallDuplication = v
-			}
-		case "duplicated_lines":
-			if v, err := strconv.Atoi(metric.Value); err == nil {
-				data.DuplicatedLines = v
-			}
-		case "duplicated_blocks":
-			if v, err := strconv.Atoi(metric.Value); err == nil {
-				data.DuplicatedBlocks = v
-			}
-		case "new_duplicated_lines_density":
-			if len(metric.Periods) > 0 {
-				if v, err := strconv.ParseFloat(metric.Periods[0].Value, 64); err == nil {
-					data.NewCodeDuplication = v
-				}
-			} else if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
-				data.NewCodeDuplication = v
-			}
-		}
-	}
-
-	return nil
+func projectDuplicationFromMeasures(m *AllMeasures, data *DuplicationData) {
+	data.OverallDuplication = m.DuplicatedDensity
+	data.DuplicatedLines = m.DuplicatedLines
+	data.DuplicatedBlocks = m.DuplicatedBlocks
+	data.NewCodeDuplication = m.NewDuplicatedDensity
 }
 
 func (s *Service) getFileDuplication(ctx context.Context, apiContext APIContext, data *DuplicationData, filters FilterOptions) error {
