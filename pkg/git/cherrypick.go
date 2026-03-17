@@ -368,6 +368,16 @@ func ParseBranchName(branchName, prefix, suffix string) (string, error) {
 	return branchIdentifier, nil
 }
 
+func ParseBranchNameMulti(branchName string, prefixes []string, suffix string) (identifier, matchedPrefix string, err error) {
+	for _, prefix := range prefixes {
+		id, err := ParseBranchName(branchName, prefix, suffix)
+		if err == nil {
+			return id, prefix, nil
+		}
+	}
+	return "", "", fmt.Errorf("branch '%s' doesn't match any prefix %v with suffix '%s'", branchName, prefixes, suffix)
+}
+
 func FindBranchByPattern(repoDir, pattern string) (string, error) {
 	cmd := exec.Command("git", "for-each-ref", "--format=%(refname:short)", fmt.Sprintf("refs/heads/%s", pattern))
 	cmd.Dir = repoDir

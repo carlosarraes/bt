@@ -163,7 +163,7 @@ func (cm *ConfigManager) GetAllValues() map[string]interface{} {
 
 	result["llm.model"] = cm.config.LLM.Model
 
-	result["pick.prefix"] = cm.config.Pick.Prefix
+	result["pick.prefix"] = strings.Join(cm.config.Pick.Prefix, ",")
 	result["pick.suffix_prd"] = cm.config.Pick.SuffixPrd
 	result["pick.suffix_hml"] = cm.config.Pick.SuffixHml
 
@@ -199,6 +199,12 @@ func setFieldValue(field reflect.Value, valueStr string) error {
 			return fmt.Errorf("invalid boolean: %v", err)
 		}
 		field.SetBool(boolVal)
+	case reflect.Slice:
+		if field.Type() == reflect.TypeOf(config.Prefixes{}) {
+			field.Set(reflect.ValueOf(config.ParsePrefixes(valueStr)))
+		} else {
+			return fmt.Errorf("unsupported slice type: %s", field.Type())
+		}
 	default:
 		return fmt.Errorf("unsupported field type: %s", field.Type())
 	}

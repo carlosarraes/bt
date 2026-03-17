@@ -1,7 +1,11 @@
 package config
 
 import (
+	"fmt"
+	"strings"
 	"time"
+
+	yamlv3 "gopkg.in/yaml.v3"
 )
 
 // Config represents the main configuration structure for bt CLI
@@ -40,10 +44,44 @@ type LLMConfig struct {
 	Model string `koanf:"model" yaml:"model"`
 }
 
+// Prefixes holds one or more branch prefixes. Supports both a single string
+// and a YAML array for backwards compatibility. Comma-separated strings are
+// split automatically (e.g. "ZEX-,ZGR-").
+type Prefixes []string
+
+func (p *Prefixes) UnmarshalYAML(value *yamlv3.Node) error {
+	switch value.Kind {
+	case yamlv3.ScalarNode:
+		*p = ParsePrefixes(value.Value)
+		return nil
+	case yamlv3.SequenceNode:
+		var items []string
+		if err := value.Decode(&items); err != nil {
+			return err
+		}
+		*p = items
+		return nil
+	default:
+		return fmt.Errorf("prefix must be a string or list of strings")
+	}
+}
+
+// ParsePrefixes splits a comma-separated string into individual prefixes.
+func ParsePrefixes(s string) Prefixes {
+	var result Prefixes
+	for _, p := range strings.Split(s, ",") {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
+}
+
 type PickConfig struct {
-	Prefix    string `koanf:"prefix" yaml:"prefix"`
-	SuffixPrd string `koanf:"suffix_prd" yaml:"suffix_prd"`
-	SuffixHml string `koanf:"suffix_hml" yaml:"suffix_hml"`
+	Prefix    Prefixes `koanf:"prefix" yaml:"prefix"`
+	SuffixPrd string   `koanf:"suffix_prd" yaml:"suffix_prd"`
+	SuffixHml string   `koanf:"suffix_hml" yaml:"suffix_hml"`
 }
 
 // NewDefaultConfig returns a new Config with sensible defaults
@@ -71,7 +109,7 @@ func NewDefaultConfig() *Config {
 			Model: "gpt-5-mini",
 		},
 		Pick: PickConfig{
-			Prefix:    "ZUP-",
+			Prefix:    Prefixes{"ZUP-"},
 			SuffixPrd: "-prd",
 			SuffixHml: "-hml",
 		},
@@ -104,8 +142,13 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	if c.Pick.Prefix == "" {
+	if len(c.Pick.Prefix) == 0 {
 		return ErrEmptyPickPrefix
+	}
+	for _, p := range c.Pick.Prefix {
+		if p == "" {
+			return ErrEmptyPickPrefix
+		}
 	}
 	if c.Pick.SuffixPrd == "" {
 		return ErrEmptyPickSuffixPrd

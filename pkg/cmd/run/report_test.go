@@ -121,7 +121,7 @@ func TestRunFormatDebtMinutes(t *testing.T) {
 		{120, "2h"},
 		{480, "1d"},
 		{600, "1d2h"},
-		{510, "1d"},   // 8h30min = 1d (30min lost — known limitation)
+		{510, "1d"}, // 8h30min = 1d (30min lost — known limitation)
 		{960, "2d"},
 		{1440, "3d"},
 	}

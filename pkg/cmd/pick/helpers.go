@@ -40,7 +40,7 @@ func loadPickConfig(flagPrefix, flagSuffixPrd, flagSuffixHml string) (*config.Pi
 
 	pickCfg := &cfg.Pick
 	if flagPrefix != "" {
-		pickCfg.Prefix = flagPrefix
+		pickCfg.Prefix = config.ParsePrefixes(flagPrefix)
 	}
 	if flagSuffixPrd != "" {
 		pickCfg.SuffixPrd = flagSuffixPrd
@@ -68,13 +68,13 @@ func resolveBranches(repoDir string, cfg *config.PickConfig, reverse, debug bool
 			currentBranch, cfg.SuffixPrd, cfg.SuffixHml)
 	}
 
-	branchIdentifier, err := git.ParseBranchName(currentBranch, cfg.Prefix, currentSuffix)
+	branchIdentifier, matchedPrefix, err := git.ParseBranchNameMulti(currentBranch, cfg.Prefix, currentSuffix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse branch name: %w", err)
 	}
 
-	prdBranch := cfg.Prefix + branchIdentifier + cfg.SuffixPrd
-	hmlBranch := cfg.Prefix + branchIdentifier + cfg.SuffixHml
+	prdBranch := matchedPrefix + branchIdentifier + cfg.SuffixPrd
+	hmlBranch := matchedPrefix + branchIdentifier + cfg.SuffixHml
 
 	if exists, err := git.BranchOrRemoteExists(repoDir, prdBranch, debug); err != nil {
 		return nil, fmt.Errorf("failed to check PRD branch: %w", err)

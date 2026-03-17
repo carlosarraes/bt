@@ -58,6 +58,21 @@ func (l *Loader) Load() (*Config, error) {
 		return nil, fmt.Errorf("%w: failed to unmarshal config: %v", ErrConfigLoad, err)
 	}
 
+	// Koanf stores scalars as string — convert pick.prefix to Prefixes if needed
+	if raw := l.k.Get("pick.prefix"); raw != nil {
+		switch v := raw.(type) {
+		case string:
+			config.Pick.Prefix = ParsePrefixes(v)
+		case []interface{}:
+			config.Pick.Prefix = nil
+			for _, item := range v {
+				if s, ok := item.(string); ok {
+					config.Pick.Prefix = append(config.Pick.Prefix, s)
+				}
+			}
+		}
+	}
+
 	// Validate configuration
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrConfigLoad, err)

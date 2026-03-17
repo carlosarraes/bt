@@ -321,6 +321,75 @@ func TestParseBranchName(t *testing.T) {
 	}
 }
 
+func TestParseBranchNameMulti(t *testing.T) {
+	tests := []struct {
+		name           string
+		branchName     string
+		prefixes       []string
+		suffix         string
+		expectedID     string
+		expectedPrefix string
+		expectError    bool
+	}{
+		{
+			name:           "matches first prefix",
+			branchName:     "ZEX-123-prd",
+			prefixes:       []string{"ZEX-", "ZGR-"},
+			suffix:         "-prd",
+			expectedID:     "123",
+			expectedPrefix: "ZEX-",
+		},
+		{
+			name:           "matches second prefix",
+			branchName:     "ZGR-456-hml",
+			prefixes:       []string{"ZEX-", "ZGR-"},
+			suffix:         "-hml",
+			expectedID:     "456",
+			expectedPrefix: "ZGR-",
+		},
+		{
+			name:           "single prefix works",
+			branchName:     "ZUP-99-prd",
+			prefixes:       []string{"ZUP-"},
+			suffix:         "-prd",
+			expectedID:     "99",
+			expectedPrefix: "ZUP-",
+		},
+		{
+			name:        "no prefix matches",
+			branchName:  "ABC-123-prd",
+			prefixes:    []string{"ZEX-", "ZGR-"},
+			suffix:      "-prd",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, prefix, err := ParseBranchNameMulti(tt.branchName, tt.prefixes, tt.suffix)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if id != tt.expectedID {
+				t.Errorf("Expected ID %q, got %q", tt.expectedID, id)
+			}
+			if prefix != tt.expectedPrefix {
+				t.Errorf("Expected prefix %q, got %q", tt.expectedPrefix, prefix)
+			}
+		})
+	}
+}
+
 func TestFindBranchByPattern(t *testing.T) {
 	repoDir := setupTestRepo(t)
 
