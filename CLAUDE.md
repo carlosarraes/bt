@@ -12,22 +12,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build and development
-make build                    # Build optimized binary
-make build-dev               # Build for development (no optimization)
-make install                 # Install to $GOPATH/bin
-make dev                     # Build and run with help
+just build                    # Build optimized binary
+just build-dev               # Build for development (no optimization)
+just install                 # Install to $GOPATH/bin
+just dev                     # Build and run with help
 
 # Testing
-make test                    # Unit tests only
-make test-cover             # Tests with coverage report
-make test-integration       # Integration tests (requires Bitbucket auth)
-make test-race              # Race condition detection
-make test-cli               # CLI command testing
+just test                    # Unit tests only
+just test-cover             # Tests with coverage report
+just test-integration       # Integration tests (requires Bitbucket auth)
+just test-race              # Race condition detection
+just test-cli               # CLI command testing
 
 # Code quality
-make fmt                    # Format code
-make vet                    # Run go vet
-make check                  # All quality checks (fmt, vet, test)
+just fmt                    # Format code
+just vet                    # Run go vet
+just check                  # All quality checks (fmt, vet, test)
 
 # Single test execution
 go test -v ./pkg/api -run TestClient
@@ -38,8 +38,8 @@ go test -v ./test/integration -run TestPullRequestAPI
 ### Development Environment Setup
 
 ```bash
-make deps                   # Download dependencies
-make clean                  # Clean build artifacts
+just deps                   # Download dependencies
+just clean                  # Clean build artifacts
 ```
 
 ## Architecture Overview
@@ -207,14 +207,14 @@ func (c *Command) formatOutput(ctx *Context, data interface{}) error {
 
 ```bash
 # Unit tests only (fast)
-make test
+just test
 
 # Integration tests (requires Bitbucket auth)
 export BT_INTEGRATION_TESTS=1
 export BT_TEST_USERNAME="username"
 export BT_TEST_APP_PASSWORD="password"
 export BT_TEST_WORKSPACE="workspace"
-make test-integration
+just test-integration
 
 # Single test file
 go test -v ./pkg/cmd/pr -run TestViewCmd

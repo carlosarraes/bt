@@ -107,28 +107,28 @@ echo "Running pre-commit checks..."
 
 # Check formatting
 echo "Checking code formatting..."
-if ! make fmt-check; then
-    echo "Code is not properly formatted. Run 'make fmt' to fix."
+if ! just fmt-check; then
+    echo "Code is not properly formatted. Run 'just fmt' to fix."
     exit 1
 fi
 
 # Run vet
 echo "Running go vet..."
-if ! make vet; then
+if ! just vet; then
     echo "go vet found issues. Please fix them."
     exit 1
 fi
 
 # Run linter
 echo "Running linter..."
-if ! make lint; then
+if ! just lint; then
     echo "Linter found issues. Please fix them."
     exit 1
 fi
 
 # Run tests
 echo "Running tests..."
-if ! make test-short; then
+if ! just test-short; then
     echo "Tests failed. Please fix them."
     exit 1
 fi
@@ -282,7 +282,7 @@ run_setup_tests() {
     log_info "Running setup verification tests..."
 
     # Build the project
-    if make build; then
+    if just build; then
         log_success "Project builds successfully"
     else
         log_error "Project build failed"
@@ -290,7 +290,7 @@ run_setup_tests() {
     fi
 
     # Run tests
-    if make test-short; then
+    if just test-short; then
         log_success "Tests pass successfully"
     else
         log_error "Tests failed"
@@ -298,10 +298,10 @@ run_setup_tests() {
     fi
 
     # Run linter
-    if make lint; then
+    if just lint; then
         log_success "Code passes linting"
     else
-        log_warning "Linting issues found. Run 'make lint' to see details."
+        log_warning "Linting issues found. Run 'just lint' to see details."
     fi
 }
 
@@ -323,19 +323,19 @@ display_summary() {
     done
 
     echo
-    log_info "Available Make targets:"
-    echo "  make help          - Show all available targets"
-    echo "  make build         - Build the binary"
-    echo "  make test          - Run tests"
-    echo "  make lint          - Run linter"
-    echo "  make fmt           - Format code"
-    echo "  make setup-dev     - Run this setup again"
+    log_info "Available recipes:"
+    echo "  just --list        - Show all available recipes"
+    echo "  just build         - Build the binary"
+    echo "  just test          - Run tests"
+    echo "  just lint          - Run linter"
+    echo "  just fmt           - Format code"
+    echo "  just setup-dev     - Run this setup again"
     echo
 
     log_info "Next steps:"
     echo "  1. Copy .env.example to .env and fill in your credentials"
-    echo "  2. Run 'make build' to build the project"
-    echo "  3. Run 'make test' to verify everything works"
+    echo "  2. Run 'just build' to build the project"
+    echo "  3. Run 'just test' to verify everything works"
     echo "  4. Start developing! 🚀"
 }
 

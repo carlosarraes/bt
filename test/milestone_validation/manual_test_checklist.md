@@ -14,7 +14,7 @@ This document provides a systematic manual testing checklist for validating MILE
 
 ### Environment Preparation
 - [ ] **Clean Test Environment**: Remove existing auth config (`rm -rf ~/.config/bt/`)
-- [ ] **Build Latest Version**: `make build` to ensure testing latest code
+- [ ] **Build Latest Version**: `just build` to ensure testing latest code
 - [ ] **Network Connectivity**: Verify internet connection to api.bitbucket.org
 - [ ] **Test Credentials Available**: 
   - [ ] Bitbucket App Password (username + password)

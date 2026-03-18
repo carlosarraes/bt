@@ -10,13 +10,13 @@ The testing strategy focuses on **real API integration** rather than mocks to en
 
 ```bash
 # Run unit tests only
-make test
+just test
 
 # Run CLI tests
-make test-cli
+just test-cli
 
 # Run performance tests
-make test-performance
+just test-performance
 
 # Set up integration tests (requires Bitbucket account)
 export BT_INTEGRATION_TESTS=1
@@ -26,10 +26,10 @@ export BT_TEST_WORKSPACE="your-workspace"
 export BT_TEST_REPO="your-test-repo"
 
 # Run integration tests
-make test-integration
+just test-integration
 
 # Run all tests
-make test-all
+just test-all
 ```
 
 ## Test Categories
@@ -145,31 +145,31 @@ data, err := utils.ReadJSONResponse(resp)
 ### Local Development
 ```bash
 # Quick tests (unit + CLI)
-make test-quick
+just test-quick
 
 # All tests with coverage
-make test-cover
+just test-cover
 
 # Watch mode (with entr)
-find . -name "*.go" | entr -r make test-quick
+find . -name "*.go" | entr -r just test-quick
 ```
 
 ### Continuous Integration
 ```bash
 # CI-appropriate test suite
-make test-ci
+just test-ci
 
 # With race detection
-make test-race
+just test-race
 ```
 
 ### Performance Testing
 ```bash
 # Run benchmarks
-make bench
+just bench
 
 # Performance regression testing
-make test-performance
+just test-performance
 ```
 
 ## Test Data Management
@@ -206,7 +206,7 @@ Error: 401 Unauthorized
 ```
 Error: bt: command not found
 ```
-**Solution**: Run `make build` to create the binary.
+**Solution**: Run `just build` to create the binary.
 
 #### Rate Limiting
 ```

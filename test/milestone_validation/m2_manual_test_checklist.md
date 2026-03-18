@@ -16,7 +16,7 @@ This document provides a systematic manual testing checklist for validating MILE
 ### Environment Preparation
 - [ ] **Authentication Complete**: Ensure `bt auth status` shows authenticated user
 - [ ] **Test Repository Access**: Verify access to repository with recent pipeline runs
-- [ ] **Build Latest Version**: `make build` to ensure testing latest code
+- [ ] **Build Latest Version**: `just build` to ensure testing latest code
 - [ ] **Network Connectivity**: Verify stable connection to api.bitbucket.org
 - [ ] **Test Data Available**: Repository with diverse pipeline states (successful, failed, running)
 
