@@ -106,7 +106,7 @@ func NewDefaultConfig() *Config {
 			},
 		},
 		LLM: LLMConfig{
-			Model: "gpt-5-mini",
+			Model: "gpt-5.4-mini",
 		},
 		Pick: PickConfig{
 			Prefix:    Prefixes{"ZUP-"},

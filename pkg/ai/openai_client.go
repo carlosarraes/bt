@@ -52,7 +52,7 @@ func NewOpenAIClient() (*OpenAIClient, error) {
 
 	model := os.Getenv("OPENAI_MODEL")
 	if model == "" {
-		model = "gpt-5-mini"
+		model = "gpt-5.4-mini"
 	}
 
 	client := openai.NewClient(apiKey)
@@ -83,7 +83,7 @@ func NewOpenAIClientWithConfig(cfg *config.Config) (*OpenAIClient, error) {
 		model = cfg.LLM.Model
 	}
 	if model == "" {
-		model = "gpt-5-mini"
+		model = "gpt-5.4-mini"
 	}
 
 	client := openai.NewClient(apiKey)
