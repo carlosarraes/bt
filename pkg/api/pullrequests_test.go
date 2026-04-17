@@ -693,6 +693,78 @@ func TestPullRequestService_ErrorHandling(t *testing.T) {
 	}
 }
 
+func TestPullRequestService_CreatePullRequest(t *testing.T) {
+	tests := []struct {
+		name            string
+		draft           bool
+		wantDraftInBody bool
+	}{
+		{
+			name:            "sends draft=true when Draft is set",
+			draft:           true,
+			wantDraftInBody: true,
+		},
+		{
+			name:            "omits draft field when Draft is false",
+			draft:           false,
+			wantDraftInBody: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var capturedBody map[string]interface{}
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "POST", r.Method)
+				assert.Equal(t, "/repositories/test-workspace/test-repo/pullrequests", r.URL.Path)
+
+				err := json.NewDecoder(r.Body).Decode(&capturedBody)
+				require.NoError(t, err)
+
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(samplePullRequestJSON))
+			}))
+			defer server.Close()
+
+			mockAuth := &MockAuthManager{}
+			mockAuth.On("SetHTTPHeaders", mock.Anything).Return(nil)
+
+			config := &ClientConfig{
+				BaseURL:       server.URL,
+				Timeout:       5 * time.Second,
+				RetryAttempts: 1,
+				UserAgent:     "bt/test",
+			}
+			client, err := NewClient(mockAuth, config)
+			require.NoError(t, err)
+
+			request := &CreatePullRequestRequest{
+				Title: "Test PR",
+				Source: &PullRequestBranch{
+					Branch: &Branch{Name: "feature"},
+				},
+				Destination: &PullRequestBranch{
+					Branch: &Branch{Name: "main"},
+				},
+				Draft: tt.draft,
+			}
+
+			pr, err := client.PullRequests.CreatePullRequest(context.Background(), "test-workspace", "test-repo", request)
+			require.NoError(t, err)
+			assert.NotNil(t, pr)
+
+			if tt.wantDraftInBody {
+				assert.Equal(t, true, capturedBody["draft"], "expected draft=true in request payload")
+			} else {
+				_, present := capturedBody["draft"]
+				assert.False(t, present, "expected draft field to be omitted from request payload when false")
+			}
+		})
+	}
+}
+
 // Benchmark tests
 func BenchmarkPullRequestService_ListPullRequests(b *testing.B) {
 	// Create a test server

@@ -217,6 +217,7 @@ type CreatePullRequestRequest struct {
 	Destination       *PullRequestBranch        `json:"destination"`
 	Reviewers         []*PullRequestParticipant `json:"reviewers,omitempty"`
 	CloseSourceBranch bool                      `json:"close_source_branch,omitempty"`
+	Draft             bool                      `json:"draft,omitempty"`
 }
 
 // UpdatePullRequestRequest represents a request to update a pull request

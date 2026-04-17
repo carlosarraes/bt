@@ -278,6 +278,7 @@ func (cmd *CreateCmd) createPullRequest(ctx context.Context, prCtx *PRContext, t
 		},
 		Reviewers:         reviewers,
 		CloseSourceBranch: cmd.CloseSourceBranch,
+		Draft:             cmd.Draft,
 	}
 
 	pr, err := prCtx.Client.PullRequests.CreatePullRequest(ctx, prCtx.Workspace, prCtx.Repository, request)
