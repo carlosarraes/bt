@@ -34,6 +34,7 @@ type ReportCmd struct {
 	NoLineDetails     bool     `name:"no-line-details" help:"Skip line-by-line breakdown (performance)"`
 	TruncateLines     int      `name:"truncate-lines" help:"Truncate code lines after N characters" default:"80"`
 	Context           int      `name:"context" help:"Show N lines of context around each uncovered line"`
+	AllIssues         bool     `name:"all-issues" help:"Show accepted and pre-existing issues in full"`
 	Debug             bool     `help:"Enable debug output for troubleshooting"`
 	Workspace         string   `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository        string   `help:"Repository name (defaults to git remote)"`
