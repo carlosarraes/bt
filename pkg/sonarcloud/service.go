@@ -935,11 +935,33 @@ func (s *Service) GetPRIssueBuckets(ctx context.Context, apiContext APIContext, 
 // GetPRIssueBucketsForPR is a convenience wrapper that builds an APIContext
 // for a specific PR and delegates to GetPRIssueBuckets.
 func (s *Service) GetPRIssueBucketsForPR(ctx context.Context, prID int, workspace, repo string, filters FilterOptions) (*PRIssueBuckets, error) {
+	apiContext, err := s.buildPRAPIContext(ctx, prID, workspace, repo)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetPRIssueBuckets(ctx, *apiContext, filters)
+}
+
+// GetPRIssuesUnfiltered fetches all PR-scoped issues without the actionable
+// or accepted filter, intended as a retry fallback when the default actionable
+// query disagrees with the quality gate metrics.
+func (s *Service) GetPRIssuesUnfiltered(ctx context.Context, prID int, workspace, repo string, filters FilterOptions) (*IssuesData, error) {
+	apiContext, err := s.buildPRAPIContext(ctx, prID, workspace, repo)
+	if err != nil {
+		return nil, err
+	}
+	relaxed := filters
+	relaxed.OnlyActionable = false
+	relaxed.OnlyAccepted = false
+	return s.GetIssuesData(ctx, *apiContext, relaxed)
+}
+
+func (s *Service) buildPRAPIContext(ctx context.Context, prID int, workspace, repo string) (*APIContext, error) {
 	discoveryResult, err := s.discovery.DiscoverProjectKey(ctx, workspace, repo, "")
 	if err != nil {
 		return nil, fmt.Errorf("discover project key: %w", err)
 	}
-	apiContext := APIContext{
+	return &APIContext{
 		ProjectKey: discoveryResult.ProjectKey,
 		BaseParams: map[string]string{
 			"component":   discoveryResult.ProjectKey,
@@ -947,8 +969,7 @@ func (s *Service) GetPRIssueBucketsForPR(ctx context.Context, prID int, workspac
 		},
 		IsPullRequest: true,
 		PullRequestID: prID,
-	}
-	return s.GetPRIssueBuckets(ctx, apiContext, filters)
+	}, nil
 }
 
 func metricsDataFromMeasures(m *AllMeasures) *MetricsData {

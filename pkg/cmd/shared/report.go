@@ -3,6 +3,7 @@ package shared
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -531,4 +532,145 @@ func (f *ReportFormatter) FormatWarnings(report *sonarcloud.Report) {
 			fmt.Printf("  • %s\n", warning.Error())
 		}
 	}
+}
+
+// IssueTypeLabel converts SonarCloud type constants to a human-readable label.
+func IssueTypeLabel(t string) string {
+	switch t {
+	case "BUG":
+		return "Bug"
+	case "VULNERABILITY":
+		return "Vulnerability"
+	case "CODE_SMELL":
+		return "Code Smell"
+	case "SECURITY_HOTSPOT":
+		return "Security Hotspot"
+	default:
+		return t
+	}
+}
+
+func assigneeOrUnassigned(a string) string {
+	if strings.TrimSpace(a) == "" {
+		return "unassigned"
+	}
+	return a
+}
+
+func inDiffLabel(file string, line *int, diffLines map[string]map[int]bool) string {
+	if diffLines == nil || line == nil {
+		return "unknown"
+	}
+	if lines, ok := diffLines[file]; ok && lines[*line] {
+		return "yes"
+	}
+	return "no"
+}
+
+func severityOrDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
+func lineOrDash(line *int) string {
+	if line == nil {
+		return "-"
+	}
+	return strconv.Itoa(*line)
+}
+
+// FormatActionableIssuesSection prints the bullet list of actionable PR issues.
+// Returns the count rendered.
+func (f *ReportFormatter) FormatActionableIssuesSection(actionable *sonarcloud.IssuesData, diffLines map[string]map[int]bool) int {
+	if actionable == nil || len(actionable.Issues) == 0 {
+		fmt.Printf("Actionable New Issues: 0\n")
+		fmt.Printf("  ✅ Nothing for the PR author to fix.\n\n")
+		return 0
+	}
+	n := len(actionable.Issues)
+	fmt.Printf("Actionable New Issues: %d\n", n)
+	for _, iss := range actionable.Issues {
+		fmt.Printf("- [%s] %s %s:%s %s\n",
+			severityOrDash(iss.Severity),
+			IssueTypeLabel(iss.Type),
+			iss.File,
+			lineOrDash(iss.Line),
+			assigneeOrUnassigned(iss.Assignee),
+		)
+		fmt.Printf("  %s\n", iss.Message)
+		fmt.Printf("  Rule: %s\n", iss.Rule)
+		fmt.Printf("  In PR diff: %s\n", inDiffLabel(iss.File, iss.Line, diffLines))
+	}
+	fmt.Println()
+	return n
+}
+
+// FormatAcceptedSummary renders the Accepted/Pre-existing block. When showAll
+// is false, only counts are shown. When true, full details are printed.
+func (f *ReportFormatter) FormatAcceptedSummary(accepted *sonarcloud.IssuesData, qgAcceptedCount int, showAll bool) {
+	detailCount := 0
+	if accepted != nil {
+		detailCount = len(accepted.Issues)
+	}
+	total := detailCount
+	if qgAcceptedCount > total {
+		total = qgAcceptedCount
+	}
+	fmt.Printf("Accepted / Pre-existing Issues: %d\n", total)
+	if !showAll {
+		fmt.Printf("Hidden by default. Use --all-issues to show details.\n\n")
+		return
+	}
+	if detailCount == 0 {
+		fmt.Printf("  (no detail records returned)\n\n")
+		return
+	}
+	for _, iss := range accepted.Issues {
+		res := iss.Resolution
+		if res == "" {
+			res = "ACCEPTED"
+		}
+		fmt.Printf("- [%s] %s %s:%s (%s) %s\n",
+			severityOrDash(iss.Severity),
+			IssueTypeLabel(iss.Type),
+			iss.File,
+			lineOrDash(iss.Line),
+			res,
+			assigneeOrUnassigned(iss.Assignee),
+		)
+		fmt.Printf("  %s\n", iss.Message)
+		fmt.Printf("  Rule: %s\n", iss.Rule)
+	}
+	fmt.Println()
+}
+
+// expectedNewIssueCount sums new bugs, vulnerabilities, and code smells from
+// metrics. Hotspots are intentionally excluded — they are not "issues" in the
+// SonarCloud taxonomy.
+func expectedNewIssueCount(metrics *sonarcloud.MetricsData, summary *sonarcloud.QualityGateSummary) int {
+	if summary != nil && summary.NewIssues > 0 {
+		return summary.NewIssues
+	}
+	if metrics == nil {
+		return 0
+	}
+	return metrics.NewBugs + metrics.NewVulnerabilities + metrics.NewCodeSmells
+}
+
+// WarnGateMismatch compares quality gate metric counts against the actionable
+// issue list size. When the gate reports more new issues than the issue list
+// returned, it prints a warning to stderr and returns (expected, true) so the
+// caller can retry with relaxed filters. Returns (expected, false) otherwise.
+func WarnGateMismatch(metrics *sonarcloud.MetricsData, summary *sonarcloud.QualityGateSummary, actionableCount int) (int, bool) {
+	expected := expectedNewIssueCount(metrics, summary)
+	if expected <= actionableCount {
+		return expected, false
+	}
+	fmt.Fprintf(os.Stderr,
+		"Quality gate reports %d new code smells, but only %d were returned by the default issue query. Retrying with new-code filters...\n",
+		expected, actionableCount,
+	)
+	return expected, true
 }

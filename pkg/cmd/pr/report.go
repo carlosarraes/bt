@@ -164,13 +164,75 @@ func (cmd *ReportCmd) generateReport(ctx context.Context, prCtx *PRContext, serv
 		return err
 	}
 
-	return cmd.formatOutput(prCtx, report, prID, filters)
+	var buckets *sonarcloud.PRIssueBuckets
+	if filters.IncludeIssues {
+		b, bucketErr := service.GetPRIssueBucketsForPR(ctx, prID, prCtx.Workspace, prCtx.Repository, filters)
+		if bucketErr != nil {
+			if cmd.Debug {
+				fmt.Printf("DEBUG: bucket fetch failed: %v\n", bucketErr)
+			}
+		} else {
+			buckets = b
+		}
+	}
+
+	diffLines := map[string]map[int]bool{}
+	if rawDiff, dErr := prCtx.Client.PullRequests.GetPullRequestDiff(ctx, prCtx.Workspace, prCtx.Repository, prID); dErr == nil {
+		diffLines = ParseAddedLinesByFile(rawDiff)
+	} else if cmd.Debug {
+		fmt.Printf("DEBUG: diff fetch failed: %v\n", dErr)
+	}
+
+	if buckets != nil && buckets.Actionable != nil {
+		expected, mismatch := shared.WarnGateMismatch(report.Metrics, qgSummary(report), len(buckets.Actionable.Issues))
+		if mismatch {
+			retry, retryErr := service.GetPRIssuesUnfiltered(ctx, prID, prCtx.Workspace, prCtx.Repository, filters)
+			if retryErr == nil {
+				buckets.Actionable = filterActionable(retry)
+				if cmd.Debug {
+					fmt.Printf("DEBUG: retry returned %d actionable (gate expected %d)\n", len(buckets.Actionable.Issues), expected)
+				}
+			} else if cmd.Debug {
+				fmt.Printf("DEBUG: retry fetch failed: %v\n", retryErr)
+			}
+		}
+	}
+
+	return cmd.formatOutput(prCtx, report, prID, filters, buckets, diffLines)
 }
 
-func (cmd *ReportCmd) formatOutput(prCtx *PRContext, report *sonarcloud.Report, prID int, filters sonarcloud.FilterOptions) error {
+func qgSummary(report *sonarcloud.Report) *sonarcloud.QualityGateSummary {
+	if report == nil || report.QualityGate == nil {
+		return nil
+	}
+	return report.QualityGate.Summary
+}
+
+func filterActionable(data *sonarcloud.IssuesData) *sonarcloud.IssuesData {
+	if data == nil {
+		return &sonarcloud.IssuesData{Available: true, Issues: []sonarcloud.ProcessedIssue{}}
+	}
+	out := &sonarcloud.IssuesData{
+		Available:        data.Available,
+		Bugs:             data.Bugs,
+		Vulnerabilities:  data.Vulnerabilities,
+		CodeSmells:       data.CodeSmells,
+		SecurityHotspots: data.SecurityHotspots,
+		Summary:          data.Summary,
+	}
+	for _, iss := range data.Issues {
+		if sonarcloud.IsActionable(iss) {
+			out.Issues = append(out.Issues, iss)
+		}
+	}
+	out.TotalIssues = len(out.Issues)
+	return out
+}
+
+func (cmd *ReportCmd) formatOutput(prCtx *PRContext, report *sonarcloud.Report, prID int, filters sonarcloud.FilterOptions, buckets *sonarcloud.PRIssueBuckets, diffLines map[string]map[int]bool) error {
 	switch cmd.Output {
 	case "table":
-		return cmd.formatTable(prCtx, report, prID, filters)
+		return cmd.formatTable(prCtx, report, prID, filters, buckets, diffLines)
 	case "json":
 		return prCtx.Formatter.Format(report)
 	case "yaml":
@@ -188,7 +250,7 @@ func (cmd *ReportCmd) formatter() *shared.ReportFormatter {
 	}
 }
 
-func (cmd *ReportCmd) formatTable(prCtx *PRContext, report *sonarcloud.Report, prID int, filters sonarcloud.FilterOptions) error {
+func (cmd *ReportCmd) formatTable(prCtx *PRContext, report *sonarcloud.Report, prID int, filters sonarcloud.FilterOptions, buckets *sonarcloud.PRIssueBuckets, diffLines map[string]map[int]bool) error {
 	reportType := "SonarCloud Quality Report"
 	if cmd.Coverage && !cmd.Issues && !cmd.Duplications {
 		reportType = "Coverage Analysis"
@@ -208,8 +270,19 @@ func (cmd *ReportCmd) formatTable(prCtx *PRContext, report *sonarcloud.Report, p
 		cmd.formatCoverageSection(f, report.Coverage, filters)
 	}
 
-	if filters.IncludeIssues && report.Issues != nil && report.Issues.Available {
-		f.FormatIssuesSection(report.Issues, report.Metrics, filters)
+	if filters.IncludeIssues {
+		var actionable, accepted *sonarcloud.IssuesData
+		if buckets != nil {
+			actionable = buckets.Actionable
+			accepted = buckets.Accepted
+		}
+		f.FormatActionableIssuesSection(actionable, diffLines)
+
+		qgAccepted := 0
+		if report.QualityGate != nil && report.QualityGate.Summary != nil {
+			qgAccepted = report.QualityGate.Summary.AcceptedIssues
+		}
+		f.FormatAcceptedSummary(accepted, qgAccepted, cmd.AllIssues)
 	}
 
 	if filters.IncludeDuplications && report.Duplications != nil && report.Duplications.Available {
