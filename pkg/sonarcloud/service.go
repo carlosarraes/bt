@@ -813,6 +813,14 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 		params["severities"] = "BLOCKER,CRITICAL,MAJOR,MINOR,INFO"
 	}
 
+	if filters.OnlyActionable {
+		params["resolved"] = "false"
+		params["issueStatuses"] = "OPEN,CONFIRMED,REOPENED"
+	}
+	if filters.OnlyAccepted {
+		params["resolved"] = "true"
+	}
+
 	params["s"] = "SEVERITY"
 	params["asc"] = "false"
 
@@ -893,6 +901,54 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 	}
 
 	return data, nil
+}
+
+// PRIssueBuckets splits PR issues into actionable vs accepted via two
+// resolution-targeted SonarCloud queries.
+type PRIssueBuckets struct {
+	Actionable *IssuesData
+	Accepted   *IssuesData
+}
+
+// GetPRIssueBuckets fetches actionable and accepted PR issues with two
+// targeted queries against issues/search. The caller must have set
+// apiContext.IsPullRequest and apiContext.BaseParams["pullRequest"].
+func (s *Service) GetPRIssueBuckets(ctx context.Context, apiContext APIContext, filters FilterOptions) (*PRIssueBuckets, error) {
+	actFilters := filters
+	actFilters.OnlyActionable = true
+	actFilters.OnlyAccepted = false
+	actionable, err := s.GetIssuesData(ctx, apiContext, actFilters)
+	if err != nil {
+		return nil, fmt.Errorf("fetch actionable issues: %w", err)
+	}
+
+	accFilters := filters
+	accFilters.OnlyActionable = false
+	accFilters.OnlyAccepted = true
+	accepted, err := s.GetIssuesData(ctx, apiContext, accFilters)
+	if err != nil {
+		return nil, fmt.Errorf("fetch accepted issues: %w", err)
+	}
+	return &PRIssueBuckets{Actionable: actionable, Accepted: accepted}, nil
+}
+
+// GetPRIssueBucketsForPR is a convenience wrapper that builds an APIContext
+// for a specific PR and delegates to GetPRIssueBuckets.
+func (s *Service) GetPRIssueBucketsForPR(ctx context.Context, prID int, workspace, repo string, filters FilterOptions) (*PRIssueBuckets, error) {
+	discoveryResult, err := s.discovery.DiscoverProjectKey(ctx, workspace, repo, "")
+	if err != nil {
+		return nil, fmt.Errorf("discover project key: %w", err)
+	}
+	apiContext := APIContext{
+		ProjectKey: discoveryResult.ProjectKey,
+		BaseParams: map[string]string{
+			"component":   discoveryResult.ProjectKey,
+			"pullRequest": fmt.Sprintf("%d", prID),
+		},
+		IsPullRequest: true,
+		PullRequestID: prID,
+	}
+	return s.GetPRIssueBuckets(ctx, apiContext, filters)
 }
 
 func metricsDataFromMeasures(m *AllMeasures) *MetricsData {

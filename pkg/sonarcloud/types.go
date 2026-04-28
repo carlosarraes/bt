@@ -417,6 +417,8 @@ type FilterOptions struct {
 	NoLineDetails       bool     `json:"noLineDetails"`
 	TruncateLines       int      `json:"truncateLines"`
 	Debug               bool     `json:"debug"`
+	OnlyActionable      bool     `json:"onlyActionable"`
+	OnlyAccepted        bool     `json:"onlyAccepted"`
 }
 
 type DuplicationData struct {
