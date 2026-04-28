@@ -830,8 +830,10 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 	data.TotalIssues = issues.Total
 
 	ruleNames := make(map[string]string)
+	ruleLangs := make(map[string]string)
 	for _, rule := range issues.Rules {
 		ruleNames[rule.Key] = rule.Name
+		ruleLangs[rule.Key] = rule.Lang
 	}
 
 	for _, issue := range issues.Issues {
@@ -841,12 +843,17 @@ func (s *Service) GetIssuesData(ctx context.Context, apiContext APIContext, filt
 			Severity:                   issue.Severity,
 			Rule:                       issue.Rule,
 			RuleName:                   ruleNames[issue.Rule],
+			RuleLang:                   ruleLangs[issue.Rule],
 			Component:                  issue.Component,
 			File:                       s.extractFileFromComponent(issue.Component),
 			Line:                       issue.Line,
 			Message:                    issue.Message,
 			Effort:                     issue.Effort,
 			TechnicalDebt:              issue.Debt,
+			IsNew:                      apiContext.IsPullRequest,
+			Status:                     issue.Status,
+			Resolution:                 issue.Resolution,
+			Assignee:                   issue.Assignee,
 			CreatedAt:                  issue.CreationDate,
 			Impacts:                    issue.Impacts,
 			CleanCodeAttribute:         issue.CleanCodeAttribute,

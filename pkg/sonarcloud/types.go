@@ -125,6 +125,7 @@ type Issue struct {
 	Effort                     string              `json:"effort,omitempty"`
 	Debt                       string              `json:"debt,omitempty"`
 	Author                     string              `json:"author,omitempty"`
+	Assignee                   string              `json:"assignee,omitempty"`
 	Tags                       []string            `json:"tags"`
 	Transitions                []string            `json:"transitions"`
 	Actions                    []string            `json:"actions"`
@@ -331,6 +332,7 @@ type ProcessedIssue struct {
 	Severity                   string        `json:"severity"`
 	Rule                       string        `json:"rule"`
 	RuleName                   string        `json:"ruleName"`
+	RuleLang                   string        `json:"ruleLang,omitempty"`
 	Component                  string        `json:"component"`
 	File                       string        `json:"file"`
 	Line                       *int          `json:"line,omitempty"`
@@ -338,6 +340,9 @@ type ProcessedIssue struct {
 	Effort                     string        `json:"effort,omitempty"`
 	TechnicalDebt              string        `json:"technicalDebt,omitempty"`
 	IsNew                      bool          `json:"isNew"`
+	Status                     string        `json:"status"`
+	Resolution                 string        `json:"resolution,omitempty"`
+	Assignee                   string        `json:"assignee,omitempty"`
 	CreatedAt                  SonarTime     `json:"createdAt"`
 	Impacts                    []IssueImpact `json:"impacts,omitempty"`
 	CleanCodeAttribute         string        `json:"cleanCodeAttribute,omitempty"`
