@@ -73,6 +73,7 @@ func (s *Service) fetchAllMeasures(ctx context.Context, apiContext APIContext) (
 	}
 
 	params["metricKeys"] = "coverage,uncovered_lines,new_coverage,new_uncovered_lines," +
+		"new_conditions_to_cover,new_uncovered_conditions," +
 		"duplicated_lines_density,duplicated_lines,duplicated_blocks,new_duplicated_lines_density," +
 		"new_violations,accepted_issues,new_security_hotspots," +
 		"reliability_rating,security_rating,sqale_rating,sqale_index," +
@@ -106,6 +107,14 @@ func (s *Service) fetchAllMeasures(ctx context.Context, apiContext APIContext) (
 		case "new_uncovered_lines":
 			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
 				m.NewUncoveredLines = v
+			}
+		case "new_conditions_to_cover":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				m.NewConditionsToCover = v
+			}
+		case "new_uncovered_conditions":
+			if v, err := s.parseMetricInt(metric.Value, metric.Periods); err == nil {
+				m.NewUncoveredConditions = v
 			}
 		case "duplicated_lines_density":
 			if v, err := strconv.ParseFloat(metric.Value, 64); err == nil {
@@ -440,7 +449,7 @@ func (s *Service) getFileCoverage(ctx context.Context, apiContext APIContext, da
 	}
 
 	params["qualifiers"] = "FIL"
-	params["metricKeys"] = "coverage,uncovered_lines,new_coverage,new_uncovered_lines"
+	params["metricKeys"] = "coverage,uncovered_lines,new_coverage,new_uncovered_lines,new_uncovered_conditions"
 
 	if filters.ShowWorstFirst {
 		params["s"] = "metric"
@@ -487,6 +496,12 @@ func (s *Service) getFileCoverage(ctx context.Context, apiContext APIContext, da
 				if len(measure.Periods) > 0 {
 					if lines, err := strconv.Atoi(measure.Periods[0].Value); err == nil {
 						file.NewUncoveredLines = lines
+					}
+				}
+			case "new_uncovered_conditions":
+				if len(measure.Periods) > 0 {
+					if conds, err := strconv.Atoi(measure.Periods[0].Value); err == nil {
+						file.NewUncoveredConditions = conds
 					}
 				}
 			}
@@ -537,7 +552,7 @@ func (s *Service) filterEligibleFiles(files []CoverageFile, filters FilterOption
 	var eligible []CoverageFile
 
 	for _, file := range files {
-		if filters.NewLinesOnly && file.NewUncoveredLines == 0 {
+		if filters.NewLinesOnly && file.NewUncoveredLines == 0 && file.NewUncoveredConditions == 0 {
 			continue
 		}
 
@@ -692,23 +707,33 @@ func (s *Service) getUncoveredLinesForFile(ctx context.Context, file CoverageFil
 	}
 
 	for _, line := range sourceLines.Sources {
-		if line.LineHits != nil && *line.LineHits == 0 {
-			uncoveredLine := UncoveredLine{
-				File:  file.Path,
-				Line:  line.Line,
-				Code:  s.processCodeLine(line.Code, filters.TruncateLines, file.Path),
-				IsNew: line.IsNew,
-			}
+		lineUncovered := line.LineHits != nil && *line.LineHits == 0
+		condUncovered := line.Conditions != nil && line.CoveredConditions != nil &&
+			*line.CoveredConditions < *line.Conditions
 
-			if filters.NewLinesOnly && !line.IsNew {
-				continue
-			}
+		if !lineUncovered && !condUncovered {
+			continue
+		}
 
-			details.UncoveredLines = append(details.UncoveredLines, uncoveredLine)
+		if filters.NewLinesOnly && !line.IsNew {
+			continue
+		}
 
-			if line.IsNew {
-				details.NewUncovered++
-			}
+		uncoveredLine := UncoveredLine{
+			File:  file.Path,
+			Line:  line.Line,
+			Code:  s.processCodeLine(line.Code, filters.TruncateLines, file.Path),
+			IsNew: line.IsNew,
+		}
+		if condUncovered {
+			uncoveredLine.Conditions = *line.Conditions
+			uncoveredLine.CoveredConditions = *line.CoveredConditions
+		}
+
+		details.UncoveredLines = append(details.UncoveredLines, uncoveredLine)
+
+		if line.IsNew {
+			details.NewUncovered++
 		}
 	}
 

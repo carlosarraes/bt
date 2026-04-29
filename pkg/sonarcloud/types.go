@@ -277,21 +277,24 @@ type CoverageData struct {
 }
 
 type CoverageFile struct {
-	Path              string  `json:"path"`
-	Name              string  `json:"name"`
-	Coverage          float64 `json:"coverage"`
-	NewCoverage       float64 `json:"newCoverage"`
-	UncoveredLines    int     `json:"uncoveredLines"`
-	NewUncoveredLines int     `json:"newUncoveredLines"`
-	Language          string  `json:"language"`
-	ComponentKey      string  `json:"componentKey"`
+	Path                   string  `json:"path"`
+	Name                   string  `json:"name"`
+	Coverage               float64 `json:"coverage"`
+	NewCoverage            float64 `json:"newCoverage"`
+	UncoveredLines         int     `json:"uncoveredLines"`
+	NewUncoveredLines      int     `json:"newUncoveredLines"`
+	NewUncoveredConditions int     `json:"newUncoveredConditions,omitempty"`
+	Language               string  `json:"language"`
+	ComponentKey           string  `json:"componentKey"`
 }
 
 type UncoveredLine struct {
-	File  string `json:"file"`
-	Line  int    `json:"line"`
-	Code  string `json:"code"`
-	IsNew bool   `json:"isNew"`
+	File              string `json:"file"`
+	Line              int    `json:"line"`
+	Code              string `json:"code"`
+	IsNew             bool   `json:"isNew"`
+	Conditions        int    `json:"conditions,omitempty"`
+	CoveredConditions int    `json:"coveredConditions,omitempty"`
 }
 
 type CoverageDetails struct {
@@ -373,23 +376,25 @@ type MetricsData struct {
 
 // AllMeasures holds pre-fetched measures/component data from a single consolidated API call.
 type AllMeasures struct {
-	Coverage             float64
-	UncoveredLines       int
-	NewCoverage          float64
-	NewUncoveredLines    int
-	DuplicatedDensity    float64
-	DuplicatedLines      int
-	DuplicatedBlocks     int
-	NewDuplicatedDensity float64
-	NewViolations        int
-	AcceptedIssues       int
-	Ratings              map[string]string
-	TechnicalDebtMinutes int
-	NewBugs              int
-	NewVulnerabilities   int
-	NewCodeSmells        int
-	NewSecurityHotspots  int
-	Metrics              map[string]string
+	Coverage               float64
+	UncoveredLines         int
+	NewCoverage            float64
+	NewUncoveredLines      int
+	NewConditionsToCover   int
+	NewUncoveredConditions int
+	DuplicatedDensity      float64
+	DuplicatedLines        int
+	DuplicatedBlocks       int
+	NewDuplicatedDensity   float64
+	NewViolations          int
+	AcceptedIssues         int
+	Ratings                map[string]string
+	TechnicalDebtMinutes   int
+	NewBugs                int
+	NewVulnerabilities     int
+	NewCodeSmells          int
+	NewSecurityHotspots    int
+	Metrics                map[string]string
 }
 
 type PaginationStrategy struct {

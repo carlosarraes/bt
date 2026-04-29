@@ -274,28 +274,14 @@ func (f *ReportFormatter) DisplayUncoveredLinesDetails(coverageDetails []sonarcl
 
 		fmt.Printf("%s (%.1f%% coverage):\n", details.FilePath, details.CoveragePercent)
 
-		linesToShow := details.UncoveredLines
-		if !f.ShowAllLines && len(linesToShow) > f.LinesPerFile {
-			linesToShow = linesToShow[:f.LinesPerFile]
-		}
+		lineGaps, branchGaps := SplitCoverageGaps(details.UncoveredLines)
 
-		for _, line := range linesToShow {
-			marker := ""
-			if line.IsNew {
-				marker = " [NEW]"
-			}
+		linesShown := f.printGapSection("  Uncovered Lines:", lineGaps, false)
+		branchShown := f.printGapSection("  Partial Branch Coverage:", branchGaps, true)
 
-			code := line.Code
-			if f.TruncateLines > 0 {
-				code = Truncate(code, f.TruncateLines)
-			}
-
-			fmt.Printf("  Line %d: %s%s\n", line.Line, code, marker)
-		}
-
-		remaining := len(details.UncoveredLines) - len(linesToShow)
-		if remaining > 0 {
-			fmt.Printf("  ... (%d more uncovered lines) Use --show-all-lines to see complete list\n", remaining)
+		hidden := (len(lineGaps) - linesShown) + (len(branchGaps) - branchShown)
+		if hidden > 0 {
+			fmt.Printf("  ... (%d more uncovered entries) Use --show-all-lines to see complete list\n", hidden)
 		}
 
 		fmt.Println()
@@ -303,6 +289,57 @@ func (f *ReportFormatter) DisplayUncoveredLinesDetails(coverageDetails []sonarcl
 	}
 
 	f.formatFocusAreas(coverageDetails, maxFilesToShow)
+}
+
+// SplitCoverageGaps separates uncovered entries into untouched lines and
+// partial-branch lines so they can be rendered in distinct sections.
+// A line with conditions defined and CoveredConditions < Conditions is a
+// branch gap; otherwise it's a line gap. This lives outside the formatter
+// so report consumers (and tests) can rely on it as a stable helper.
+func SplitCoverageGaps(lines []sonarcloud.UncoveredLine) (lineGaps, branchGaps []sonarcloud.UncoveredLine) {
+	for _, line := range lines {
+		if line.Conditions > 0 && line.CoveredConditions < line.Conditions {
+			branchGaps = append(branchGaps, line)
+		} else {
+			lineGaps = append(lineGaps, line)
+		}
+	}
+	return lineGaps, branchGaps
+}
+
+// printGapSection renders a labelled subsection of uncovered entries and
+// returns how many were actually printed (so the caller can compute the
+// "N more" hint correctly across both sections).
+func (f *ReportFormatter) printGapSection(label string, lines []sonarcloud.UncoveredLine, showBranchCount bool) int {
+	if len(lines) == 0 {
+		return 0
+	}
+
+	toShow := lines
+	if !f.ShowAllLines && len(toShow) > f.LinesPerFile {
+		toShow = toShow[:f.LinesPerFile]
+	}
+
+	fmt.Println(label)
+	for _, line := range toShow {
+		marker := ""
+		if line.IsNew {
+			marker = " [NEW]"
+		}
+
+		code := line.Code
+		if f.TruncateLines > 0 {
+			code = Truncate(code, f.TruncateLines)
+		}
+
+		if showBranchCount && line.Conditions > 0 {
+			fmt.Printf("    Line %d: %s%s (%d/%d branches)\n",
+				line.Line, code, marker, line.CoveredConditions, line.Conditions)
+		} else {
+			fmt.Printf("    Line %d: %s%s\n", line.Line, code, marker)
+		}
+	}
+	return len(toShow)
 }
 
 func (f *ReportFormatter) formatFocusAreas(coverageDetails []sonarcloud.CoverageDetails, maxFilesToShow int) {
