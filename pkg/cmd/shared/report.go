@@ -322,11 +322,7 @@ func (f *ReportFormatter) printGapSection(label string, lines []sonarcloud.Uncov
 
 	fmt.Println(label)
 	for _, line := range toShow {
-		marker := ""
-		if line.IsNew {
-			marker = " [NEW]"
-		}
-
+		marker := newMarker(line.IsNew)
 		code := line.Code
 		if f.TruncateLines > 0 {
 			code = Truncate(code, f.TruncateLines)
@@ -340,6 +336,13 @@ func (f *ReportFormatter) printGapSection(label string, lines []sonarcloud.Uncov
 		}
 	}
 	return len(toShow)
+}
+
+func newMarker(isNew bool) string {
+	if isNew {
+		return " [NEW]"
+	}
+	return ""
 }
 
 func (f *ReportFormatter) formatFocusAreas(coverageDetails []sonarcloud.CoverageDetails, maxFilesToShow int) {
@@ -447,7 +450,7 @@ func (f *ReportFormatter) FormatIssuesSection(issues *sonarcloud.IssuesData, met
 	}
 }
 
-// FormatDuplicationsSection prints duplication summary, file table, and block details.
+// FormatDuplicationsSection prints duplication summary, file table, and per-line details.
 func (f *ReportFormatter) FormatDuplicationsSection(duplications *sonarcloud.DuplicationData, filters sonarcloud.FilterOptions) {
 	fmt.Printf("📋 Duplications Summary:\n")
 	fmt.Printf("  Overall: %.1f%% | New Code: %.1f%%\n", duplications.OverallDuplication, duplications.NewCodeDuplication)
@@ -474,26 +477,64 @@ func (f *ReportFormatter) FormatDuplicationsSection(duplications *sonarcloud.Dup
 	}
 
 	if len(duplications.Details) > 0 {
-		fmt.Printf("🔍 Duplicated Blocks:\n\n")
+		f.DisplayDuplicatedLinesDetails(duplications.Details, filters)
+	}
+}
 
-		displayed := 0
-		for _, detail := range duplications.Details {
-			if displayed >= filters.Limit {
-				break
-			}
-			if len(detail.Blocks) == 0 {
+// DisplayDuplicatedLinesDetails prints per-file, per-block source-line breakdowns.
+func (f *ReportFormatter) DisplayDuplicatedLinesDetails(details []sonarcloud.DuplicationDetail, filters sonarcloud.FilterOptions) {
+	fmt.Printf("🔁 Duplicated Lines Details:\n\n")
+
+	maxFilesToShow := filters.Limit
+	if maxFilesToShow <= 0 {
+		maxFilesToShow = 10
+	}
+
+	displayed := 0
+	for _, detail := range details {
+		if displayed >= maxFilesToShow {
+			break
+		}
+		if len(detail.Blocks) == 0 {
+			continue
+		}
+
+		fmt.Printf("%s (%.1f%% duplication):\n", detail.FilePath, detail.DuplicatedDensity)
+		for i, block := range detail.Blocks {
+			fmt.Printf("  Block %d (%d lines) → also in %s lines %d-%d\n",
+				i+1, block.Size, block.TargetFile, block.TargetFrom, block.TargetFrom+block.TargetSize-1)
+
+			if len(block.Lines) == 0 {
+				fmt.Printf("    Lines %d-%d (source unavailable)\n",
+					block.From, block.From+block.Size-1)
 				continue
 			}
 
-			fmt.Printf("%s (%.1f%% duplication):\n", detail.FilePath, detail.DuplicatedDensity)
-			for _, block := range detail.Blocks {
-				fmt.Printf("  ▶ Lines %d-%d (%d lines) → %s lines %d-%d\n",
-					block.From, block.From+block.Size-1, block.Size,
-					block.TargetFile, block.TargetFrom, block.TargetFrom+block.TargetSize-1)
-			}
-			fmt.Println()
-			displayed++
+			f.printDuplicatedBlockLines(block.Lines)
 		}
+		fmt.Println()
+		displayed++
+	}
+}
+
+func (f *ReportFormatter) printDuplicatedBlockLines(lines []sonarcloud.DuplicatedLine) {
+	toShow := lines
+	hidden := 0
+	if !f.ShowAllLines && f.LinesPerFile > 0 && len(toShow) > f.LinesPerFile {
+		hidden = len(toShow) - f.LinesPerFile
+		toShow = toShow[:f.LinesPerFile]
+	}
+
+	for _, line := range toShow {
+		code := line.Code
+		if f.TruncateLines > 0 {
+			code = Truncate(code, f.TruncateLines)
+		}
+		fmt.Printf("    Line %d: %s%s\n", line.Line, code, newMarker(line.IsNew))
+	}
+
+	if hidden > 0 {
+		fmt.Printf("    ... (%d more) Use --show-all-lines to see complete list\n", hidden)
 	}
 }
 

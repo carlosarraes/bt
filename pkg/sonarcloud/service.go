@@ -1193,7 +1193,7 @@ func (s *Service) getDuplicationDetails(ctx context.Context, apiContext APIConte
 			go func(f DuplicatedFile) {
 				defer wg.Done()
 
-				detail, err := s.getDuplicationDetailForFile(ctx, f, apiContext)
+				detail, err := s.getDuplicationDetailForFile(ctx, f, apiContext, filters)
 				if err != nil {
 					return
 				}
@@ -1212,7 +1212,7 @@ func (s *Service) getDuplicationDetails(ctx context.Context, apiContext APIConte
 	}
 }
 
-func (s *Service) getDuplicationDetailForFile(ctx context.Context, file DuplicatedFile, apiContext APIContext) (*DuplicationDetail, error) {
+func (s *Service) getDuplicationDetailForFile(ctx context.Context, file DuplicatedFile, apiContext APIContext, filters FilterOptions) (*DuplicationDetail, error) {
 	params := make(map[string]string)
 	for k, v := range apiContext.BaseParams {
 		params[k] = v
@@ -1223,6 +1223,8 @@ func (s *Service) getDuplicationDetailForFile(ctx context.Context, file Duplicat
 	if err := s.client.GetJSON(ctx, "duplications/show", params, apiContext, &dupResp); err != nil {
 		return nil, err
 	}
+
+	sourceByLine := s.fetchSourceByLine(ctx, params, apiContext, filters)
 
 	detail := &DuplicationDetail{
 		FilePath:          file.Path,
@@ -1246,17 +1248,68 @@ func (s *Service) getDuplicationDetailForFile(ctx context.Context, file Duplicat
 			if targetFile == "" {
 				targetFile = target.Key
 			}
-			detail.Blocks = append(detail.Blocks, DuplicatedBlock{
+			block := DuplicatedBlock{
 				From:       source.From,
 				Size:       source.Size,
 				TargetFile: targetFile,
 				TargetFrom: target.From,
 				TargetSize: target.Size,
-			})
+				Lines:      s.collectBlockLines(source.From, source.Size, sourceByLine, filters, file.Path),
+			}
+			if filters.NewLinesOnly && !blockHasNewLines(block.Lines) {
+				continue
+			}
+			detail.Blocks = append(detail.Blocks, block)
 		}
 	}
 
 	return detail, nil
+}
+
+func (s *Service) fetchSourceByLine(ctx context.Context, params map[string]string, apiContext APIContext, filters FilterOptions) map[int]SourceLine {
+	if filters.NoLineDetails {
+		return nil
+	}
+	var sourceLines SourceLines
+	if err := s.client.GetJSON(ctx, "sources/lines", params, apiContext, &sourceLines); err != nil {
+		if filters.Debug {
+			fmt.Printf("DEBUG: failed to fetch sources/lines for duplication detail: %v\n", err)
+		}
+		return nil
+	}
+	out := make(map[int]SourceLine, len(sourceLines.Sources))
+	for _, line := range sourceLines.Sources {
+		out[line.Line] = line
+	}
+	return out
+}
+
+func (s *Service) collectBlockLines(from, size int, sourceByLine map[int]SourceLine, filters FilterOptions, filePath string) []DuplicatedLine {
+	if len(sourceByLine) == 0 {
+		return nil
+	}
+	lines := make([]DuplicatedLine, 0, size)
+	for n := from; n < from+size; n++ {
+		src, ok := sourceByLine[n]
+		if !ok {
+			continue
+		}
+		lines = append(lines, DuplicatedLine{
+			Line:  src.Line,
+			Code:  s.processCodeLine(src.Code, filters.TruncateLines, filePath),
+			IsNew: src.IsNew,
+		})
+	}
+	return lines
+}
+
+func blockHasNewLines(lines []DuplicatedLine) bool {
+	for _, l := range lines {
+		if l.IsNew {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) GetProjectKeyStrategies() []string {

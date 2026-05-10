@@ -455,11 +455,18 @@ type DuplicationDetail struct {
 }
 
 type DuplicatedBlock struct {
-	From       int    `json:"from"`
-	Size       int    `json:"size"`
-	TargetFile string `json:"targetFile"`
-	TargetFrom int    `json:"targetFrom"`
-	TargetSize int    `json:"targetSize"`
+	From       int              `json:"from"`
+	Size       int              `json:"size"`
+	TargetFile string           `json:"targetFile"`
+	TargetFrom int              `json:"targetFrom"`
+	TargetSize int              `json:"targetSize"`
+	Lines      []DuplicatedLine `json:"lines,omitempty"`
+}
+
+type DuplicatedLine struct {
+	Line  int    `json:"line"`
+	Code  string `json:"code"`
+	IsNew bool   `json:"isNew"`
 }
 
 type DuplicationsResponse struct {

@@ -13,11 +13,11 @@ import (
 // condition AND not all conditions are covered. Anything else is a line gap.
 func TestSplitCoverageGaps_PartitionsLinesAndBranches(t *testing.T) {
 	lines := []sonarcloud.UncoveredLine{
-		{Line: 10, Code: "untouched"},                                    // line gap (no conditions)
-		{Line: 20, Code: "a ?? b", Conditions: 4, CoveredConditions: 3},  // branch gap
-		{Line: 30, Code: "a || b", Conditions: 7, CoveredConditions: 6},  // branch gap
-		{Line: 40, Code: "fully", Conditions: 2, CoveredConditions: 2},   // not a gap, but split routes to lineGaps (caller filters)
-		{Line: 50, Code: "no cond branch", Conditions: 0},                // line gap
+		{Line: 10, Code: "untouched"},                                   // line gap (no conditions)
+		{Line: 20, Code: "a ?? b", Conditions: 4, CoveredConditions: 3}, // branch gap
+		{Line: 30, Code: "a || b", Conditions: 7, CoveredConditions: 6}, // branch gap
+		{Line: 40, Code: "fully", Conditions: 2, CoveredConditions: 2},  // not a gap, but split routes to lineGaps (caller filters)
+		{Line: 50, Code: "no cond branch", Conditions: 0},               // line gap
 	}
 
 	lineGaps, branchGaps := SplitCoverageGaps(lines)
