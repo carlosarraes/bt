@@ -67,7 +67,7 @@ func TestFilterEligibleFiles_KeepsConditionOnlyFiles(t *testing.T) {
 		{Path: "fully-covered-new.ts", NewUncoveredLines: 0, NewUncoveredConditions: 0, UncoveredLines: 5, Coverage: 95},
 	}
 
-	eligible := svc.filterEligibleFiles(files, FilterOptions{NewLinesOnly: true})
+	eligible := svc.filterEligibleFiles(files, FilterOptions{NewLinesOnly: true}, APIContext{})
 
 	paths := make([]string, 0, len(eligible))
 	for _, f := range eligible {
@@ -218,4 +218,44 @@ func TestGetUncoveredLines_SortsByNewUncoveredDesc(t *testing.T) {
 	}
 	assert.Equal(t, []string{"d.go", "b.go", "a.go"}, got,
 		"CoverageDetails must be sorted by NewUncovered DESC so the 10-file display cap surfaces worst PR offenders")
+}
+
+// Regression: big legacy files with small PR-touched additions used to be
+// dropped by the >500 / Min / Max guards because those rules counted overall
+// UncoveredLines instead of NEW uncovered. In PR mode, "size" must mean NEW.
+func TestFilterEligibleFiles_PRModeUsesNewUncoveredForSizeGuards(t *testing.T) {
+	svc := &Service{}
+
+	files := []CoverageFile{
+		{Path: "big-legacy.go", UncoveredLines: 600, NewUncoveredLines: 10, Coverage: 30},
+	}
+
+	t.Run("non-PR mode drops the file (legacy behavior)", func(t *testing.T) {
+		eligible := svc.filterEligibleFiles(files, FilterOptions{}, APIContext{IsPullRequest: false})
+		assert.Empty(t, eligible, "non-PR mode keeps the >500 overall-uncovered guard")
+	})
+
+	t.Run("PR mode keeps the file", func(t *testing.T) {
+		eligible := svc.filterEligibleFiles(files, FilterOptions{}, APIContext{IsPullRequest: true})
+		require.Len(t, eligible, 1)
+		assert.Equal(t, "big-legacy.go", eligible[0].Path)
+	})
+
+	t.Run("PR mode MinUncoveredLines compares to NEW", func(t *testing.T) {
+		eligible := svc.filterEligibleFiles(
+			files,
+			FilterOptions{MinUncoveredLines: 5},
+			APIContext{IsPullRequest: true},
+		)
+		assert.Len(t, eligible, 1, "10 NEW uncovered >= Min=5 -> keep")
+	})
+
+	t.Run("PR mode MaxUncoveredLines compares to NEW", func(t *testing.T) {
+		eligible := svc.filterEligibleFiles(
+			files,
+			FilterOptions{MaxUncoveredLines: 5},
+			APIContext{IsPullRequest: true},
+		)
+		assert.Empty(t, eligible, "10 NEW uncovered > Max=5 -> drop")
+	})
 }

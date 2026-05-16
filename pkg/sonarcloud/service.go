@@ -523,7 +523,7 @@ func (s *Service) getUncoveredLines(ctx context.Context, apiContext APIContext, 
 		return nil
 	}
 
-	eligibleFiles := s.filterEligibleFiles(data.Files, filters)
+	eligibleFiles := s.filterEligibleFiles(data.Files, filters, apiContext)
 	if filters.Debug {
 		fmt.Printf("DEBUG: Eligible files for line details: %d\n", len(eligibleFiles))
 		for i, file := range eligibleFiles {
@@ -560,7 +560,7 @@ func (s *Service) getUncoveredLines(ctx context.Context, apiContext APIContext, 
 	return nil
 }
 
-func (s *Service) filterEligibleFiles(files []CoverageFile, filters FilterOptions) []CoverageFile {
+func (s *Service) filterEligibleFiles(files []CoverageFile, filters FilterOptions, apiContext APIContext) []CoverageFile {
 	var eligible []CoverageFile
 
 	for _, file := range files {
@@ -568,15 +568,22 @@ func (s *Service) filterEligibleFiles(files []CoverageFile, filters FilterOption
 			continue
 		}
 
-		if filters.MinUncoveredLines > 0 && file.UncoveredLines < filters.MinUncoveredLines {
+		// In PR mode, "size" semantics shift to NEW uncovered counts so big
+		// legacy files with small PR additions aren't silently dropped.
+		uncoveredForFilter := file.UncoveredLines
+		if apiContext.IsPullRequest {
+			uncoveredForFilter = file.NewUncoveredLines + file.NewUncoveredConditions
+		}
+
+		if filters.MinUncoveredLines > 0 && uncoveredForFilter < filters.MinUncoveredLines {
 			continue
 		}
 
-		if filters.MaxUncoveredLines > 0 && file.UncoveredLines > filters.MaxUncoveredLines {
+		if filters.MaxUncoveredLines > 0 && uncoveredForFilter > filters.MaxUncoveredLines {
 			continue
 		}
 
-		if file.UncoveredLines > 500 {
+		if uncoveredForFilter > 500 {
 			continue
 		}
 
