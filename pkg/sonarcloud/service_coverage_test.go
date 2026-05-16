@@ -170,3 +170,52 @@ func TestGetFileCoverage_RequestsConditionMetrics(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, decoded, "new_uncovered_conditions")
 }
+
+// Regression: per-file uncovered details land in goroutine arrival order, so
+// the 10-file display cap can hide the highest-impact PR files. Service must
+// sort by NewUncovered DESC (TotalUncovered as tiebreaker) before returning.
+func TestGetUncoveredLines_SortsByNewUncoveredDesc(t *testing.T) {
+	payloads := map[string]string{
+		"p:a.go": `{"sources":[{"line":1,"code":"a","lineHits":0,"isNew":true}]}`,
+		"p:b.go": `{"sources":[
+			{"line":1,"code":"b1","lineHits":0,"isNew":true},
+			{"line":2,"code":"b2","lineHits":0,"isNew":true}
+		]}`,
+		"p:c.go": `{"sources":[{"line":1,"code":"c","lineHits":1}]}`,
+		"p:d.go": `{"sources":[
+			{"line":1,"code":"d1","lineHits":0,"isNew":true},
+			{"line":2,"code":"d2","lineHits":0,"isNew":true},
+			{"line":3,"code":"d3","lineHits":0,"isNew":true}
+		]}`,
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(payloads[r.URL.Query().Get("key")]))
+	}))
+	defer srv.Close()
+
+	svc := &Service{client: newTestClient(t, srv.URL)}
+	apiCtx := APIContext{
+		ProjectKey:    "p",
+		BaseParams:    map[string]string{"component": "p"},
+		IsPullRequest: true,
+		PullRequestID: 1,
+	}
+	data := &CoverageData{
+		Files: []CoverageFile{
+			{Path: "a.go", Name: "a.go", ComponentKey: "p:a.go", NewUncoveredLines: 1, UncoveredLines: 1, Coverage: 50},
+			{Path: "b.go", Name: "b.go", ComponentKey: "p:b.go", NewUncoveredLines: 2, UncoveredLines: 2, Coverage: 50},
+			{Path: "c.go", Name: "c.go", ComponentKey: "p:c.go", NewUncoveredLines: 0, UncoveredLines: 0, Coverage: 100},
+			{Path: "d.go", Name: "d.go", ComponentKey: "p:d.go", NewUncoveredLines: 3, UncoveredLines: 3, Coverage: 50},
+		},
+	}
+
+	require.NoError(t, svc.getUncoveredLines(context.Background(), apiCtx, data, FilterOptions{ShowAllLines: true}))
+
+	got := make([]string, 0, len(data.CoverageDetails))
+	for _, d := range data.CoverageDetails {
+		got = append(got, d.FilePath)
+	}
+	assert.Equal(t, []string{"d.go", "b.go", "a.go"}, got,
+		"CoverageDetails must be sorted by NewUncovered DESC so the 10-file display cap surfaces worst PR offenders")
+}

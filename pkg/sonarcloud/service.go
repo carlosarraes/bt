@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -538,6 +539,17 @@ func (s *Service) getUncoveredLines(ctx context.Context, apiContext APIContext, 
 	if err != nil {
 		return err
 	}
+
+	// PR-mode displays are capped (see ReportFormatter), so this slice's
+	// order determines which files survive the cap. Sort by NEW uncovered
+	// DESC with TotalUncovered as tiebreaker so highest-impact PR files
+	// always make it to the top.
+	sort.SliceStable(coverageDetails, func(i, j int) bool {
+		if coverageDetails[i].NewUncovered != coverageDetails[j].NewUncovered {
+			return coverageDetails[i].NewUncovered > coverageDetails[j].NewUncovered
+		}
+		return coverageDetails[i].TotalUncovered > coverageDetails[j].TotalUncovered
+	})
 
 	data.CoverageDetails = coverageDetails
 
