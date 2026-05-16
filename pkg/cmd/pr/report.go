@@ -310,61 +310,6 @@ func (cmd *ReportCmd) formatCoverageSection(f *shared.ReportFormatter, coverage 
 	f.FormatCoverageSection(coverage, filters)
 }
 
-// displayUncoveredLinesDetails handles PR-specific context display.
-// When --context > 0, it shows surrounding source lines from the local filesystem.
-func (cmd *ReportCmd) displayUncoveredLinesDetails(coverageDetails []sonarcloud.CoverageDetails, filters sonarcloud.FilterOptions) {
-	fmt.Printf("🔍 Uncovered Lines Details:\n\n")
-
-	displayedFiles := 0
-	maxFilesToShow := filters.Limit
-	if maxFilesToShow <= 0 {
-		maxFilesToShow = 10
-	}
-
-	for _, details := range coverageDetails {
-		if displayedFiles >= maxFilesToShow {
-			break
-		}
-
-		if len(details.UncoveredLines) == 0 {
-			continue
-		}
-
-		fmt.Printf("%s (%.1f%% coverage):\n", details.FilePath, details.CoveragePercent)
-
-		linesToShow := details.UncoveredLines
-		if !cmd.ShowAllLines && len(linesToShow) > cmd.LinesPerFile {
-			linesToShow = linesToShow[:cmd.LinesPerFile]
-		}
-
-		if cmd.Context > 0 {
-			cmd.displayLinesWithContext(details.FilePath, linesToShow, cmd.Context, cmd.NewLinesOnly, cmd.TruncateLines)
-		} else {
-			for _, line := range linesToShow {
-				marker := ""
-				if line.IsNew {
-					marker = " [NEW]"
-				}
-
-				code := line.Code
-				if cmd.TruncateLines > 0 {
-					code = shared.Truncate(code, cmd.TruncateLines)
-				}
-
-				fmt.Printf("▶ %d %s%s\n", line.Line, code, marker)
-			}
-		}
-
-		remaining := len(details.UncoveredLines) - len(linesToShow)
-		if remaining > 0 {
-			fmt.Printf("  ... (%d more uncovered lines) Use --show-all-lines to see complete list\n", remaining)
-		}
-
-		fmt.Println()
-		displayedFiles++
-	}
-}
-
 func (cmd *ReportCmd) colorizeNewLine(text string) string {
 	return fmt.Sprintf("\033[31m%s\033[0m", text)
 }
