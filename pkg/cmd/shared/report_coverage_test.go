@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -96,4 +97,88 @@ func TestDisplayUncoveredLinesDetails_OmitsBranchCountForPureLineGaps(t *testing
 		"pure line gaps must not render the branch annotation")
 	assert.NotContains(t, out, "Partial Branch Coverage:",
 		"empty branch section must not render its header")
+}
+
+// Regression: the default 10-file display cap silently dropped PR files with
+// NEW uncovered lines past the 10th slot. PR coverage gates fail per-file,
+// so the default must grow to fit every NEW-uncovered file (bounded at 50).
+func TestDisplayUncoveredLinesDetails_DefaultCapGrowsToCoverAllNewUncoveredFiles(t *testing.T) {
+	f := &ReportFormatter{ShowAllLines: true, LinesPerFile: 100}
+
+	details := make([]sonarcloud.CoverageDetails, 0, 15)
+	for i := 1; i <= 15; i++ {
+		path := fmt.Sprintf("src/file%02d.go", i)
+		details = append(details, sonarcloud.CoverageDetails{
+			FilePath:        path,
+			FileName:        fmt.Sprintf("file%02d.go", i),
+			CoveragePercent: 50,
+			NewUncovered:    1,
+			TotalUncovered:  1,
+			UncoveredLines: []sonarcloud.UncoveredLine{
+				{File: path, Line: i, Code: "x", IsNew: true},
+			},
+		})
+	}
+
+	out, _ := captureStdoutStderr(t, func() {
+		f.DisplayUncoveredLinesDetails(details, sonarcloud.FilterOptions{Limit: 0})
+	})
+
+	for i := 1; i <= 15; i++ {
+		path := fmt.Sprintf("src/file%02d.go", i)
+		assert.Contains(t, out, path,
+			"file %02d must be rendered when default cap grows for NEW-uncovered offenders", i)
+	}
+}
+
+// Companion: the grown cap is bounded at 50 to keep output finite.
+func TestDisplayUncoveredLinesDetails_DefaultCapBoundedAt50(t *testing.T) {
+	f := &ReportFormatter{ShowAllLines: true, LinesPerFile: 100}
+
+	details := make([]sonarcloud.CoverageDetails, 0, 60)
+	for i := 1; i <= 60; i++ {
+		path := fmt.Sprintf("src/file%02d.go", i)
+		details = append(details, sonarcloud.CoverageDetails{
+			FilePath:        path,
+			CoveragePercent: 50,
+			NewUncovered:    1,
+			TotalUncovered:  1,
+			UncoveredLines: []sonarcloud.UncoveredLine{
+				{File: path, Line: i, Code: "x", IsNew: true},
+			},
+		})
+	}
+
+	out, _ := captureStdoutStderr(t, func() {
+		f.DisplayUncoveredLinesDetails(details, sonarcloud.FilterOptions{Limit: 0})
+	})
+
+	assert.Contains(t, out, "src/file50.go")
+	assert.NotContains(t, out, "src/file51.go", "cap must bound at 50 even with more NEW offenders")
+}
+
+// Companion: explicit --limit always wins, even when more new offenders exist.
+func TestDisplayUncoveredLinesDetails_ExplicitLimitWins(t *testing.T) {
+	f := &ReportFormatter{ShowAllLines: true, LinesPerFile: 100}
+
+	details := make([]sonarcloud.CoverageDetails, 0, 15)
+	for i := 1; i <= 15; i++ {
+		path := fmt.Sprintf("src/file%02d.go", i)
+		details = append(details, sonarcloud.CoverageDetails{
+			FilePath:        path,
+			CoveragePercent: 50,
+			NewUncovered:    1,
+			TotalUncovered:  1,
+			UncoveredLines: []sonarcloud.UncoveredLine{
+				{File: path, Line: i, Code: "x", IsNew: true},
+			},
+		})
+	}
+
+	out, _ := captureStdoutStderr(t, func() {
+		f.DisplayUncoveredLinesDetails(details, sonarcloud.FilterOptions{Limit: 3})
+	})
+
+	assert.Contains(t, out, "src/file03.go")
+	assert.NotContains(t, out, "src/file04.go", "explicit --limit 3 caps at 3 even with more NEW offenders")
 }

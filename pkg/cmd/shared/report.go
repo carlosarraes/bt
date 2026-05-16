@@ -261,6 +261,21 @@ func (f *ReportFormatter) DisplayUncoveredLinesDetails(coverageDetails []sonarcl
 	maxFilesToShow := filters.Limit
 	if maxFilesToShow <= 0 {
 		maxFilesToShow = 10
+		// Coverage gates fail per-file, so the default cap grows to fit every
+		// file with NEW uncovered lines (bounded at 50). An explicit --limit
+		// is honored as-is above.
+		newOffenders := 0
+		for _, d := range coverageDetails {
+			if d.NewUncovered > 0 {
+				newOffenders++
+			}
+		}
+		if newOffenders > maxFilesToShow {
+			maxFilesToShow = newOffenders
+		}
+		if maxFilesToShow > 50 {
+			maxFilesToShow = 50
+		}
 	}
 
 	for _, details := range coverageDetails {
