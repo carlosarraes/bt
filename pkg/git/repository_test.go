@@ -2,6 +2,8 @@ package git
 
 import (
 	"errors"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
@@ -304,5 +306,54 @@ func TestNonGitDirectoryContext(t *testing.T) {
 
 	if ctx.RemoteBranch != "" {
 		t.Error("Non-Git context should have empty RemoteBranch")
+	}
+}
+
+func runGitCmd(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, out)
+	}
+}
+
+// TestNewRepositoryWorktree verifies that workspace/repo are resolved from a
+// linked git worktree, where .git is a file pointing at the per-worktree dir and
+// the remotes live in the shared config reachable only via commondir.
+func TestNewRepositoryWorktree(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git binary not available")
+	}
+
+	mainDir := t.TempDir()
+	runGitCmd(t, mainDir, "init")
+	runGitCmd(t, mainDir, "config", "user.email", "test@example.com")
+	runGitCmd(t, mainDir, "config", "user.name", "Test")
+	runGitCmd(t, mainDir, "remote", "add", "origin", "git@bitbucket.org:ws/repo.git")
+	runGitCmd(t, mainDir, "commit", "--allow-empty", "-m", "init")
+
+	// Sanity: a normal checkout resolves correctly.
+	mainRepo, err := NewRepository(mainDir)
+	if err != nil {
+		t.Fatalf("NewRepository(main checkout) error: %v", err)
+	}
+	if mainRepo.GetWorkspace() != "ws" || mainRepo.GetName() != "repo" {
+		t.Fatalf("main checkout: got workspace=%q name=%q, want ws/repo", mainRepo.GetWorkspace(), mainRepo.GetName())
+	}
+
+	// Add a linked worktree -> its .git is a FILE (gitdir: pointer).
+	wtDir := filepath.Join(t.TempDir(), "wt")
+	runGitCmd(t, mainDir, "worktree", "add", wtDir, "-b", "feature")
+
+	repo, err := NewRepository(wtDir)
+	if err != nil {
+		t.Fatalf("NewRepository(worktree) error: %v", err)
+	}
+	if repo.GetWorkspace() != "ws" {
+		t.Errorf("worktree workspace = %q, want %q", repo.GetWorkspace(), "ws")
+	}
+	if repo.GetName() != "repo" {
+		t.Errorf("worktree repo name = %q, want %q", repo.GetName(), "repo")
 	}
 }

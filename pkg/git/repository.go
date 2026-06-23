@@ -58,9 +58,12 @@ func NewRepository(path string) (*Repository, error) {
 		}
 	}
 
-	// Find the Git repository
+	// Find the Git repository. EnableDotGitCommonDir makes go-git resolve the
+	// shared config/refs via the worktree's commondir, so remotes are visible
+	// from inside a linked worktree (where .git is a file, not a directory).
 	repo, err := git.PlainOpenWithOptions(path, &git.PlainOpenOptions{
-		DetectDotGit: true,
+		DetectDotGit:          true,
+		EnableDotGitCommonDir: true,
 	})
 	if err != nil {
 		if errors.Is(err, git.ErrRepositoryNotExists) {
@@ -260,7 +263,8 @@ func DetectRepository() (*RepositoryContext, error) {
 // IsGitRepository checks if the current directory is a Git repository
 func IsGitRepository() bool {
 	_, err := git.PlainOpenWithOptions(".", &git.PlainOpenOptions{
-		DetectDotGit: true,
+		DetectDotGit:          true,
+		EnableDotGitCommonDir: true,
 	})
 	return err == nil
 }

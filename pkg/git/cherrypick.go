@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -316,8 +317,19 @@ func CherryPickCommits(repoDir string, commitHashes []string) error {
 }
 
 func IsCherryPickInProgress(repoDir string) bool {
-	cherryPickHeadPath := fmt.Sprintf("%s/.git/CHERRY_PICK_HEAD", repoDir)
-	_, err := os.Stat(cherryPickHeadPath)
+	// Resolve the real git dir so this works inside a worktree, where .git is a
+	// file and CHERRY_PICK_HEAD lives in the per-worktree gitdir.
+	cmd := exec.Command("git", "rev-parse", "--git-dir")
+	cmd.Dir = repoDir
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	gitDir := strings.TrimSpace(string(out))
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(repoDir, gitDir)
+	}
+	_, err = os.Stat(filepath.Join(gitDir, "CHERRY_PICK_HEAD"))
 	return !os.IsNotExist(err)
 }
 
