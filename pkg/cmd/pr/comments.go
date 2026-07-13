@@ -14,6 +14,7 @@ import (
 type CommentsCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Author     string `help:"Only show comments by this author (username, nickname, display name, account_id, or @me)"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -47,6 +48,14 @@ func (cmd *CommentsCmd) Run(ctx context.Context) error {
 	}
 
 	comments = filterDeletedComments(comments)
+
+	if cmd.Author != "" {
+		author, err := ResolveAuthor(ctx, prCtx.Client, cmd.Author)
+		if err != nil {
+			return err
+		}
+		comments = FilterCommentsByAuthor(comments, author)
+	}
 
 	switch cmd.Output {
 	case "json", "yaml":
@@ -84,6 +93,51 @@ func filterDeletedComments(comments []api.PullRequestComment) []api.PullRequestC
 		}
 	}
 	return filtered
+}
+
+// ResolveAuthor turns an author selector into a concrete match string. "@me"
+// (or "me") resolves to the authenticated user's account_id via the auth
+// manager; anything else is returned unchanged for case-insensitive matching
+// against a comment author's username, nickname, display name, or account_id.
+func ResolveAuthor(ctx context.Context, client *api.Client, selector string) (string, error) {
+	if selector == "@me" || selector == "me" {
+		user, err := client.GetAuthManager().GetAuthenticatedUser(ctx)
+		if err != nil {
+			return "", fmt.Errorf("could not resolve @me to the authenticated user: %w", err)
+		}
+		if user.AccountID != "" {
+			return user.AccountID, nil
+		}
+		if user.Username != "" {
+			return user.Username, nil
+		}
+		return user.DisplayName, nil
+	}
+	return selector, nil
+}
+
+// FilterCommentsByAuthor keeps only comments whose author matches (case-
+// insensitively) the given selector against any of the identity fields
+// Bitbucket may populate — username, nickname, display name, or account_id.
+func FilterCommentsByAuthor(comments []api.PullRequestComment, author string) []api.PullRequestComment {
+	filtered := make([]api.PullRequestComment, 0, len(comments))
+	for _, comment := range comments {
+		if comment.User != nil && userMatches(comment.User, author) {
+			filtered = append(filtered, comment)
+		}
+	}
+	return filtered
+}
+
+// userMatches reports whether a user's identity fields match the selector.
+func userMatches(u *api.User, selector string) bool {
+	s := strings.ToLower(selector)
+	for _, field := range []string{u.Username, u.Nickname, u.DisplayName, u.AccountID, u.UUID} {
+		if field != "" && strings.ToLower(field) == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (cmd *CommentsCmd) displayComments(comments []api.PullRequestComment, prID int) error {
