@@ -84,6 +84,7 @@ type PullRequestComment struct {
 	User      *User                      `json:"user,omitempty"`
 	CreatedOn *time.Time                 `json:"created_on,omitempty"`
 	UpdatedOn *time.Time                 `json:"updated_on,omitempty"`
+	Deleted   bool                       `json:"deleted,omitempty"`
 	Links     *PullRequestCommentLinks   `json:"links,omitempty"`
 }
 

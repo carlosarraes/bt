@@ -259,6 +259,7 @@ TARGETED COMMANDS
   checks:        Show CI status for a single pull request
   close:         Close a pull request
   comment:       Add a comment to a pull request
+  comments:      List comments on a pull request
   diff:          View changes in a pull request
   edit:          Edit a pull request
   files:         List files changed in a pull request

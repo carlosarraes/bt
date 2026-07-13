@@ -298,27 +298,28 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 }
 
 type PRCmd struct {
-	Create       PRCreateCmd       `cmd:""`
-	List         PRListCmd         `cmd:""`
-	ListAll      PRListAllCmd      `cmd:"list-all"`
-	View         PRViewCmd         `cmd:""`
-	Open         PROpenCmd         `cmd:""`
-	Edit         PREditCmd         `cmd:""`
-	Diff         PRDiffCmd         `cmd:""`
-	Review       PRReviewCmd       `cmd:""`
-	Files        PRFilesCmd        `cmd:""`
-	Comment      PRCommentCmd      `cmd:""`
-	Merge        PRMergeCmd        `cmd:""`
-	Checkout     PRCheckoutCmd     `cmd:""`
-	Ready        PRReadyCmd        `cmd:""`
-	Checks       PRChecksCmd       `cmd:""`
-	Close        PRCloseCmd        `cmd:""`
-	Reopen       PRReopenCmd       `cmd:""`
-	Status       PRStatusCmd       `cmd:""`
-	UpdateBranch PRUpdateBranchCmd `cmd:"update-branch"`
-	Lock         PRLockCmd         `cmd:""`
-	Unlock       PRUnlockCmd       `cmd:""`
-	Report       PRReportCmd       `cmd:""`
+	Create        PRCreateCmd        `cmd:""`
+	List          PRListCmd          `cmd:""`
+	ListAll       PRListAllCmd       `cmd:"list-all"`
+	View          PRViewCmd          `cmd:""`
+	Open          PROpenCmd          `cmd:""`
+	Edit          PREditCmd          `cmd:""`
+	Diff          PRDiffCmd          `cmd:""`
+	Review        PRReviewCmd        `cmd:""`
+	Files         PRFilesCmd         `cmd:""`
+	Comment       PRCommentCmd       `cmd:""`
+	Comments     PRCommentsCmd     `cmd:""`
+	Merge         PRMergeCmd         `cmd:""`
+	Checkout      PRCheckoutCmd      `cmd:""`
+	Ready         PRReadyCmd         `cmd:""`
+	Checks        PRChecksCmd        `cmd:""`
+	Close         PRCloseCmd         `cmd:""`
+	Reopen        PRReopenCmd        `cmd:""`
+	Status        PRStatusCmd        `cmd:""`
+	UpdateBranch  PRUpdateBranchCmd  `cmd:"update-branch"`
+	Lock          PRLockCmd          `cmd:""`
+	Unlock        PRUnlockCmd        `cmd:""`
+	Report        PRReportCmd        `cmd:""`
 }
 
 type PRCreateCmd struct {
@@ -612,6 +613,26 @@ func (p *PRCommentCmd) Run(ctx context.Context) error {
 		Body:       p.Body,
 		BodyFile:   p.BodyFile,
 		ReplyTo:    p.ReplyTo,
+		Output:     p.Output,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRCommentsCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCommentsCmd) Run(ctx context.Context) error {
+	noColor := shared.GetNoColor(ctx)
+
+	cmd := &pr.CommentsCmd{
+		PRID:       p.PRID,
 		Output:     p.Output,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
