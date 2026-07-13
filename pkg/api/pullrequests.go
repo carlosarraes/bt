@@ -275,6 +275,54 @@ func (p *PullRequestService) GetComments(ctx context.Context, workspace, repoSlu
 	return paginator.NextPage(ctx)
 }
 
+// GetAllComments retrieves all comments for a pull request across all pages
+func (p *PullRequestService) GetAllComments(ctx context.Context, workspace, repoSlug string, id int) ([]PullRequestComment, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+
+	if id <= 0 {
+		return nil, NewValidationError("pull request ID must be positive", "")
+	}
+
+	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/comments", workspace, repoSlug, id)
+
+	var comments []PullRequestComment
+	paginator := p.client.Paginate(endpoint, nil)
+	if err := paginator.FetchAllTyped(ctx, &comments); err != nil {
+		return nil, err
+	}
+
+	return comments, nil
+}
+
+// GetAllPullRequests fetches every pull request in a repository across all
+// pages, filtered only by state ("OPEN", "MERGED", "DECLINED", "SUPERSEDED",
+// or "" for all). Unlike ListPullRequests it applies no author filter, so it
+// returns PRs from every author — the enumeration `review-history` needs.
+func (p *PullRequestService) GetAllPullRequests(ctx context.Context, workspace, repoSlug, state string) ([]PullRequest, error) {
+	if workspace == "" || repoSlug == "" {
+		return nil, NewValidationError("workspace and repository slug are required", "")
+	}
+
+	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests", workspace, repoSlug)
+
+	queryParams := url.Values{}
+	queryParams.Set("fields", "+values.reviewers,+values.participants")
+	if state != "" {
+		queryParams.Set("q", fmt.Sprintf("state=\"%s\"", strings.ToUpper(state)))
+	}
+	endpoint += "?" + queryParams.Encode()
+
+	var prs []PullRequest
+	paginator := p.client.Paginate(endpoint, nil)
+	if err := paginator.FetchAllTyped(ctx, &prs); err != nil {
+		return nil, err
+	}
+
+	return prs, nil
+}
+
 // CreatePullRequest creates a new pull request
 func (p *PullRequestService) CreatePullRequest(ctx context.Context, workspace, repoSlug string, request *CreatePullRequestRequest) (*PullRequest, error) {
 	if workspace == "" || repoSlug == "" {

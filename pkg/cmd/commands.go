@@ -298,27 +298,29 @@ func (r *RepoCmd) Run(ctx context.Context) error {
 }
 
 type PRCmd struct {
-	Create       PRCreateCmd       `cmd:""`
-	List         PRListCmd         `cmd:""`
-	ListAll      PRListAllCmd      `cmd:"list-all"`
-	View         PRViewCmd         `cmd:""`
-	Open         PROpenCmd         `cmd:""`
-	Edit         PREditCmd         `cmd:""`
-	Diff         PRDiffCmd         `cmd:""`
-	Review       PRReviewCmd       `cmd:""`
-	Files        PRFilesCmd        `cmd:""`
-	Comment      PRCommentCmd      `cmd:""`
-	Merge        PRMergeCmd        `cmd:""`
-	Checkout     PRCheckoutCmd     `cmd:""`
-	Ready        PRReadyCmd        `cmd:""`
-	Checks       PRChecksCmd       `cmd:""`
-	Close        PRCloseCmd        `cmd:""`
-	Reopen       PRReopenCmd       `cmd:""`
-	Status       PRStatusCmd       `cmd:""`
-	UpdateBranch PRUpdateBranchCmd `cmd:"update-branch"`
-	Lock         PRLockCmd         `cmd:""`
-	Unlock       PRUnlockCmd       `cmd:""`
-	Report       PRReportCmd       `cmd:""`
+	Create        PRCreateCmd        `cmd:""`
+	List          PRListCmd          `cmd:""`
+	ListAll       PRListAllCmd       `cmd:"list-all"`
+	View          PRViewCmd          `cmd:""`
+	Open          PROpenCmd          `cmd:""`
+	Edit          PREditCmd          `cmd:""`
+	Diff          PRDiffCmd          `cmd:""`
+	Review        PRReviewCmd        `cmd:""`
+	Files         PRFilesCmd         `cmd:""`
+	Comment       PRCommentCmd       `cmd:""`
+	Comments      PRCommentsCmd      `cmd:""`
+	ReviewHistory PRReviewHistoryCmd `cmd:"review-history" help:"Collect an author's comments across all PRs in the repo"`
+	Merge         PRMergeCmd         `cmd:""`
+	Checkout      PRCheckoutCmd      `cmd:""`
+	Ready         PRReadyCmd         `cmd:""`
+	Checks        PRChecksCmd        `cmd:""`
+	Close         PRCloseCmd         `cmd:""`
+	Reopen        PRReopenCmd        `cmd:""`
+	Status        PRStatusCmd        `cmd:""`
+	UpdateBranch  PRUpdateBranchCmd  `cmd:"update-branch"`
+	Lock          PRLockCmd          `cmd:""`
+	Unlock        PRUnlockCmd        `cmd:""`
+	Report        PRReportCmd        `cmd:""`
 }
 
 type PRCreateCmd struct {
@@ -622,6 +624,52 @@ func (p *PRCommentCmd) Run(ctx context.Context) error {
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRCommentsCmd struct {
+	PRID       string `arg:"" help:"Pull request ID (number)"`
+	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Author     string `help:"Only show comments by this author (username, nickname, display name, account_id, or @me)"`
+	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRCommentsCmd) Run(ctx context.Context) error {
+	noColor := shared.GetNoColor(ctx)
+
+	cmd := &pr.CommentsCmd{
+		PRID:       p.PRID,
+		Output:     p.Output,
+		Author:     p.Author,
+		NoColor:    noColor,
+		Workspace:  p.Workspace,
+		Repository: p.Repository,
+	}
+	return cmd.Run(ctx)
+}
+
+type PRReviewHistoryCmd struct {
+	Author      string `help:"Author whose comments to collect (username, nickname, display name, account_id, or @me)" default:"@me"`
+	State       string `help:"PR state to scan (open, merged, declined, all)" default:"merged"`
+	Output      string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
+	Concurrency int    `help:"Parallel PRs to fetch comments for" default:"8"`
+	Workspace   string `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository  string `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRReviewHistoryCmd) Run(ctx context.Context) error {
+	noColor := shared.GetNoColor(ctx)
+
+	cmd := &pr.ReviewHistoryCmd{
+		Author:      p.Author,
+		State:       p.State,
+		Output:      p.Output,
+		Concurrency: p.Concurrency,
+		NoColor:     noColor,
+		Workspace:   p.Workspace,
+		Repository:  p.Repository,
 	}
 	return cmd.Run(ctx)
 }

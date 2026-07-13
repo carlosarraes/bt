@@ -307,6 +307,47 @@ func (suite *PullRequestIntegrationSuite) TestGetPullRequestComments() {
 	suite.T().Logf("PR #%d has %d comments", testPRID, comments.Size)
 }
 
+// TestGetAllPullRequestComments tests getting all comments across pages
+func (suite *PullRequestIntegrationSuite) TestGetAllPullRequestComments() {
+	ctx := context.Background()
+
+	result, err := suite.client.PullRequests.ListPullRequests(ctx, suite.workspace, suite.repository, &api.PullRequestListOptions{
+		PageLen: 10,
+	})
+	require.NoError(suite.T(), err)
+
+	if result.Size == 0 {
+		suite.T().Skip("No pull requests found to test comments with")
+		return
+	}
+
+	var prs []*api.PullRequest
+	err = json.Unmarshal(result.Values, &prs)
+	require.NoError(suite.T(), err)
+	require.True(suite.T(), len(prs) > 0)
+
+	testPRID := prs[0].ID
+	expectedCount := prs[0].CommentCount
+	for _, pr := range prs {
+		if pr.CommentCount > 0 {
+			testPRID = pr.ID
+			expectedCount = pr.CommentCount
+			break
+		}
+	}
+
+	comments, err := suite.client.PullRequests.GetAllComments(ctx, suite.workspace, suite.repository, testPRID)
+	require.NoError(suite.T(), err)
+
+	// CommentCount includes deleted comments, so fetched total may exceed it
+	assert.GreaterOrEqual(suite.T(), len(comments), expectedCount)
+	for _, comment := range comments {
+		assert.NotZero(suite.T(), comment.ID)
+	}
+
+	suite.T().Logf("PR #%d: fetched %d comments across all pages", testPRID, len(comments))
+}
+
 // TestPullRequestValidation tests validation errors
 func (suite *PullRequestIntegrationSuite) TestPullRequestValidation() {
 	ctx := context.Background()
