@@ -19,6 +19,9 @@ type CommentCmd struct {
 	Body       string `short:"b" help:"Comment body text"`
 	BodyFile   string `short:"F" name:"body-file" help:"Read comment body from file"`
 	ReplyTo    string `name:"reply-to" help:"Reply to comment ID"`
+	File       string `name:"file" help:"File path for an inline comment (requires --line)"`
+	Line       int    `name:"line" help:"Line number for an inline comment"`
+	LineType   string `name:"line-type" help:"Which diff side --line refers to" enum:"new,old" default:"new"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -52,6 +55,14 @@ func (cmd *CommentCmd) Run(ctx context.Context) error {
 		return err
 	}
 
+	inline, err := cmd.buildInline()
+	if err != nil {
+		return err
+	}
+	if inline != nil && cmd.ReplyTo != "" {
+		return fmt.Errorf("cannot combine --file/--line with --reply-to")
+	}
+
 	pr, err := prCtx.Client.PullRequests.GetPullRequest(ctx, prCtx.Workspace, prCtx.Repository, prID)
 	if err != nil {
 		return handlePullRequestAPIError(err)
@@ -65,7 +76,7 @@ func (cmd *CommentCmd) Run(ctx context.Context) error {
 		}
 	}
 
-	comment, err := cmd.addComment(ctx, prCtx, prID, body, parentComment)
+	comment, err := cmd.addComment(ctx, prCtx, prID, body, parentComment, inline)
 	if err != nil {
 		return err
 	}
@@ -165,8 +176,31 @@ func (cmd *CommentCmd) resolveReplyTo(ctx context.Context, prCtx *PRContext, prI
 	return nil, fmt.Errorf("comment with ID %d not found in pull request #%d", replyToID, prID)
 }
 
-func (cmd *CommentCmd) addComment(ctx context.Context, prCtx *PRContext, prID int, body string, parentComment *api.PullRequestComment) (*api.PullRequestComment, error) {
-	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, nil)
+// buildInline turns the --file/--line flags into a Bitbucket inline anchor.
+// --line-type new maps to the new-file side (`to`); old maps to the old-file
+// side (`from`). Returns nil when no inline flags were given.
+func (cmd *CommentCmd) buildInline() (*api.PullRequestCommentInline, error) {
+	if cmd.File == "" {
+		if cmd.Line != 0 {
+			return nil, fmt.Errorf("--line requires --file")
+		}
+		return nil, nil
+	}
+	if cmd.Line <= 0 {
+		return nil, fmt.Errorf("--file requires --line (a positive line number)")
+	}
+
+	inline := &api.PullRequestCommentInline{Path: cmd.File}
+	if cmd.LineType == "old" {
+		inline.From = cmd.Line
+	} else {
+		inline.To = cmd.Line
+	}
+	return inline, nil
+}
+
+func (cmd *CommentCmd) addComment(ctx context.Context, prCtx *PRContext, prID int, body string, parentComment *api.PullRequestComment, inline *api.PullRequestCommentInline) (*api.PullRequestComment, error) {
+	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, inline)
 	if err != nil {
 		if bitbucketErr, ok := err.(*api.BitbucketError); ok {
 			switch bitbucketErr.Type {

@@ -599,6 +599,9 @@ type PRCommentCmd struct {
 	Body       string `short:"b" help:"Comment body text"`
 	BodyFile   string `short:"F" name:"body-file" help:"Read comment body from file"`
 	ReplyTo    string `name:"reply-to" help:"Reply to comment ID"`
+	File       string `name:"file" help:"File path for an inline comment (requires --line)"`
+	Line       int    `name:"line" help:"Line number for an inline comment"`
+	LineType   string `name:"line-type" help:"Which diff side --line refers to" enum:"new,old" default:"new"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -612,6 +615,9 @@ func (p *PRCommentCmd) Run(ctx context.Context) error {
 		Body:       p.Body,
 		BodyFile:   p.BodyFile,
 		ReplyTo:    p.ReplyTo,
+		File:       p.File,
+		Line:       p.Line,
+		LineType:   p.LineType,
 		Output:     p.Output,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,

@@ -97,7 +97,7 @@ type PullRequestCommentContent struct {
 
 // PullRequestCommentInline represents inline comment metadata
 type PullRequestCommentInline struct {
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 	Path string `json:"path"`
 	From int    `json:"from,omitempty"`
 	To   int    `json:"to,omitempty"`
