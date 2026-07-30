@@ -173,7 +173,7 @@ func (cmd *RerunCmd) confirmRerun(pipeline *api.Pipeline) bool {
 		action, pipeline.BuildNumber, displayStatus)
 
 	if pipeline.Target != nil {
-		fmt.Printf("  Branch: %s\n", pipeline.Target.RefName)
+		fmt.Printf("  Branch: %s\n", pipeline.Target.BranchName())
 		if pipeline.Target.Commit != nil {
 			fmt.Printf("  Commit: %s\n", pipeline.Target.Commit.Hash[:8])
 		}
@@ -200,11 +200,11 @@ func (cmd *RerunCmd) buildTriggerRequest(ctx context.Context, runCtx *RunContext
 		fmt.Printf("🐛 Debug: Original pipeline target:\n")
 		fmt.Printf("  Type: %s\n", pipeline.Target.Type)
 		fmt.Printf("  RefType: %s\n", pipeline.Target.RefType)
-		fmt.Printf("  RefName: %s\n", pipeline.Target.RefName)
-		if pipeline.Target.PullRequestId != nil {
-			fmt.Printf("  PullRequestId: %d\n", *pipeline.Target.PullRequestId)
+		fmt.Printf("  RefName: %s\n", pipeline.Target.BranchName())
+		if prID, ok := pipeline.Target.PRNumber(); ok {
+			fmt.Printf("  PullRequest: #%d\n", prID)
 		} else {
-			fmt.Printf("  PullRequestId: nil\n")
+			fmt.Printf("  PullRequest: none\n")
 		}
 		if pipeline.Target.Selector != nil {
 			fmt.Printf("  Selector: %+v\n", pipeline.Target.Selector)
@@ -218,37 +218,53 @@ func (cmd *RerunCmd) buildTriggerRequest(ctx context.Context, runCtx *RunContext
 		}
 	}
 
-	pullRequestId := pipeline.Target.PullRequestId
-	if pipeline.Target.Type == "pipeline_pullrequest_target" && pullRequestId == nil {
-		if pipeline.Target.Commit != nil {
-			if cmd.Debug {
-				fmt.Printf("🐛 Debug: PR pipeline missing pullRequestId, attempting to find by commit hash\n")
-			}
+	prID, hasPR := pipeline.Target.PRNumber()
+	if pipeline.Target.IsPullRequest() && !hasPR {
+		// Some older pipelines come back without a pullrequest object; recover the
+		// number from the commit rather than failing the rerun outright.
+		if pipeline.Target.Commit == nil {
+			return nil, fmt.Errorf("pull request pipeline missing both pull request id and commit hash")
+		}
 
-			foundPRId, err := cmd.findPullRequestByCommit(ctx, runCtx, pipeline.Target.Commit.Hash)
-			if err != nil {
-				return nil, fmt.Errorf("failed to find pull request for commit %s: %w", pipeline.Target.Commit.Hash, err)
-			}
-			pullRequestId = foundPRId
+		if cmd.Debug {
+			fmt.Printf("🐛 Debug: PR pipeline missing pull request id, attempting to find by commit hash\n")
+		}
 
-			if cmd.Debug {
-				fmt.Printf("🐛 Debug: Found PR ID: %d\n", *pullRequestId)
-			}
-		} else {
-			return nil, fmt.Errorf("pull request pipeline missing both pullRequestId and commit hash")
+		foundPRId, err := cmd.findPullRequestByCommit(ctx, runCtx, pipeline.Target.Commit.Hash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find pull request for commit %s: %w", pipeline.Target.Commit.Hash, err)
+		}
+		if foundPRId == nil {
+			return nil, fmt.Errorf("no pull request found for commit %s", pipeline.Target.Commit.Hash)
+		}
+		prID, hasPR = *foundPRId, true
+
+		if cmd.Debug {
+			fmt.Printf("🐛 Debug: Found PR ID: %d\n", prID)
 		}
 	}
 
-	request := &api.TriggerPipelineRequest{
-		Target: &api.PipelineTarget{
-			Type:          pipeline.Target.Type,
-			RefType:       pipeline.Target.RefType,
-			RefName:       pipeline.Target.RefName,
-			Selector:      pipeline.Target.Selector,
-			Commit:        pipeline.Target.Commit,
-			PullRequestId: pullRequestId,
-		},
+	target := &api.PipelineTarget{
+		Type:     pipeline.Target.Type,
+		Selector: pipeline.Target.Selector,
+		Commit:   pipeline.Target.Commit,
 	}
+
+	// A PR rerun must carry source/destination/pullrequest; ref_name and the legacy
+	// pull_request_id key are not accepted for pull request targets.
+	if hasPR {
+		target.Source = pipeline.Target.BranchName()
+		target.Destination = pipeline.Target.Destination
+		target.PullRequest = &api.PipelineTargetPullRequest{
+			Type: "pullrequest",
+			ID:   api.FlexibleID(prID),
+		}
+	} else {
+		target.RefType = pipeline.Target.RefType
+		target.RefName = pipeline.Target.BranchName()
+	}
+
+	request := &api.TriggerPipelineRequest{Target: target}
 
 	if cmd.Failed {
 		fmt.Printf("⚠️  Bitbucket doesn't support rerunning only failed steps. The entire pipeline will be rerun.\n")
@@ -281,7 +297,7 @@ func (cmd *RerunCmd) outputTable(originalPipeline *api.Pipeline, newPipeline *ap
 		fmt.Printf("  Repository: %s\n", newPipeline.Repository.FullName)
 	}
 	if newPipeline.Target != nil {
-		fmt.Printf("  Branch: %s\n", newPipeline.Target.RefName)
+		fmt.Printf("  Branch: %s\n", newPipeline.Target.BranchName())
 		if newPipeline.Target.Commit != nil {
 			fmt.Printf("  Commit: %s\n", newPipeline.Target.Commit.Hash[:8])
 		}
@@ -315,7 +331,7 @@ func (cmd *RerunCmd) outputJSON(runCtx *RunContext, originalPipeline *api.Pipeli
 	}
 
 	if newPipeline.Target != nil {
-		newData["branch"] = newPipeline.Target.RefName
+		newData["branch"] = newPipeline.Target.BranchName()
 		if newPipeline.Target.Commit != nil {
 			newData["commit"] = newPipeline.Target.Commit.Hash
 		}
@@ -355,7 +371,7 @@ func (cmd *RerunCmd) outputYAML(runCtx *RunContext, originalPipeline *api.Pipeli
 	}
 
 	if newPipeline.Target != nil {
-		newData["branch"] = newPipeline.Target.RefName
+		newData["branch"] = newPipeline.Target.BranchName()
 		if newPipeline.Target.Commit != nil {
 			newData["commit"] = newPipeline.Target.Commit.Hash
 		}
