@@ -508,7 +508,7 @@ func TestPullRequestService_AddComment(t *testing.T) {
 	ctx := context.Background()
 
 	// Test adding comment
-	comment, err := client.PullRequests.AddComment(ctx, "test-workspace", "test-repo", 123, "This looks good to me!", nil)
+	comment, err := client.PullRequests.AddComment(ctx, "test-workspace", "test-repo", 123, "This looks good to me!", nil, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, comment)
 	assert.Equal(t, 789, comment.ID)

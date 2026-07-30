@@ -235,7 +235,7 @@ func (cmd *ReviewCmd) executeApproval(ctx context.Context, prCtx *PRContext, prI
 	}
 
 	if body != "" {
-		_, err = prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, nil)
+		_, err = prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, nil, nil)
 		if err != nil {
 			fmt.Printf("Warning: Failed to add comment: %v\n", err)
 		}
@@ -258,7 +258,7 @@ func (cmd *ReviewCmd) executeComment(ctx context.Context, prCtx *PRContext, prID
 		return fmt.Errorf("comment body is required")
 	}
 
-	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, nil)
+	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, nil, nil)
 	if err != nil {
 		return handlePullRequestAPIError(err)
 	}

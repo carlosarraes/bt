@@ -3,7 +3,6 @@ package pr
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -152,24 +151,16 @@ func (cmd *CommentCmd) resolveReplyTo(ctx context.Context, prCtx *PRContext, prI
 		return nil, fmt.Errorf("reply-to comment ID must be positive, got %d", replyToID)
 	}
 
-	commentsResp, err := prCtx.Client.PullRequests.GetComments(ctx, prCtx.Workspace, prCtx.Repository, prID)
+	// Every page must be searched: a single-page lookup reports "not found" for any
+	// comment past the first 50, which is exactly when replying matters most.
+	comments, err := prCtx.Client.PullRequests.GetAllComments(ctx, prCtx.Workspace, prCtx.Repository, prID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve comments for reply-to validation: %w", err)
 	}
 
-	var commentsData []json.RawMessage
-	if err := json.Unmarshal(commentsResp.Values, &commentsData); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal comments: %w", err)
-	}
-
-	for _, rawComment := range commentsData {
-		var comment api.PullRequestComment
-		if err := json.Unmarshal(rawComment, &comment); err != nil {
-			continue
-		}
-
-		if comment.ID == replyToID {
-			return &comment, nil
+	for i := range comments {
+		if comments[i].ID == replyToID {
+			return &comments[i], nil
 		}
 	}
 
@@ -200,7 +191,12 @@ func (cmd *CommentCmd) buildInline() (*api.PullRequestCommentInline, error) {
 }
 
 func (cmd *CommentCmd) addComment(ctx context.Context, prCtx *PRContext, prID int, body string, parentComment *api.PullRequestComment, inline *api.PullRequestCommentInline) (*api.PullRequestComment, error) {
-	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, inline)
+	var parentID *int
+	if parentComment != nil {
+		parentID = &parentComment.ID
+	}
+
+	comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, body, inline, parentID)
 	if err != nil {
 		if bitbucketErr, ok := err.(*api.BitbucketError); ok {
 			switch bitbucketErr.Type {

@@ -61,7 +61,7 @@ func (cmd *CloseCmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.Comment != "" {
-		_, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, cmd.Comment, nil)
+		_, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, cmd.Comment, nil, nil)
 		if err != nil {
 			return fmt.Errorf("failed to add comment: %w", err)
 		}

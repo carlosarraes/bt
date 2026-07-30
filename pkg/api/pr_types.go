@@ -236,7 +236,13 @@ type AddCommentRequest struct {
 	Type    string                     `json:"type"`
 	Content *PullRequestCommentContent `json:"content"`
 	Inline  *PullRequestCommentInline  `json:"inline,omitempty"`
-	Parent  *PullRequestComment        `json:"parent,omitempty"`
+	Parent  *CommentParent             `json:"parent,omitempty"`
+}
+
+// CommentParent threads a new comment under an existing one. Bitbucket only needs
+// the parent's ID, so this stays minimal rather than echoing a whole comment back.
+type CommentParent struct {
+	ID int `json:"id"`
 }
 
 // RequestChangesRequest represents a request to request changes on a pull request

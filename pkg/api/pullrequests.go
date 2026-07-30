@@ -224,8 +224,29 @@ func (p *PullRequestService) RequestChanges(ctx context.Context, workspace, repo
 	return &result, nil
 }
 
-// AddComment adds a comment to a pull request
-func (p *PullRequestService) AddComment(ctx context.Context, workspace, repoSlug string, id int, comment string, inline *PullRequestCommentInline) (*PullRequestComment, error) {
+// BuildAddCommentRequest assembles the POST body for a new pull request comment.
+// Kept separate from AddComment so the wire shape - in particular that a reply
+// actually carries its parent - is verifiable without an HTTP round trip.
+func BuildAddCommentRequest(comment string, inline *PullRequestCommentInline, parentID *int) *AddCommentRequest {
+	request := &AddCommentRequest{
+		Type: "pullrequest_comment",
+		Content: &PullRequestCommentContent{
+			Type: "text",
+			Raw:  comment,
+		},
+		Inline: inline,
+	}
+
+	if parentID != nil && *parentID > 0 {
+		request.Parent = &CommentParent{ID: *parentID}
+	}
+
+	return request
+}
+
+// AddComment adds a comment to a pull request. A non-nil parentID threads the new
+// comment as a reply to that comment.
+func (p *PullRequestService) AddComment(ctx context.Context, workspace, repoSlug string, id int, comment string, inline *PullRequestCommentInline, parentID *int) (*PullRequestComment, error) {
 	if workspace == "" || repoSlug == "" {
 		return nil, NewValidationError("workspace and repository slug are required", "")
 	}
@@ -240,17 +261,8 @@ func (p *PullRequestService) AddComment(ctx context.Context, workspace, repoSlug
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/comments", workspace, repoSlug, id)
 
-	request := &AddCommentRequest{
-		Type: "pullrequest_comment",
-		Content: &PullRequestCommentContent{
-			Type: "text",
-			Raw:  comment,
-		},
-		Inline: inline,
-	}
-
 	var result PullRequestComment
-	err := p.client.PostJSON(ctx, endpoint, request, &result)
+	err := p.client.PostJSON(ctx, endpoint, BuildAddCommentRequest(comment, inline, parentID), &result)
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +469,7 @@ func (p *PullRequestService) ReopenPullRequest(ctx context.Context, workspace, r
 	}
 
 	if comment != "" {
-		_, err := p.AddComment(ctx, workspace, repoSlug, id, comment, nil)
+		_, err := p.AddComment(ctx, workspace, repoSlug, id, comment, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add comment: %w", err)
 		}
@@ -538,7 +550,7 @@ func (p *PullRequestService) AddInlineComment(ctx context.Context, workspace, re
 		To:   lineNumber,
 	}
 
-	return p.AddComment(ctx, workspace, repoSlug, id, comment, inline)
+	return p.AddComment(ctx, workspace, repoSlug, id, comment, inline, nil)
 }
 
 func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, workspace, repoSlug string, id int, reason string) (*PullRequest, error) {
@@ -576,7 +588,7 @@ func (p *PullRequestService) LockPullRequestConversation(ctx context.Context, wo
 
 	lockMessage += "\n\nIf you have questions about this decision, please contact the repository administrators."
 
-	_, err = p.AddComment(ctx, workspace, repoSlug, id, lockMessage, nil)
+	_, err = p.AddComment(ctx, workspace, repoSlug, id, lockMessage, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add lock comment: %w", err)
 	}
@@ -600,7 +612,7 @@ func (p *PullRequestService) UnlockPullRequestConversation(ctx context.Context, 
 
 	unlockMessage := "🔓 **Conversation unlocked**\n\nThis pull request's conversation has been unlocked and comments are now enabled again."
 
-	_, err = p.AddComment(ctx, workspace, repoSlug, id, unlockMessage, nil)
+	_, err = p.AddComment(ctx, workspace, repoSlug, id, unlockMessage, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add unlock comment: %w", err)
 	}

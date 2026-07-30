@@ -78,7 +78,7 @@ func (cmd *ReadyCmd) Run(ctx context.Context) error {
 	}
 
 	if cmd.Comment != "" {
-		comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, cmd.Comment, nil)
+		comment, err := prCtx.Client.PullRequests.AddComment(ctx, prCtx.Workspace, prCtx.Repository, prID, cmd.Comment, nil, nil)
 		if err != nil {
 			fmt.Printf("Warning: Failed to add comment: %v\n", err)
 		} else {
