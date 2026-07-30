@@ -48,6 +48,10 @@ func (p *PipelineService) ListPipelines(ctx context.Context, workspace, repoSlug
 			params = append(params, fmt.Sprintf("target.ref_name=%s", url.QueryEscape(options.Branch)))
 		}
 
+		if options.Commit != "" {
+			params = append(params, fmt.Sprintf("target.commit.hash=%s", url.QueryEscape(options.Commit)))
+		}
+
 		if options.Sort != "" {
 			params = append(params, fmt.Sprintf("sort=%s", url.QueryEscape(options.Sort)))
 		}

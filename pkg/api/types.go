@@ -42,14 +42,36 @@ type PipelineResult struct {
 	Name string `json:"name"`
 }
 
-// PipelineTarget represents the target of a pipeline (branch, tag, etc.)
+// PipelineTarget represents the target of a pipeline (branch, tag or pull request).
+//
+// Bitbucket returns two different shapes under the same key. Branch/tag builds use
+// ref_name/ref_type; pull request builds use source/destination/pullrequest and carry
+// no ref_name at all. Prefer the accessors in pipeline_target.go over reading these
+// fields directly, so callers do not have to know which shape they were handed.
 type PipelineTarget struct {
-	Type          string    `json:"type"`
-	RefType       string    `json:"ref_type,omitempty"`
-	RefName       string    `json:"ref_name,omitempty"`
-	Selector      *Selector `json:"selector,omitempty"`
-	Commit        *Commit   `json:"commit,omitempty"`
-	PullRequestId *int      `json:"pull_request_id,omitempty"`
+	Type              string    `json:"type"`
+	RefType           string    `json:"ref_type,omitempty"`
+	RefName           string    `json:"ref_name,omitempty"`
+	Selector          *Selector `json:"selector,omitempty"`
+	Commit            *Commit   `json:"commit,omitempty"`
+	DestinationCommit *Commit   `json:"destination_commit,omitempty"`
+
+	// Source and Destination are the PR's source and destination branch names.
+	// Both are empty for branch/tag targets.
+	Source      string                     `json:"source,omitempty"`
+	Destination string                     `json:"destination,omitempty"`
+	PullRequest *PipelineTargetPullRequest `json:"pullrequest,omitempty"`
+
+	// Deprecated: Bitbucket never sends this key, so it is always nil on decoded
+	// responses. Retained only because the pipeline trigger request reuses this
+	// struct. Read PRNumber() instead.
+	PullRequestId *int `json:"pull_request_id,omitempty"`
+}
+
+// PipelineTargetPullRequest identifies the pull request a pipeline was triggered for.
+type PipelineTargetPullRequest struct {
+	Type string     `json:"type,omitempty"`
+	ID   FlexibleID `json:"id,omitempty"`
 }
 
 // PipelineTrigger represents what triggered the pipeline
@@ -178,7 +200,8 @@ type TriggerPipelineRequest struct {
 // PipelineListOptions represents options for listing pipelines
 type PipelineListOptions struct {
 	Status  string `json:"status,omitempty"`  // PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED
-	Branch  string `json:"branch,omitempty"`  // Filter by branch name
+	Branch  string `json:"branch,omitempty"`  // Filter by branch name (branch-triggered pipelines only)
+	Commit  string `json:"commit,omitempty"`  // Filter by target commit SHA
 	Sort    string `json:"sort,omitempty"`    // Sort field (created_on, -created_on)
 	Page    int    `json:"page,omitempty"`    // Page number
 	PageLen int    `json:"pagelen,omitempty"` // Items per page
