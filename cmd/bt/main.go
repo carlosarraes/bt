@@ -230,6 +230,9 @@ INHERITED FLAGS
 
 EXAMPLES
   $ bt run list
+  $ bt run list --branch feat/auth        # includes PR-triggered runs
+  $ bt run list --event pull_request
+  $ bt run list --commit a1b2c3d
   $ bt run view 123
   $ bt run report 123 --coverage
   $ bt run logs 123 --errors-only
@@ -258,8 +261,8 @@ TARGETED COMMANDS
   checkout:      Check out a pull request in git
   checks:        Show CI status for a single pull request
   close:         Close a pull request
-  comment:       Add a comment to a pull request
-  comments:      List comments on a pull request
+  comment:       Add a comment to a pull request (or reply with --reply-to)
+  comments:      List comments on a pull request, threaded
   diff:          View changes in a pull request
   edit:          Edit a pull request
   files:         List files changed in a pull request
@@ -268,9 +271,10 @@ TARGETED COMMANDS
   ready:         Mark a pull request as ready for review
   reopen:        Reopen a pull request
   review:        Add a review to a pull request
+  review-history: Collect an author's comments across all PRs in the repo
   unlock:        Unlock pull request conversation
   update-branch: Update a pull request branch
-  view:          View a pull request
+  view:          View a pull request (use --comments to read comment bodies)
 
 FLAGS
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format

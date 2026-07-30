@@ -238,6 +238,10 @@ func showCommandLLMHelp(command string) {
 }
 
 func showRunLLMHelp() {
+	fmt.Print(runLLMHelpText())
+}
+
+func runLLMHelpText() string {
 	help := `# bt run - Pipeline Debugging (LLM Guide)
 
 ## Primary Use Case
@@ -270,9 +274,22 @@ Find pipelines to analyze:
 bt run list                      # Recent runs (last 10)
 bt run list --status failed     # Failed runs only (most common)
 bt run list --status in_progress # Currently running
-bt run list --branch main       # Specific branch
+bt run list --branch main       # Specific branch (matches PR-triggered runs too)
+bt run list --event pull_request # Only PR-triggered runs
+bt run list --event push        # Only branch/tag runs
+bt run list --commit a1b2c3d    # Runs for a specific commit
 bt run list --limit 50          # More results
 bt run list --output json       # Structured data
+` + "```" + `
+
+The Ref column shows which PR or branch each run belongs to, e.g.
+"PR #312 feat/auth→main" for a pull request run or "main" for a branch run.
+
+To go the other way - from a pull request to its runs - use ` + "`bt pr checks`" + `:
+` + "```bash" + `
+bt pr checks                     # Current branch's PR
+bt pr checks 312                 # By PR number
+bt pr checks feat/auth           # By branch name
 ` + "```" + `
 
 ### bt run view (KILLER FEATURE)
@@ -337,6 +354,26 @@ bt run watch {uuid}              # Watch pipeline by UUID
 - ✅ Automatic completion detection
 - ✅ Works only with running/pending pipelines
 
+### bt run logs
+Fetch step logs directly, without the pipeline overview:
+` + "```bash" + `
+bt run logs <id>                 # All step logs
+bt run logs <id> --errors-only   # Only lines matching error patterns
+bt run logs <id> --step "name"   # A single step
+` + "```" + `
+
+### bt run cancel
+` + "```bash" + `
+bt run cancel <id>               # Stop a running pipeline
+` + "```" + `
+
+### bt run rerun
+` + "```bash" + `
+bt run rerun <id>                # Rerun a pipeline
+` + "```" + `
+Reruns preserve the original target, so rerunning a PR-triggered pipeline
+re-runs it against the same pull request.
+
 ## JSON Output Structure
 Perfect for LLM analysis:
 ` + "```json" + `
@@ -379,7 +416,7 @@ Perfect for LLM analysis:
 5. Specify ` + "`--step`" + ` when you know which step failed
 `
 
-	fmt.Print(help)
+	return help
 }
 
 func showAuthLLMHelp() {
@@ -439,6 +476,10 @@ bt auth logout && bt auth login  # Reset authentication
 }
 
 func showPRLLMHelp() {
+	fmt.Print(prLLMHelpText())
+}
+
+func prLLMHelpText() string {
 	help := `# bt pr - Pull Requests (LLM Guide)
 
 ## Overview
@@ -496,20 +537,34 @@ Portuguese Template:
 bt pr list                                 # List pull requests
 bt pr list --state open                   # Filter by state
 bt pr list --author @me                   # Your PRs only
+bt pr list-all                            # List PRs across the whole workspace
+bt pr open 42                             # Open a PR in the browser
 bt pr create --ai                         # AI-generated description
 bt pr create --title "Fix" --body "Desc" # Traditional creation
 
 # Review and collaboration
 bt pr view 42                             # PR details
+bt pr view 42 --comments                  # PR details plus comment bodies
 bt pr diff 42                             # Show changes
 bt pr files 42                            # List changed files
 bt pr review 42 --approve                 # Approve PR
-bt pr comment 42 -b "Great work!"         # Add comment
 bt pr checkout 42                         # Switch to PR branch
+
+# Reading and writing comments
+bt pr comments 42                         # Read all comment bodies, threaded, with IDs
+bt pr comments 42 --author @me            # Only your comments
+bt pr comments 42 -o json                 # Full comment objects (id, parent, inline)
+bt pr comment 42 -b "Great work!"         # Add a top-level comment
+bt pr comment 42 --reply-to 12344 -b "Done"        # Reply in-thread to comment 12344
+bt pr comment 42 --file src/auth.go --line 15 -b "Extract this"  # Inline comment
+bt pr review-history --author @me         # Your comments across every PR in the repo
 
 # Management and status
 bt pr status                              # Your PR dashboard
-bt pr checks 42                           # CI/build status
+bt pr checks                              # CI/build status for the current branch's PR
+bt pr checks 42                           # CI/build status for PR 42
+bt pr checks feat/auth                    # CI/build status by branch name
+bt pr checks 42 --watch -i 15             # Poll every 15s
 bt pr edit 42 --title "New title"        # Edit metadata
 bt pr ready 42                            # Mark draft as ready
 
@@ -532,12 +587,18 @@ gh pr create   → bt pr create     # Enhanced with AI
 gh pr view     → bt pr view
 gh pr diff     → bt pr diff
 gh pr review   → bt pr review
-gh pr comment  → bt pr comment
+gh pr comment  → bt pr comment     # Plus --reply-to for threaded replies
 gh pr checkout → bt pr checkout
+gh pr checks   → bt pr checks      # Optional arg: number, branch, or current branch
 gh pr merge    → bt pr merge
 gh pr close    → bt pr close
 gh pr edit     → bt pr edit
 gh pr status   → bt pr status
+
+# bt-only (no gh equivalent)
+bt pr comments         # gh reads comments via 'gh pr view --comments' only
+bt pr review-history   # Mine one author's comments across every PR
+bt pr report           # SonarCloud coverage/issues for a PR
 ` + "```" + `
 
 ## AI Analysis Capabilities
@@ -551,7 +612,7 @@ gh pr status   → bt pr status
 Note: bt pr create --ai provides intelligent PR descriptions while maintaining perfect GitHub CLI compatibility for all other commands.
 `
 
-	fmt.Print(help)
+	return help
 }
 
 func showRepoLLMHelp() {

@@ -21,11 +21,30 @@ Follow this sequence. Skip steps that aren't needed based on context.
 # Recent failures
 bt run list --status failed
 
-# Failures on a specific branch
+# Failures on a specific branch (includes PR-triggered runs)
 bt run list --status failed --branch feature-xyz
+
+# Only pull-request runs, or only branch/tag runs
+bt run list --event pull_request
+bt run list --event push
+
+# Runs for one commit
+bt run list --commit a1b2c3d
 
 # JSON for structured analysis
 bt run list --status failed --output json
+```
+
+The `Ref` column tells you what each run belongs to — `PR #312 feat/auth→main`
+for a pull-request run, or `main` for a branch run.
+
+Going the other way, from a PR to its pipelines:
+
+```bash
+bt pr checks              # current branch's PR
+bt pr checks 312          # by PR number
+bt pr checks feat/auth    # by branch name
+bt pr checks 312 --watch -i 15 --fail-fast
 ```
 
 If the user gives a PR number instead of a pipeline ID, use `bt pr report` directly (step 4).
@@ -132,6 +151,32 @@ bt run rerun <ID> --failed
 # Cancel a stuck pipeline
 bt run cancel <ID>
 ```
+
+## Reading and Replying to PR Comments
+
+Never fall back to `curl` for this — `bt` covers it.
+
+```bash
+# Read comment bodies, threaded, with IDs
+bt pr comments <PR_ID>
+bt pr comments <PR_ID> --author @me
+bt pr comments <PR_ID> --output json      # full objects: id, parent, inline
+
+# Comments alongside the PR itself
+bt pr view <PR_ID> --comments
+
+# Reply in-thread (needs the parent's ID from the commands above)
+bt pr comment <PR_ID> --reply-to <COMMENT_ID> --body "Done"
+
+# Comment on a specific file and line
+bt pr comment <PR_ID> --file pkg/api/client.go --line 42 --body "Extract this"
+
+# One author's comments across every PR in the repo
+bt pr review-history --author @me
+```
+
+`bt pr comments` prints replies nested under their parent, so `#IDs` shown there
+can be passed straight to `--reply-to`.
 
 ## Flag Reference
 

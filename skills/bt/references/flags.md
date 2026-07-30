@@ -54,7 +54,9 @@ PR IDs accept: number (`123`), hash-prefixed (`#123`), URL, or branch name.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--status <S>` | string | | Filter: SUCCESSFUL, FAILED, ERROR, STOPPED, PENDING, IN_PROGRESS |
-| `--branch <B>` | string | | Filter by branch name |
+| `-b, --branch <B>` | string | | Filter by branch name (matches PR-triggered runs too) |
+| `-c, --commit <SHA>` | string | | Filter by target commit SHA |
+| `-e, --event <E>` | string | | Filter by trigger: `pull_request`, `push` |
 | `--creator <C>` | string | | Filter by creator display name (partial match) |
 | `--limit <N>` | int | 10 | Max results |
 | `-o, --output` | string | table | Output format: table, json, yaml |
@@ -64,3 +66,43 @@ PR IDs accept: number (`123`), hash-prefixed (`#123`), URL, or branch name.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--failed` | bool | false | Rerun only failed steps |
+
+## bt pr checks [PR_ID | BRANCH]
+
+Argument is optional; with none, resolves the current branch's pull request.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-w, --watch` | bool | false | Watch for live updates |
+| `-i, --interval <N>` | int | 10 | Refresh interval in seconds (watch mode) |
+| `--fail-fast` | bool | false | Exit watch mode on first check failure |
+| `-o, --output` | string | table | Output format: table, json, yaml |
+
+## bt pr comments <PR_ID>
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--author <A>` | string | | Only this author (username, nickname, display name, account_id, or `@me`) |
+| `-o, --output` | string | table | Output format: table, json, yaml |
+
+## bt pr comment <PR_ID>
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `-b, --body <TEXT>` | string | | Comment body |
+| `-F, --body-file <F>` | string | | Read body from file |
+| `--reply-to <ID>` | int | | Thread as a reply to this comment ID |
+| `--file <PATH>` | string | | File path for an inline comment (requires `--line`) |
+| `--line <N>` | int | | Line number for an inline comment |
+| `--line-type <T>` | string | new | Which diff side `--line` refers to: `new`, `old` |
+
+Note: `--reply-to` cannot be combined with `--file`/`--line`.
+
+## bt pr review-history
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--author <A>` | string | @me | Author to collect comments for |
+| `--state <S>` | string | merged | PR state to scan: open, merged, declined, all |
+| `--concurrency <N>` | int | 8 | Parallel PRs to fetch comments for |
+| `-o, --output` | string | table | Output format: table, json, yaml |
