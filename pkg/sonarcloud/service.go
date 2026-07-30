@@ -41,11 +41,18 @@ func (s *Service) buildAPIContext(pipeline *api.Pipeline, projectKey string) API
 		BaseParams: map[string]string{"component": projectKey},
 	}
 
-	if pipeline.Target != nil && pipeline.Target.Type == "pipeline_pullrequest_target" {
+	if pipeline.Target.IsPullRequest() {
 		context.IsPullRequest = true
 		context.PreferredMetrics = []string{
 			"new_coverage", "new_uncovered_lines", "new_bugs",
 			"new_vulnerabilities", "new_code_smells",
+		}
+
+		// Without pullRequest in BaseParams SonarCloud answers for the default
+		// branch instead, so new_* metrics would describe the wrong code entirely.
+		if prID, ok := pipeline.Target.PRNumber(); ok {
+			context.PullRequestID = prID
+			context.BaseParams["pullRequest"] = fmt.Sprintf("%d", prID)
 		}
 	} else {
 		context.IsPullRequest = false
@@ -290,12 +297,7 @@ func (s *Service) GenerateReport(ctx context.Context, pipeline *api.Pipeline, wo
 	if filters.Debug {
 		fmt.Printf("DEBUG: SonarCloud GenerateReport called\n")
 	}
-	commitHash := ""
-	if pipeline.Target != nil && pipeline.Target.Commit != nil {
-		commitHash = pipeline.Target.Commit.Hash
-	}
-
-	discoveryResult, err := s.discovery.DiscoverProjectKey(ctx, workspace, repo, commitHash)
+	discoveryResult, err := s.discovery.DiscoverProjectKey(ctx, workspace, repo, pipeline.Target.CommitHash())
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover SonarCloud project key: %w", err)
 	}
@@ -314,7 +316,8 @@ func (s *Service) GenerateReport(ctx context.Context, pipeline *api.Pipeline, wo
 		PullRequestID: nil,
 	}
 
-	if apiContext.IsPullRequest {
+	// Only claim a PR number we actually resolved; a zero here would render as "#0".
+	if apiContext.IsPullRequest && apiContext.PullRequestID > 0 {
 		report.PullRequestID = &apiContext.PullRequestID
 	}
 
