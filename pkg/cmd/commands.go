@@ -77,7 +77,9 @@ type RunCmd struct {
 
 type RunListCmd struct {
 	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
-	Branch     string `help:"Filter by branch name"`
+	Branch     string `short:"b" help:"Filter by branch name"`
+	Commit     string `short:"c" help:"Filter by the SHA of the commit"`
+	Event      string `short:"e" help:"Filter by triggering event (pull_request, push)" enum:"pull_request,push," default:""`
 	Creator    string `help:"Filter by pipeline creator (display name)"`
 	Limit      int    `help:"Maximum number of runs to show" default:"10"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -91,6 +93,8 @@ func (r *RunListCmd) Run(ctx context.Context) error {
 	cmd := &run.ListCmd{
 		Status:     r.Status,
 		Branch:     r.Branch,
+		Commit:     r.Commit,
+		Event:      r.Event,
 		Creator:    r.Creator,
 		Limit:      r.Limit,
 		Output:     r.Output,
@@ -753,8 +757,10 @@ func (p *PRReadyCmd) Run(ctx context.Context) error {
 }
 
 type PRChecksCmd struct {
-	PRID       string `arg:"" help:"Pull request ID (number)"`
+	PRID       string `arg:"" optional:"" help:"Pull request number or branch (defaults to the current branch's pull request)"`
 	Watch      bool   `short:"w" help:"Watch for live updates"`
+	Interval   int    `short:"i" help:"Refresh interval in seconds in watch mode" default:"10"`
+	FailFast   bool   `name:"fail-fast" help:"Exit watch mode on first check failure"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -766,6 +772,8 @@ func (p *PRChecksCmd) Run(ctx context.Context) error {
 	cmd := &pr.ChecksCmd{
 		PRID:       p.PRID,
 		Watch:      p.Watch,
+		Interval:   p.Interval,
+		FailFast:   p.FailFast,
 		Output:     p.Output,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
