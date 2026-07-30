@@ -11,8 +11,10 @@ import (
 )
 
 type ChecksCmd struct {
-	PRID       string `arg:"" help:"Pull request ID (number)"`
+	PRID       string `arg:"" optional:"" help:"Pull request number or branch (defaults to the current branch's pull request)"`
 	Watch      bool   `short:"w" help:"Watch for live updates"`
+	Interval   int    `short:"i" help:"Refresh interval in seconds in watch mode" default:"10"`
+	FailFast   bool   `help:"Exit watch mode on first check failure"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
@@ -36,7 +38,7 @@ func (cmd *ChecksCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	prID, err := cmd.ParsePRID()
+	prID, err := ResolvePRArg(ctx, prCtx, cmd.PRID)
 	if err != nil {
 		return err
 	}
@@ -50,11 +52,25 @@ func (cmd *ChecksCmd) Run(ctx context.Context) error {
 		return err
 	}
 
-	return cmd.formatOutput(prCtx, checks)
+	return cmd.formatOutput(prCtx, prID, checks)
 }
 
 func (cmd *ChecksCmd) ParsePRID() (int, error) {
 	return ParsePRID(cmd.PRID)
+}
+
+// anyCheckFailed reports whether any check has reached a terminal failure.
+func (cmd *ChecksCmd) anyCheckFailed(checks []*api.Pipeline) bool {
+	for _, pipeline := range checks {
+		if pipeline.State == nil {
+			continue
+		}
+		switch pipeline.State.Name {
+		case "FAILED", "ERROR":
+			return true
+		}
+	}
+	return false
 }
 
 func (cmd *ChecksCmd) getChecks(ctx context.Context, prCtx *PRContext, prID int) ([]*api.Pipeline, error) {
@@ -86,11 +102,20 @@ func (cmd *ChecksCmd) watchChecks(ctx context.Context, prCtx *PRContext, prID in
 		return err
 	}
 
-	if err := cmd.formatOutput(prCtx, checks); err != nil {
+	if err := cmd.formatOutput(prCtx, prID, checks); err != nil {
 		return err
 	}
 
-	ticker := time.NewTicker(5 * time.Second)
+	if cmd.FailFast && cmd.anyCheckFailed(checks) {
+		return fmt.Errorf("check failed")
+	}
+
+	interval := cmd.Interval
+	if interval <= 0 {
+		interval = 10
+	}
+
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
 	for {
@@ -105,10 +130,14 @@ func (cmd *ChecksCmd) watchChecks(ctx context.Context, prCtx *PRContext, prID in
 
 			if cmd.hasStatusChanged(checks, newChecks) {
 				fmt.Printf("\n--- Updated at %s ---\n", time.Now().Format("15:04:05"))
-				if err := cmd.formatOutput(prCtx, newChecks); err != nil {
+				if err := cmd.formatOutput(prCtx, prID, newChecks); err != nil {
 					return err
 				}
 				checks = newChecks
+			}
+
+			if cmd.FailFast && cmd.anyCheckFailed(checks) {
+				return fmt.Errorf("check failed")
 			}
 
 			if cmd.allChecksCompleted(checks) {
@@ -158,10 +187,10 @@ func (cmd *ChecksCmd) allChecksCompleted(checks []*api.Pipeline) bool {
 	return true
 }
 
-func (cmd *ChecksCmd) formatOutput(prCtx *PRContext, checks []*api.Pipeline) error {
+func (cmd *ChecksCmd) formatOutput(prCtx *PRContext, prID int, checks []*api.Pipeline) error {
 	switch cmd.Output {
 	case "table":
-		return cmd.formatTable(prCtx, checks)
+		return cmd.formatTable(prCtx, prID, checks)
 	case "json":
 		return cmd.formatJSON(prCtx, checks)
 	case "yaml":
@@ -171,7 +200,7 @@ func (cmd *ChecksCmd) formatOutput(prCtx *PRContext, checks []*api.Pipeline) err
 	}
 }
 
-func (cmd *ChecksCmd) formatTable(prCtx *PRContext, checks []*api.Pipeline) error {
+func (cmd *ChecksCmd) formatTable(prCtx *PRContext, prID int, checks []*api.Pipeline) error {
 	if len(checks) == 0 {
 		fmt.Println("No CI checks found for this pull request.")
 		return nil
@@ -180,7 +209,7 @@ func (cmd *ChecksCmd) formatTable(prCtx *PRContext, checks []*api.Pipeline) erro
 	sortedChecks := cmd.sortChecksByPriority(checks)
 
 	summary := cmd.getChecksSummary(checks)
-	fmt.Printf("Checks for pull request #%s: %s\n\n", cmd.PRID, summary)
+	fmt.Printf("Checks for pull request #%d: %s\n\n", prID, summary)
 
 	for _, pipeline := range sortedChecks {
 		status := cmd.getStatusIndicator(pipeline)
@@ -225,10 +254,8 @@ func (cmd *ChecksCmd) getStatusIndicator(pipeline *api.Pipeline) string {
 }
 
 func (cmd *ChecksCmd) getPipelineName(pipeline *api.Pipeline) string {
-	if pipeline.Target != nil {
-		if pipeline.Target.RefName != "" {
-			return fmt.Sprintf("Pipeline #%d (%s)", pipeline.BuildNumber, pipeline.Target.RefName)
-		}
+	if ref := pipeline.Target.DisplayRef(); ref != "-" {
+		return fmt.Sprintf("Pipeline #%d (%s)", pipeline.BuildNumber, ref)
 	}
 	return fmt.Sprintf("Pipeline #%d", pipeline.BuildNumber)
 }

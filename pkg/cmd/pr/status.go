@@ -6,7 +6,6 @@ import (
 
 	"github.com/carlosarraes/bt/pkg/api"
 	"github.com/carlosarraes/bt/pkg/cmd/shared"
-	"github.com/carlosarraes/bt/pkg/git"
 )
 
 type StatusCmd struct {
@@ -45,7 +44,7 @@ func (cmd *StatusCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to get authenticated user: %w", err)
 	}
 
-	currentBranch, err := getCurrentBranch()
+	currentBranch, err := CurrentBranch()
 	if err != nil {
 		currentBranch = ""
 	}
@@ -67,7 +66,7 @@ func (cmd *StatusCmd) Run(ctx context.Context) error {
 	result.NeedingReview = needingReview
 
 	if currentBranch != "" {
-		currentBranchPR, err := cmd.findPRForBranch(ctx, prCtx, currentBranch)
+		currentBranchPR, err := FindPRForBranch(ctx, prCtx, currentBranch)
 		if err == nil && currentBranchPR != nil {
 			result.CurrentBranch = currentBranchPR
 		}
@@ -108,47 +107,6 @@ func (cmd *StatusCmd) getPRsNeedingReview(ctx context.Context, prCtx *PRContext,
 	}
 
 	return parsePullRequestResults(result)
-}
-
-func (cmd *StatusCmd) findPRForBranch(ctx context.Context, prCtx *PRContext, branchName string) (*api.PullRequest, error) {
-	options := &api.PullRequestListOptions{
-		State:   "OPEN",
-		Sort:    "-updated_on",
-		PageLen: 50,
-		Page:    1,
-	}
-
-	result, err := prCtx.Client.PullRequests.ListPullRequests(ctx, prCtx.Workspace, prCtx.Repository, options)
-	if err != nil {
-		return nil, handlePullRequestAPIError(err)
-	}
-
-	pullRequests, err := parsePullRequestResults(result)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, pr := range pullRequests {
-		if pr.Source != nil && pr.Source.Branch != nil && pr.Source.Branch.Name == branchName {
-			return pr, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func getCurrentBranch() (string, error) {
-	gitRepo, err := git.NewRepository("")
-	if err != nil {
-		return "", err
-	}
-
-	ctx, err := gitRepo.GetContext()
-	if err != nil {
-		return "", err
-	}
-
-	return ctx.Branch, nil
 }
 
 func (cmd *StatusCmd) formatOutput(prCtx *PRContext, result *PRStatusResult) error {

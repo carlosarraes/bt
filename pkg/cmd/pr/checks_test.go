@@ -628,7 +628,7 @@ func TestChecksCmd_getPipelineDuration(t *testing.T) {
 func TestChecksCmd_formatOutput_UnsupportedFormat(t *testing.T) {
 	cmd := &ChecksCmd{Output: "xml"}
 
-	err := cmd.formatOutput(nil, []*api.Pipeline{})
+	err := cmd.formatOutput(nil, 1, []*api.Pipeline{})
 	if err == nil {
 		t.Error("formatOutput() expected error for unsupported format but got none")
 	}

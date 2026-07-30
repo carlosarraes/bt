@@ -194,7 +194,7 @@ func TestStatusCmd_formatOutput(t *testing.T) {
 }
 
 func TestGetCurrentBranch(t *testing.T) {
-	branch, err := getCurrentBranch()
+	branch, err := CurrentBranch()
 
 	if err != nil && branch == "" {
 		t.Log("Not in git repository, skipping branch test")
@@ -202,7 +202,7 @@ func TestGetCurrentBranch(t *testing.T) {
 	}
 
 	if err != nil {
-		t.Errorf("getCurrentBranch() error = %v", err)
+		t.Errorf("CurrentBranch() error = %v", err)
 	}
 
 	t.Logf("Current branch: %s", branch)
