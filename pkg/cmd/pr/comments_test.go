@@ -105,3 +105,91 @@ func TestFilterDeletedComments(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildCommentThreads(t *testing.T) {
+	comment := func(id int, parentID int) api.PullRequestComment {
+		c := api.PullRequestComment{ID: id}
+		if parentID != 0 {
+			c.Parent = &api.PullRequestComment{ID: parentID}
+		}
+		return c
+	}
+
+	t.Run("nests replies under their parent", func(t *testing.T) {
+		roots := buildCommentThreads([]api.PullRequestComment{
+			comment(1, 0),
+			comment(2, 1),
+			comment(3, 0),
+			comment(4, 2),
+		})
+
+		if len(roots) != 2 {
+			t.Fatalf("expected 2 roots, got %d", len(roots))
+		}
+		if roots[0].comment.ID != 1 || roots[1].comment.ID != 3 {
+			t.Fatalf("unexpected root order: %d, %d", roots[0].comment.ID, roots[1].comment.ID)
+		}
+		if len(roots[0].children) != 1 || roots[0].children[0].comment.ID != 2 {
+			t.Fatalf("comment 2 should be a child of 1")
+		}
+		if len(roots[0].children[0].children) != 1 || roots[0].children[0].children[0].comment.ID != 4 {
+			t.Fatalf("comment 4 should be a grandchild of 1")
+		}
+	})
+
+	t.Run("orphaned reply is promoted to a root", func(t *testing.T) {
+		// Parent 99 was deleted or filtered out by --author; the reply must still show.
+		roots := buildCommentThreads([]api.PullRequestComment{comment(5, 99)})
+
+		if len(roots) != 1 || roots[0].comment.ID != 5 {
+			t.Fatalf("orphaned reply should be a root, got %+v", roots)
+		}
+	})
+
+	t.Run("self parent does not nest", func(t *testing.T) {
+		roots := buildCommentThreads([]api.PullRequestComment{comment(7, 7)})
+
+		if len(roots) != 1 || len(roots[0].children) != 0 {
+			t.Fatalf("self-parented comment should render flat, got %+v", roots)
+		}
+	})
+
+	t.Run("parent cycle falls back to a flat list", func(t *testing.T) {
+		roots := buildCommentThreads([]api.PullRequestComment{comment(8, 9), comment(9, 8)})
+
+		if len(roots) != 2 {
+			t.Fatalf("cycle must not hide comments, got %d roots", len(roots))
+		}
+		for _, r := range roots {
+			if len(r.children) != 0 {
+				t.Fatalf("flat fallback should have no children")
+			}
+		}
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		if roots := buildCommentThreads(nil); len(roots) != 0 {
+			t.Fatalf("expected no roots, got %d", len(roots))
+		}
+	})
+}
+
+func TestInlineAnchor(t *testing.T) {
+	tests := []struct {
+		name   string
+		inline *api.PullRequestCommentInline
+		want   string
+	}{
+		{"new side", &api.PullRequestCommentInline{Path: "a.go", To: 12}, "a.go:12"},
+		{"old side", &api.PullRequestCommentInline{Path: "a.go", From: 7}, "a.go:7"},
+		{"file level", &api.PullRequestCommentInline{Path: "a.go"}, "a.go"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := inlineAnchor(tt.inline); got != tt.want {
+				t.Errorf("inlineAnchor() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

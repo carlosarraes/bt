@@ -140,6 +140,74 @@ func userMatches(u *api.User, selector string) bool {
 	return false
 }
 
+// commentNode is one comment plus the replies threaded beneath it.
+type commentNode struct {
+	comment  api.PullRequestComment
+	children []*commentNode
+}
+
+// buildCommentThreads groups comments into reply trees, preserving the order they
+// arrived in. A reply whose parent is missing - deleted, or filtered out by
+// --author - is promoted to a root so that it is still shown rather than dropped.
+func buildCommentThreads(comments []api.PullRequestComment) []*commentNode {
+	nodes := make(map[int]*commentNode, len(comments))
+	ordered := make([]*commentNode, 0, len(comments))
+
+	for _, comment := range comments {
+		node := &commentNode{comment: comment}
+		nodes[comment.ID] = node
+		ordered = append(ordered, node)
+	}
+
+	var roots []*commentNode
+	for _, node := range ordered {
+		parentRef := node.comment.Parent
+		if parentRef != nil && parentRef.ID != node.comment.ID {
+			if parent, ok := nodes[parentRef.ID]; ok {
+				parent.children = append(parent.children, node)
+				continue
+			}
+		}
+		roots = append(roots, node)
+	}
+
+	// Defensive: a parent cycle would leave every node attached and nothing to
+	// render. Falling back to a flat list is better than silently showing nothing.
+	if len(roots) == 0 && len(ordered) > 0 {
+		for _, node := range ordered {
+			node.children = nil
+		}
+		return ordered
+	}
+
+	return roots
+}
+
+func commentAuthor(comment api.PullRequestComment) string {
+	if comment.User != nil {
+		if comment.User.DisplayName != "" {
+			return comment.User.DisplayName
+		}
+		if comment.User.Username != "" {
+			return comment.User.Username
+		}
+	}
+	return "Unknown"
+}
+
+// inlineAnchor renders an inline comment's file location, using whichever diff
+// side the comment is anchored to.
+func inlineAnchor(inline *api.PullRequestCommentInline) string {
+	line := inline.To
+	if line == 0 {
+		line = inline.From
+	}
+	if line == 0 {
+		return inline.Path
+	}
+	return fmt.Sprintf("%s:%d", inline.Path, line)
+}
+
 func (cmd *CommentsCmd) displayComments(comments []api.PullRequestComment, prID int) error {
 	if len(comments) == 0 {
 		fmt.Printf("No comments on pull request #%d\n", prID)
@@ -147,42 +215,56 @@ func (cmd *CommentsCmd) displayComments(comments []api.PullRequestComment, prID 
 	}
 
 	fmt.Printf("Comments on pull request #%d:\n", prID)
-	for i, comment := range comments {
-		authorName := "Unknown"
-		if comment.User != nil {
-			if comment.User.DisplayName != "" {
-				authorName = comment.User.DisplayName
-			} else if comment.User.Username != "" {
-				authorName = comment.User.Username
-			}
-		}
 
-		timeStr := ""
-		if comment.CreatedOn != nil {
-			timeStr = output.FormatRelativeTime(comment.CreatedOn)
-		}
+	roots := buildCommentThreads(comments)
+	for i, root := range roots {
+		fmt.Println()
+		renderCommentNode(root, 0)
 
-		fmt.Printf("\n#%d %s (%s):\n", comment.ID, authorName, timeStr)
-
-		if comment.Parent != nil {
-			fmt.Printf("  [Reply to comment #%d]\n", comment.Parent.ID)
-		}
-
-		if comment.Inline != nil {
-			fmt.Printf("  [Inline comment on %s:%d]\n", comment.Inline.Path, comment.Inline.To)
-		}
-
-		if comment.Content != nil && comment.Content.Raw != "" {
-			lines := strings.Split(comment.Content.Raw, "\n")
-			for _, line := range lines {
-				fmt.Printf("  %s\n", line)
-			}
-		}
-
-		if i < len(comments)-1 {
+		if i < len(roots)-1 {
 			fmt.Println("  ---")
 		}
 	}
 
 	return nil
+}
+
+func renderCommentNode(node *commentNode, depth int) {
+	comment := node.comment
+
+	timeStr := ""
+	if comment.CreatedOn != nil {
+		timeStr = output.FormatRelativeTime(comment.CreatedOn)
+	}
+
+	indent := strings.Repeat("  ", depth)
+	header := fmt.Sprintf("#%d %s (%s):", comment.ID, commentAuthor(comment), timeStr)
+
+	bodyIndent := indent + "  "
+	if depth == 0 {
+		fmt.Printf("%s\n", header)
+	} else {
+		fmt.Printf("%s└─ %s\n", indent, header)
+		bodyIndent = indent + "     "
+	}
+
+	// Only annotate an unresolved parent; a nested reply already shows the
+	// relationship through its indentation.
+	if depth == 0 && comment.Parent != nil {
+		fmt.Printf("%s[Reply to comment #%d]\n", bodyIndent, comment.Parent.ID)
+	}
+
+	if comment.Inline != nil {
+		fmt.Printf("%s[Inline comment on %s]\n", bodyIndent, inlineAnchor(comment.Inline))
+	}
+
+	if comment.Content != nil && comment.Content.Raw != "" {
+		for _, line := range strings.Split(comment.Content.Raw, "\n") {
+			fmt.Printf("%s%s\n", bodyIndent, line)
+		}
+	}
+
+	for _, child := range node.children {
+		renderCommentNode(child, depth+1)
+	}
 }

@@ -256,7 +256,12 @@ func (cmd *ViewCmd) displayComments(comments *api.PaginatedResponse) error {
 				timeStr = output.FormatRelativeTime(comment.CreatedOn)
 			}
 
-			fmt.Printf("\n%s (%s):\n", authorName, timeStr)
+			// The ID is shown so it can be passed to `bt pr comment --reply-to`.
+			fmt.Printf("\n#%d %s (%s):\n", comment.ID, authorName, timeStr)
+
+			if comment.Parent != nil {
+				fmt.Printf("  [Reply to comment #%d]\n", comment.Parent.ID)
+			}
 
 			// Comment content
 			if comment.Content != nil && comment.Content.Raw != "" {
@@ -269,7 +274,7 @@ func (cmd *ViewCmd) displayComments(comments *api.PaginatedResponse) error {
 
 			// Inline comment info
 			if comment.Inline != nil {
-				fmt.Printf("  [Inline comment on %s:%d]\n", comment.Inline.Path, comment.Inline.To)
+				fmt.Printf("  [Inline comment on %s]\n", inlineAnchor(comment.Inline))
 			}
 
 			// Add separator between comments (except for the last one)
