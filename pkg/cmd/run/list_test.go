@@ -338,50 +338,118 @@ func TestFilterPipelines(t *testing.T) {
 	}
 
 	t.Run("filter by PENDING status", func(t *testing.T) {
-		result := filterPipelines(pipelines, "PENDING", "")
+		result := filterPipelines(pipelines, pipelineFilter{status: "PENDING", creator: ""})
 		assert.Len(t, result, 2)
 		assert.Equal(t, 1, result[0].BuildNumber)
 		assert.Equal(t, 4, result[1].BuildNumber)
 	})
 
 	t.Run("filter by creator", func(t *testing.T) {
-		result := filterPipelines(pipelines, "", "alice")
+		result := filterPipelines(pipelines, pipelineFilter{status: "", creator: "alice"})
 		assert.Len(t, result, 2)
 		assert.Equal(t, 1, result[0].BuildNumber)
 		assert.Equal(t, 3, result[1].BuildNumber)
 	})
 
 	t.Run("filter by status and creator", func(t *testing.T) {
-		result := filterPipelines(pipelines, "PENDING", "alice")
+		result := filterPipelines(pipelines, pipelineFilter{status: "PENDING", creator: "alice"})
 		assert.Len(t, result, 1)
 		assert.Equal(t, 1, result[0].BuildNumber)
 	})
 
 	t.Run("no matches", func(t *testing.T) {
-		result := filterPipelines(pipelines, "PENDING", "nobody")
+		result := filterPipelines(pipelines, pipelineFilter{status: "PENDING", creator: "nobody"})
 		assert.Empty(t, result)
 	})
 
 	t.Run("empty input", func(t *testing.T) {
-		result := filterPipelines(nil, "PENDING", "")
+		result := filterPipelines(nil, pipelineFilter{status: "PENDING", creator: ""})
 		assert.Empty(t, result)
 	})
 
 	t.Run("no filters applied for non-client-side status", func(t *testing.T) {
-		result := filterPipelines(pipelines, "FAILED", "")
+		result := filterPipelines(pipelines, pipelineFilter{status: "FAILED", creator: ""})
 		assert.Len(t, result, 4)
 	})
 
 	t.Run("creator case insensitive substring", func(t *testing.T) {
-		result := filterPipelines(pipelines, "", "ALICE")
+		result := filterPipelines(pipelines, pipelineFilter{status: "", creator: "ALICE"})
 		assert.Len(t, result, 2)
 	})
 
 	t.Run("nil creator filtered out", func(t *testing.T) {
-		result := filterPipelines(pipelines, "", "bob")
+		result := filterPipelines(pipelines, pipelineFilter{status: "", creator: "bob"})
 		assert.Len(t, result, 1)
 		assert.Equal(t, 2, result[0].BuildNumber)
 	})
+}
+
+func TestFilterPipelines_BranchAndEvent(t *testing.T) {
+	branchRun := &api.Pipeline{
+		BuildNumber: 1,
+		Target:      &api.PipelineTarget{Type: api.TargetTypeRef, RefName: "feat/auth"},
+	}
+	// A PR-triggered pipeline carries no ref_name at all - the case the old
+	// server-side target.ref_name filter silently dropped.
+	prRun := &api.Pipeline{
+		BuildNumber: 2,
+		Target: &api.PipelineTarget{
+			Type:        api.TargetTypePullRequest,
+			Source:      "feat/auth",
+			Destination: "main",
+			PullRequest: &api.PipelineTargetPullRequest{ID: 312},
+		},
+	}
+	otherRun := &api.Pipeline{
+		BuildNumber: 3,
+		Target:      &api.PipelineTarget{Type: api.TargetTypeRef, RefName: "main"},
+	}
+	targetless := &api.Pipeline{BuildNumber: 4}
+
+	pipelines := []*api.Pipeline{branchRun, prRun, otherRun, targetless}
+
+	t.Run("branch matches both branch and PR pipelines", func(t *testing.T) {
+		result := filterPipelines(pipelines, pipelineFilter{branch: "feat/auth"})
+		assert.Len(t, result, 2)
+		assert.Equal(t, 1, result[0].BuildNumber)
+		assert.Equal(t, 2, result[1].BuildNumber)
+	})
+
+	t.Run("branch match is case insensitive", func(t *testing.T) {
+		result := filterPipelines(pipelines, pipelineFilter{branch: "FEAT/AUTH"})
+		assert.Len(t, result, 2)
+	})
+
+	t.Run("event pull_request", func(t *testing.T) {
+		result := filterPipelines(pipelines, pipelineFilter{event: eventPullRequest})
+		assert.Len(t, result, 1)
+		assert.Equal(t, 2, result[0].BuildNumber)
+	})
+
+	t.Run("event push excludes PR pipelines", func(t *testing.T) {
+		result := filterPipelines(pipelines, pipelineFilter{event: eventPush})
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("branch and event combine", func(t *testing.T) {
+		result := filterPipelines(pipelines, pipelineFilter{branch: "feat/auth", event: eventPullRequest})
+		assert.Len(t, result, 1)
+		assert.Equal(t, 2, result[0].BuildNumber)
+	})
+
+	t.Run("nil target does not panic", func(t *testing.T) {
+		result := filterPipelines([]*api.Pipeline{targetless}, pipelineFilter{branch: "feat/auth"})
+		assert.Empty(t, result)
+	})
+}
+
+func TestPipelineFilter_Needed(t *testing.T) {
+	assert.False(t, pipelineFilter{}.needed())
+	assert.False(t, pipelineFilter{status: "FAILED"}.needed(), "server-side status needs no client filter")
+	assert.True(t, pipelineFilter{status: "PENDING"}.needed())
+	assert.True(t, pipelineFilter{branch: "main"}.needed())
+	assert.True(t, pipelineFilter{event: eventPush}.needed())
+	assert.True(t, pipelineFilter{creator: "alice"}.needed())
 }
 
 func TestPaginationFilterAccumulation(t *testing.T) {
@@ -415,7 +483,7 @@ func TestPaginationFilterAccumulation(t *testing.T) {
 		for _, page := range pages {
 			parsed, err := parsePipelineResults(page)
 			assert.NoError(t, err)
-			filtered := filterPipelines(parsed, "PENDING", "")
+			filtered := filterPipelines(parsed, pipelineFilter{status: "PENDING", creator: ""})
 			accumulated = append(accumulated, filtered...)
 			if len(accumulated) >= limit || page.Next == "" {
 				break
@@ -440,7 +508,7 @@ func TestPaginationFilterAccumulation(t *testing.T) {
 		for _, page := range pages {
 			parsed, err := parsePipelineResults(page)
 			assert.NoError(t, err)
-			filtered := filterPipelines(parsed, "PENDING", "")
+			filtered := filterPipelines(parsed, pipelineFilter{status: "PENDING", creator: ""})
 			accumulated = append(accumulated, filtered...)
 			if len(accumulated) >= limit || page.Next == "" {
 				break
@@ -472,7 +540,7 @@ func TestPaginationFilterAccumulation(t *testing.T) {
 		for _, page := range []*api.PaginatedResponse{page1, page2} {
 			parsed, err := parsePipelineResults(page)
 			assert.NoError(t, err)
-			filtered := filterPipelines(parsed, "PENDING", "")
+			filtered := filterPipelines(parsed, pipelineFilter{status: "PENDING", creator: ""})
 			accumulated = append(accumulated, filtered...)
 			if len(accumulated) >= limit || page.Next == "" {
 				break

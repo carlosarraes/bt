@@ -10,9 +10,17 @@ import (
 	"github.com/carlosarraes/bt/pkg/output"
 )
 
+// gh-compatible --event values, mapped onto Bitbucket pipeline target types.
+const (
+	eventPullRequest = "pull_request"
+	eventPush        = "push"
+)
+
 type ListCmd struct {
 	Status     string `help:"Filter by status (PENDING, IN_PROGRESS, SUCCESSFUL, FAILED, ERROR, STOPPED)"`
-	Branch     string `help:"Filter by branch name"`
+	Branch     string `short:"b" help:"Filter by branch name"`
+	Commit     string `short:"c" help:"Filter by the SHA of the commit"`
+	Event      string `short:"e" help:"Filter by triggering event (pull_request, push)" enum:"pull_request,push," default:""`
 	Creator    string `help:"Filter by pipeline creator (display name)"`
 	Limit      int    `help:"Maximum number of runs to show" default:"10"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
@@ -57,7 +65,15 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		return fmt.Errorf("limit cannot exceed 100")
 	}
 
-	needsClientFilter := cmd.Creator != "" || isClientSideStatus(cmd.Status)
+	// Branch is matched client-side rather than through options.Branch: Bitbucket's
+	// target.ref_name query only matches branch-triggered pipelines, so filtering
+	// server-side silently drops every PR-triggered pipeline for that branch.
+	filter := pipelineFilter{
+		status:  cmd.Status,
+		creator: cmd.Creator,
+		branch:  cmd.Branch,
+		event:   cmd.Event,
+	}
 
 	options := &api.PipelineListOptions{
 		PageLen: cmd.Limit,
@@ -69,11 +85,11 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 		options.Status = strings.ToUpper(cmd.Status)
 	}
 
-	if cmd.Branch != "" {
-		options.Branch = cmd.Branch
+	if cmd.Commit != "" {
+		options.Commit = cmd.Commit
 	}
 
-	if needsClientFilter {
+	if filter.needed() {
 		options.PageLen = 100
 	}
 
@@ -90,13 +106,18 @@ func (cmd *ListCmd) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to parse pipeline results: %w", err)
 		}
 
-		if needsClientFilter {
-			page = filterPipelines(page, cmd.Status, cmd.Creator)
+		if filter.needed() {
+			page = filterPipelines(page, filter)
 		}
 
 		pipelines = append(pipelines, page...)
 
 		if len(pipelines) >= cmd.Limit || result.Next == "" {
+			break
+		}
+		// Client-side filters can walk a long way before finding matches; cap the
+		// scan so a narrow filter cannot page through the whole pipeline history.
+		if filter.needed() && options.Page >= maxClientFilterPages {
 			break
 		}
 
@@ -154,20 +175,7 @@ func (cmd *ListCmd) formatTable(runCtx *RunContext, pipelines []*api.Pipeline) e
 			duration = output.FormatDuration(pipeline.BuildSecondsUsed)
 		}
 
-		ref := "-"
-		if pipeline.Target != nil {
-			// Check if this is a PR-triggered pipeline
-			if pipeline.Target.Type == "pipeline_pullrequest_target" {
-				ref = "PR"
-			} else if pipeline.Target.PullRequestId != nil {
-				ref = fmt.Sprintf("PR #%d", *pipeline.Target.PullRequestId)
-			} else if pipeline.Target.RefName != "" {
-				ref = shared.Truncate(pipeline.Target.RefName, 15)
-			} else if pipeline.Target.Type == "pipeline_branch_target" {
-				// This is a branch pipeline but no ref_name, try to infer from trigger
-				ref = "branch"
-			}
-		}
+		ref := shared.Truncate(pipeline.Target.DisplayRef(), 30)
 
 		startedBy := "-"
 		if pipeline.Creator != nil {
@@ -231,23 +239,50 @@ func isClientSideStatus(status string) bool {
 	return upper == "PENDING" || upper == "IN_PROGRESS"
 }
 
-func filterPipelines(pipelines []*api.Pipeline, status, creator string) []*api.Pipeline {
-	var filtered []*api.Pipeline
-	statusUpper := strings.ToUpper(status)
-	creatorLower := strings.ToLower(creator)
+// maxClientFilterPages bounds how far a client-side filter will page through history.
+const maxClientFilterPages = 10
 
+// pipelineFilter holds the criteria Bitbucket's API cannot filter on server-side.
+type pipelineFilter struct {
+	status  string
+	creator string
+	branch  string
+	event   string
+}
+
+func (f pipelineFilter) needed() bool {
+	return f.creator != "" || f.branch != "" || f.event != "" || isClientSideStatus(f.status)
+}
+
+func (f pipelineFilter) matches(p *api.Pipeline) bool {
+	if isClientSideStatus(f.status) {
+		if p.State == nil || !strings.EqualFold(p.State.Name, f.status) {
+			return false
+		}
+	}
+	if f.creator != "" {
+		if p.Creator == nil || !strings.Contains(strings.ToLower(p.Creator.DisplayName), strings.ToLower(f.creator)) {
+			return false
+		}
+	}
+	if f.branch != "" && !strings.EqualFold(p.Target.BranchName(), f.branch) {
+		return false
+	}
+	if f.event != "" {
+		isPR := p.Target.IsPullRequest()
+		if (f.event == eventPullRequest) != isPR {
+			return false
+		}
+	}
+	return true
+}
+
+func filterPipelines(pipelines []*api.Pipeline, filter pipelineFilter) []*api.Pipeline {
+	var filtered []*api.Pipeline
 	for _, p := range pipelines {
-		if statusUpper != "" && isClientSideStatus(statusUpper) {
-			if p.State == nil || strings.ToUpper(p.State.Name) != statusUpper {
-				continue
-			}
+		if filter.matches(p) {
+			filtered = append(filtered, p)
 		}
-		if creator != "" {
-			if p.Creator == nil || !strings.Contains(strings.ToLower(p.Creator.DisplayName), creatorLower) {
-				continue
-			}
-		}
-		filtered = append(filtered, p)
 	}
 	return filtered
 }
