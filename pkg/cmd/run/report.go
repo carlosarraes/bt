@@ -72,10 +72,10 @@ func (cmd *ReportCmd) Run(ctx context.Context) error {
 		fmt.Printf("DEBUG: Pipeline BuildNumber: %d\n", pipeline.BuildNumber)
 		if pipeline.Target != nil {
 			fmt.Printf("DEBUG: Pipeline Target Type: %s\n", pipeline.Target.Type)
-			if pipeline.Target.PullRequestId != nil {
-				fmt.Printf("DEBUG: Pipeline PR ID: %d\n", *pipeline.Target.PullRequestId)
+			if prID, ok := pipeline.Target.PRNumber(); ok {
+				fmt.Printf("DEBUG: Pipeline PR ID: %d\n", prID)
 			} else {
-				fmt.Printf("DEBUG: Pipeline PR ID: nil\n")
+				fmt.Printf("DEBUG: Pipeline PR ID: none\n")
 			}
 			if pipeline.Target.Commit != nil {
 				fmt.Printf("DEBUG: Pipeline Commit: %s\n", pipeline.Target.Commit.Hash)

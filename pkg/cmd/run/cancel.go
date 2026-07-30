@@ -110,7 +110,7 @@ func (cmd *CancelCmd) outputTable(pipeline *api.Pipeline) error {
 		fmt.Printf("  Repository: %s\n", pipeline.Repository.FullName)
 	}
 	if pipeline.Target != nil {
-		fmt.Printf("  Branch: %s\n", pipeline.Target.RefName)
+		fmt.Printf("  Branch: %s\n", pipeline.Target.BranchName())
 		if pipeline.Target.Commit != nil {
 			fmt.Printf("  Commit: %s\n", pipeline.Target.Commit.Hash[:8])
 		}
@@ -133,7 +133,7 @@ func (cmd *CancelCmd) outputJSON(runCtx *RunContext, pipeline *api.Pipeline) err
 	}
 
 	if pipeline.Target != nil {
-		pipelineData["branch"] = pipeline.Target.RefName
+		pipelineData["branch"] = pipeline.Target.BranchName()
 		if pipeline.Target.Commit != nil {
 			pipelineData["commit"] = pipeline.Target.Commit.Hash
 		}
@@ -163,7 +163,7 @@ func (cmd *CancelCmd) outputYAML(runCtx *RunContext, pipeline *api.Pipeline) err
 	}
 
 	if pipeline.Target != nil {
-		pipelineData["branch"] = pipeline.Target.RefName
+		pipelineData["branch"] = pipeline.Target.BranchName()
 		if pipeline.Target.Commit != nil {
 			pipelineData["commit"] = pipeline.Target.Commit.Hash
 		}

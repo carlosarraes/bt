@@ -333,8 +333,8 @@ func (cmd *LogsCmd) formatText(runCtx *RunContext, pipeline *api.Pipeline, steps
 	}
 
 	branch := ""
-	if pipeline.Target != nil && pipeline.Target.RefName != "" {
-		branch = pipeline.Target.RefName
+	if pipeline.Target != nil && pipeline.Target.BranchName() != "" {
+		branch = pipeline.Target.BranchName()
 	}
 
 	fmt.Printf("=== Pipeline #%d: %s (%s) ===\n", pipeline.BuildNumber, branch, status)
