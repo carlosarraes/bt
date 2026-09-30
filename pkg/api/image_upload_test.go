@@ -157,3 +157,23 @@ func TestImageUploader_Upload(t *testing.T) {
 		assert.Contains(t, err.Error(), dir)
 	})
 }
+
+func TestImageUploader_RedirectIsSessionError(t *testing.T) {
+	var leaked string
+	other := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		leaked = r.Header.Get("X-CSRFToken")
+		w.Write([]byte(`{"href":"h"}`))
+	}))
+	defer other.Close()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, other.URL+"/login", http.StatusFound)
+	}))
+	defer srv.Close()
+
+	u := NewImageUploader()
+	u.BaseURL = srv.URL
+	_, err := u.Upload(context.Background(), testSession, "w", "r", writeFile(t, "a.png", tinyPNG))
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrWebSessionInvalid))
+	assert.Empty(t, leaked)
+}

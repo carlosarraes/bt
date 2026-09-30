@@ -3,6 +3,7 @@ package pr
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/carlosarraes/bt/pkg/api"
@@ -52,4 +53,15 @@ func TestAppendImages(t *testing.T) {
 	assert.Equal(t, "![a](h1)\n![b](h2)", appendImages("  \n", lines))
 	assert.Equal(t, "desc\n\n![a](h1)\n![b](h2)", appendImages("desc\n\n\n", lines))
 	assert.Equal(t, "desc", appendImages("desc", nil))
+}
+
+func TestUploadImagesForPR_ValidatesAllPathsFirst(t *testing.T) {
+	t.Setenv("BITBUCKET_SESSION_TOKEN", "")
+	t.Setenv("BITBUCKET_CSRF_TOKEN", "")
+	t.Setenv("HOME", t.TempDir())
+	missing := filepath.Join(t.TempDir(), "typo.png")
+	_, err := uploadImagesForPR(context.Background(), "w", "r", []string{missing})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), missing)
+	assert.NotContains(t, err.Error(), "web session")
 }

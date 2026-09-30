@@ -18,6 +18,11 @@ type imageUploader interface {
 var altTextEscaper = strings.NewReplacer(`[`, `\[`, `]`, `\]`)
 
 func uploadImagesForPR(ctx context.Context, workspace, repo string, paths []string) ([]string, error) {
+	for _, p := range paths {
+		if err := api.ValidateImage(p); err != nil {
+			return nil, err
+		}
+	}
 	sess, err := auth.LoadWebSession(os.Stderr)
 	if err != nil {
 		return nil, err

@@ -36,8 +36,13 @@ type ImageUploader struct {
 
 func NewImageUploader() *ImageUploader {
 	return &ImageUploader{
-		BaseURL:    "https://bitbucket.org",
-		HTTPClient: &http.Client{Timeout: 60 * time.Second},
+		BaseURL: "https://bitbucket.org",
+		HTTPClient: &http.Client{
+			Timeout: 60 * time.Second,
+			// Redirects mean the session was rejected (login page); following them
+			// would forward X-CSRFToken to another host.
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+		},
 	}
 }
 
@@ -90,7 +95,8 @@ func (u *ImageUploader) Upload(ctx context.Context, sess *auth.WebSession, works
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 
 	switch {
-	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden,
+		resp.StatusCode >= 300 && resp.StatusCode < 400:
 		return nil, fmt.Errorf("upload %s: %w", path, ErrWebSessionInvalid)
 	case resp.StatusCode < 200 || resp.StatusCode >= 300:
 		return nil, fmt.Errorf("upload %s: HTTP %d: %s", path, resp.StatusCode, summarizeBody(respBody))
@@ -101,6 +107,12 @@ func (u *ImageUploader) Upload(ctx context.Context, sess *auth.WebSession, works
 		return nil, fmt.Errorf("upload %s: unexpected response: %s", path, summarizeBody(respBody))
 	}
 	return &img, nil
+}
+
+// ValidateImage checks that path is a readable image file without uploading it.
+func ValidateImage(path string) error {
+	_, _, err := readImage(path)
+	return err
 }
 
 func readImage(path string) ([]byte, string, error) {
