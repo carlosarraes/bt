@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/carlosarraes/bt/pkg/api"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEditCmd_isInteractiveMode(t *testing.T) {
@@ -644,4 +646,24 @@ func TestEditCmd_ValidationErrors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEditCmd_ImageFlagCountsAsEdit(t *testing.T) {
+	cmd := &EditCmd{PRID: "1", Image: []string{"a.png"}}
+	assert.False(t, cmd.isInteractiveMode())
+	assert.True(t, cmd.hasChanges())
+}
+
+func TestEditCmd_buildUpdateRequest_Images(t *testing.T) {
+	pr := &api.PullRequest{Description: "existing", State: "OPEN"}
+
+	cmd := &EditCmd{imageLines: []string{"![a](h)"}}
+	req, err := cmd.buildUpdateRequest(pr)
+	require.NoError(t, err)
+	assert.Equal(t, "existing\n\n![a](h)", req.Description)
+
+	cmd = &EditCmd{Body: "new", imageLines: []string{"![a](h)"}}
+	req, err = cmd.buildUpdateRequest(pr)
+	require.NoError(t, err)
+	assert.Equal(t, "new\n\n![a](h)", req.Description)
 }

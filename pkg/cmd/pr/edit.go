@@ -20,6 +20,7 @@ type EditCmd struct {
 	Title          string   `help:"Edit pull request title"`
 	Body           string   `help:"Edit pull request description"`
 	BodyFile       string   `short:"F" name:"body-file" help:"Read description from file"`
+	Image          []string `name:"image" help:"Upload image and append it to the description (repeatable)"`
 	AddReviewer    []string `name:"add-reviewer" help:"Add reviewer by username"`
 	RemoveReviewer []string `name:"remove-reviewer" help:"Remove reviewer by username"`
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
@@ -31,6 +32,8 @@ type EditCmd struct {
 	NoColor        bool
 	Workspace      string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository     string `help:"Repository name (defaults to git remote)"`
+
+	imageLines []string
 }
 
 func (cmd *EditCmd) Run(ctx context.Context) error {
@@ -57,6 +60,13 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 
 	if cmd.Ready && cmd.Draft {
 		return fmt.Errorf("cannot use both --ready and --draft flags together")
+	}
+
+	if len(cmd.Image) > 0 {
+		cmd.imageLines, err = uploadImagesForPR(ctx, prCtx.Workspace, prCtx.Repository, cmd.Image)
+		if err != nil {
+			return err
+		}
 	}
 
 	if cmd.isInteractiveMode() {
@@ -108,13 +118,13 @@ func (cmd *EditCmd) Run(ctx context.Context) error {
 func (cmd *EditCmd) isInteractiveMode() bool {
 	return cmd.Title == "" && cmd.Body == "" && cmd.BodyFile == "" &&
 		len(cmd.AddReviewer) == 0 && len(cmd.RemoveReviewer) == 0 &&
-		!cmd.Ready && !cmd.Draft && !cmd.AI
+		!cmd.Ready && !cmd.Draft && !cmd.AI && len(cmd.Image) == 0
 }
 
 func (cmd *EditCmd) hasChanges() bool {
 	return cmd.Title != "" || cmd.Body != "" || cmd.BodyFile != "" ||
 		len(cmd.AddReviewer) > 0 || len(cmd.RemoveReviewer) > 0 ||
-		cmd.Ready || cmd.Draft || cmd.AI
+		cmd.Ready || cmd.Draft || cmd.AI || len(cmd.Image) > 0
 }
 
 func (cmd *EditCmd) runInteractiveMode(ctx context.Context, prCtx *PRContext, prID int) error {
@@ -238,6 +248,14 @@ func (cmd *EditCmd) buildUpdateRequest(pr *api.PullRequest) (*api.UpdatePullRequ
 		updateReq.Description = string(bodyBytes)
 	} else if cmd.Body != "" {
 		updateReq.Description = cmd.Body
+	}
+
+	if len(cmd.imageLines) > 0 {
+		base := updateReq.Description
+		if cmd.BodyFile == "" && cmd.Body == "" {
+			base = pr.Description
+		}
+		updateReq.Description = appendImages(base, cmd.imageLines)
 	}
 
 	if cmd.Ready && pr.State == "DRAFT" {
