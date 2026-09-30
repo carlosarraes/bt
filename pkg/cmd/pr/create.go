@@ -18,6 +18,7 @@ import (
 type CreateCmd struct {
 	Title             string   `help:"Title of the pull request"`
 	Body              string   `help:"Body of the pull request"`
+	Image             []string `name:"image" help:"Upload image and append it to the description (repeatable)"`
 	Base              string   `help:"Base branch for the pull request"`
 	Draft             bool     `help:"Create a draft pull request"`
 	Reviewer          []string `help:"Reviewers for the pull request"`
@@ -159,6 +160,14 @@ func (cmd *CreateCmd) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(cmd.Image) > 0 {
+		lines, err := uploadImagesForPR(ctx, prCtx.Workspace, prCtx.Repository, cmd.Image)
+		if err != nil {
+			return err
+		}
+		body = appendImages(body, lines)
 	}
 
 	pr, err := cmd.createPullRequest(ctx, prCtx, title, body, currentBranch.ShortName, baseBranch)

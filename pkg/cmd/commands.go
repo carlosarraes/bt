@@ -330,6 +330,7 @@ type PRCmd struct {
 type PRCreateCmd struct {
 	Title             string   `help:"Title of the pull request"`
 	Body              string   `help:"Body of the pull request"`
+	Image             []string `name:"image" help:"Upload image and append it to the description (repeatable)"`
 	Base              string   `help:"Base branch for the pull request"`
 	Draft             bool     `help:"Create a draft pull request"`
 	Reviewer          []string `help:"Reviewers for the pull request"`
@@ -351,6 +352,7 @@ func (p *PRCreateCmd) Run(ctx context.Context) error {
 	cmd := &pr.CreateCmd{
 		Title:             p.Title,
 		Body:              p.Body,
+		Image:             p.Image,
 		Base:              p.Base,
 		Draft:             p.Draft,
 		Reviewer:          p.Reviewer,
@@ -480,6 +482,7 @@ type PREditCmd struct {
 	Title          string   `help:"Edit pull request title"`
 	Body           string   `help:"Edit pull request description"`
 	BodyFile       string   `short:"F" name:"body-file" help:"Read description from file"`
+	Image          []string `name:"image" help:"Upload image and append it to the description (repeatable)"`
 	AddReviewer    []string `name:"add-reviewer" help:"Add reviewer by username"`
 	RemoveReviewer []string `name:"remove-reviewer" help:"Remove reviewer by username"`
 	Ready          bool     `help:"Mark pull request as ready for review (if draft)"`
@@ -500,6 +503,7 @@ func (p *PREditCmd) Run(ctx context.Context) error {
 		Title:          p.Title,
 		Body:           p.Body,
 		BodyFile:       p.BodyFile,
+		Image:          p.Image,
 		AddReviewer:    p.AddReviewer,
 		RemoveReviewer: p.RemoveReviewer,
 		Ready:          p.Ready,
