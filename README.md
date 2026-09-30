@@ -28,6 +28,8 @@ For automation, use environment variables:
 |----------|-------------|
 | `BITBUCKET_EMAIL` | Your Atlassian account email |
 | `BITBUCKET_API_TOKEN` | API token from Atlassian |
+| `BITBUCKET_SESSION_TOKEN` | `cloud.session.token` cookie from bitbucket.org (only for `--image`) |
+| `BITBUCKET_CSRF_TOKEN` | `csrftoken` cookie from bitbucket.org (only for `--image`) |
 
 ## Quick Start
 
@@ -107,7 +109,17 @@ bt pick continue              # Resume after conflict
 
 Common flags: `-r` reverse, `-l` latest, `-c N` count, `--today`, `--yesterday`, `--since`, `--until`
 
-### Configuration
+#### Images in PR descriptions
+
+`bt pr create --image shot.png` and `bt pr edit 42 --image a.png --image b.png` upload images and append them to the description. Bitbucket has no public API for this, so `bt` uses your browser session:
+
+1. In a logged-in bitbucket.org tab, open DevTools → Application → Cookies → `https://bitbucket.org`.
+2. Export `cloud.session.token` as `BITBUCKET_SESSION_TOKEN` and `csrftoken` as `BITBUCKET_CSRF_TOKEN`.
+   Alternatively, save a `Cookie:` line and an `X-CSRFToken:` line to `~/.config/bt/bb-session` (chmod 600).
+
+The session lasts about 30 days; `bt` warns 3 days before it expires. A 401/403 means the session must be re-exported. Uploaded images are visible only to users with access to the repository.
+
+## Configuration
 
 | Command | Description |
 |---------|-------------|
@@ -141,6 +153,8 @@ pick:
 |----------|-------------|
 | `BITBUCKET_EMAIL` | Atlassian account email |
 | `BITBUCKET_API_TOKEN` | API token |
+| `BITBUCKET_SESSION_TOKEN` | `cloud.session.token` cookie from bitbucket.org (only for `--image`) |
+| `BITBUCKET_CSRF_TOKEN` | `csrftoken` cookie from bitbucket.org (only for `--image`) |
 | `SONARCLOUD_TOKEN` | SonarCloud token (required for reports) |
 | `BT_OUTPUT_FORMAT` | Default output format |
 | `BT_NO_COLOR` | Disable colors |

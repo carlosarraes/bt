@@ -111,6 +111,8 @@ bt auth login                    # Interactive setup (API token recommended)
 bt auth status                   # Check current authentication
 export BITBUCKET_EMAIL="user@company.com"      # Environment variable auth
 export BITBUCKET_API_TOKEN="your_token"        # Recommended method
+export BITBUCKET_SESSION_TOKEN="..."           # Only for --image: bitbucket.org cookie cloud.session.token
+export BITBUCKET_CSRF_TOKEN="..."              # Only for --image: bitbucket.org cookie csrftoken
 ` + "```" + `
 
 ### Pull Request Management with AI
@@ -566,6 +568,7 @@ bt pr checks 42                           # CI/build status for PR 42
 bt pr checks feat/auth                    # CI/build status by branch name
 bt pr checks 42 --watch -i 15             # Poll every 15s
 bt pr edit 42 --title "New title"        # Edit metadata
+bt pr edit 42 --image a.png --image b.png # Upload images and append to description
 bt pr ready 42                            # Mark draft as ready
 
 # Lifecycle
@@ -818,6 +821,8 @@ func GetLLMHelpContent() map[string]interface{} {
 		"auth_env_vars": []string{
 			"BITBUCKET_EMAIL",
 			"BITBUCKET_API_TOKEN",
+			"BITBUCKET_SESSION_TOKEN",
+			"BITBUCKET_CSRF_TOKEN",
 		},
 	}
 }
