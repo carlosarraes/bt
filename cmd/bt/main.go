@@ -17,7 +17,6 @@ var cli struct {
 	Verbose     bool   `short:"v"`
 	ConfigFile  string `default:"~/.config/bt/config.yml"`
 	NoColor     bool
-	Help        bool `short:"h"`
 	VersionFlag bool `name:"version" help:"Show version information"`
 	LLM         bool `help:"Show LLM-optimized usage guide and examples"`
 
@@ -87,10 +86,10 @@ func main() {
 		}
 	}
 
-	// Temporarily remove help, version, and llm flags from args to prevent Kong from intercepting
+	// --help/-h stay in so Kong prints subcommand help and exits before running anything
 	filteredArgs := []string{originalArgs[0]}
 	for _, arg := range args {
-		if arg != "--help" && arg != "-h" && arg != "--version" && arg != "--llm" {
+		if arg != "--version" && arg != "--llm" {
 			filteredArgs = append(filteredArgs, arg)
 		}
 	}
@@ -104,7 +103,6 @@ func main() {
 	ctx := kong.Parse(&cli,
 		kong.Name("bt"),
 		kong.Description("Work seamlessly with Bitbucket from the command line."),
-		kong.NoDefaultHelp(),
 		kong.Vars{
 			"version": version.Version,
 		},
@@ -119,12 +117,6 @@ func main() {
 		appCtx = context.WithValue(appCtx, "no-color", true)
 	}
 	appCtx = context.WithValue(appCtx, "config-path", cli.ConfigFile)
-
-	// Check if help flag was set after Kong parsing
-	if cli.Help {
-		showMainHelp()
-		return
-	}
 
 	// Check if version flag was set after Kong parsing
 	if cli.VersionFlag {
