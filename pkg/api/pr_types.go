@@ -76,16 +76,24 @@ type PullRequestSummary struct {
 
 // PullRequestComment represents a comment on a pull request
 type PullRequestComment struct {
-	Type      string                     `json:"type"`
-	ID        int                        `json:"id"`
-	Parent    *PullRequestComment        `json:"parent,omitempty"`
-	Content   *PullRequestCommentContent `json:"content,omitempty"`
-	Inline    *PullRequestCommentInline  `json:"inline,omitempty"`
-	User      *User                      `json:"user,omitempty"`
-	CreatedOn *time.Time                 `json:"created_on,omitempty"`
-	UpdatedOn *time.Time                 `json:"updated_on,omitempty"`
-	Deleted   bool                       `json:"deleted,omitempty"`
-	Links     *PullRequestCommentLinks   `json:"links,omitempty"`
+	Type       string                     `json:"type"`
+	ID         int                        `json:"id"`
+	Parent     *PullRequestComment        `json:"parent,omitempty"`
+	Content    *PullRequestCommentContent `json:"content,omitempty"`
+	Inline     *PullRequestCommentInline  `json:"inline,omitempty"`
+	User       *User                      `json:"user,omitempty"`
+	CreatedOn  *time.Time                 `json:"created_on,omitempty"`
+	UpdatedOn  *time.Time                 `json:"updated_on,omitempty"`
+	Deleted    bool                       `json:"deleted,omitempty"`
+	Resolution *CommentResolution         `json:"resolution,omitempty"`
+	Links      *PullRequestCommentLinks   `json:"links,omitempty"`
+}
+
+// CommentResolution is set on the root comment of a resolved thread.
+type CommentResolution struct {
+	Type      string     `json:"type,omitempty"`
+	User      *User      `json:"user,omitempty"`
+	CreatedOn *time.Time `json:"created_on,omitempty"`
 }
 
 // PullRequestCommentContent represents the content of a comment

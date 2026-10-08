@@ -140,13 +140,76 @@ func (p *PullRequestService) GetPullRequestFiles(ctx context.Context, workspace,
 
 	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diffstat", workspace, repoSlug, id)
 
-	var diffStat PullRequestDiffStat
-	err := p.client.GetJSON(ctx, endpoint, &diffStat)
-	if err != nil {
+	var entries []diffstatEntry
+	if err := p.client.Paginate(endpoint, nil).FetchAllTyped(ctx, &entries); err != nil {
 		return nil, err
 	}
 
-	return &diffStat, nil
+	diffStat := &PullRequestDiffStat{Files: make([]*PullRequestFile, 0, len(entries))}
+	for _, e := range entries {
+		file := &PullRequestFile{Status: e.Status, LinesAdded: e.LinesAdded, LinesRemoved: e.LinesRemoved}
+		if e.Old != nil {
+			file.OldPath = e.Old.Path
+		}
+		if e.New != nil {
+			file.NewPath = e.New.Path
+		}
+		diffStat.Files = append(diffStat.Files, file)
+		diffStat.LinesAdded += e.LinesAdded
+		diffStat.LinesRemoved += e.LinesRemoved
+	}
+	diffStat.FilesChanged = len(diffStat.Files)
+
+	return diffStat, nil
+}
+
+// diffstatEntry is one element of the paginated diffstat "values" array.
+type diffstatEntry struct {
+	Status       string `json:"status"`
+	LinesAdded   int    `json:"lines_added"`
+	LinesRemoved int    `json:"lines_removed"`
+	Old          *struct {
+		Path string `json:"path"`
+	} `json:"old"`
+	New *struct {
+		Path string `json:"path"`
+	} `json:"new"`
+}
+
+// ResolveComment marks the thread rooted at commentID as resolved.
+func (p *PullRequestService) ResolveComment(ctx context.Context, workspace, repoSlug string, prID, commentID int) (*CommentResolution, error) {
+	endpoint, err := commentResolveEndpoint(workspace, repoSlug, prID, commentID)
+	if err != nil {
+		return nil, err
+	}
+	var res CommentResolution
+	if err := p.client.PostJSON(ctx, endpoint, nil, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// UnresolveComment reopens the thread rooted at commentID.
+func (p *PullRequestService) UnresolveComment(ctx context.Context, workspace, repoSlug string, prID, commentID int) error {
+	endpoint, err := commentResolveEndpoint(workspace, repoSlug, prID, commentID)
+	if err != nil {
+		return err
+	}
+	resp, err := p.client.Delete(ctx, endpoint)
+	if err != nil {
+		return err
+	}
+	return resp.Body.Close()
+}
+
+func commentResolveEndpoint(workspace, repoSlug string, prID, commentID int) (string, error) {
+	if workspace == "" || repoSlug == "" {
+		return "", NewValidationError("workspace and repository slug are required", "")
+	}
+	if prID <= 0 || commentID <= 0 {
+		return "", NewValidationError("pull request and comment IDs must be positive", "")
+	}
+	return fmt.Sprintf("repositories/%s/%s/pullrequests/%d/comments/%d/resolve", workspace, repoSlug, prID, commentID), nil
 }
 
 // ApprovePullRequest approves a pull request
@@ -629,13 +692,5 @@ func (p *PullRequestService) GetDiffstat(ctx context.Context, workspace, repoSlu
 		return nil, NewValidationError("pull request ID must be positive", "")
 	}
 
-	endpoint := fmt.Sprintf("repositories/%s/%s/pullrequests/%d/diffstat", workspace, repoSlug, id)
-
-	var result PullRequestDiffStat
-	err := p.client.GetJSON(ctx, endpoint, &result)
-	if err != nil {
-		return nil, err
-	}
-
-	return &result, nil
+	return p.GetPullRequestFiles(ctx, workspace, repoSlug, id)
 }

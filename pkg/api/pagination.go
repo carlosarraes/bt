@@ -55,6 +55,8 @@ type Paginator struct {
 	options      *PageOptions
 	pageInfo     *PageInfo
 	totalFetched int
+	// pagesFetched tracks progress independently of "size", which Bitbucket omits on some endpoints.
+	pagesFetched int
 }
 
 // NewPaginator creates a new paginator for the given URL
@@ -82,7 +84,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 	}
 
 	// Check if we have no more pages to fetch
-	if p.totalFetched > 0 && !p.pageInfo.HasNext {
+	if p.pagesFetched > 0 && !p.pageInfo.HasNext {
 		return nil, nil // No more pages available
 	}
 
@@ -145,6 +147,7 @@ func (p *Paginator) NextPage(ctx context.Context) (*PaginatedResponse, error) {
 
 	// Update total fetched counter
 	p.totalFetched += paginatedResp.Size
+	p.pagesFetched++
 
 	return &paginatedResp, nil
 }
@@ -157,7 +160,7 @@ func (p *Paginator) HasNextPage() bool {
 	}
 
 	// If we haven't fetched any pages yet, we should try to fetch the first page
-	if p.totalFetched == 0 {
+	if p.pagesFetched == 0 {
 		return true
 	}
 
@@ -171,6 +174,7 @@ func (p *Paginator) Reset() {
 		PageLen: p.options.PageLen,
 	}
 	p.totalFetched = 0
+	p.pagesFetched = 0
 }
 
 // GetPageInfo returns the current pagination information
