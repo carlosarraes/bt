@@ -8,6 +8,7 @@ import (
 
 	"github.com/alecthomas/kong"
 	"github.com/carlosarraes/bt/pkg/cmd"
+	"github.com/carlosarraes/bt/pkg/cmd/shared"
 	"github.com/carlosarraes/bt/pkg/cmd/skill"
 	"github.com/carlosarraes/bt/pkg/version"
 )
@@ -17,8 +18,9 @@ var cli struct {
 	Verbose     bool   `short:"v"`
 	ConfigFile  string `default:"~/.config/bt/config.yml"`
 	NoColor     bool
-	VersionFlag bool `name:"version" help:"Show version information"`
-	LLM         bool `help:"Show LLM-optimized usage guide and examples"`
+	RepoFlag    string `name:"repo" short:"R" help:"Target repository as workspace/repo (overrides the git remote)"`
+	VersionFlag bool   `name:"version" help:"Show version information"`
+	LLM         bool   `help:"Show LLM-optimized usage guide and examples"`
 
 	// Commands
 	Version cmd.VersionCmd `cmd:""`
@@ -117,6 +119,14 @@ func main() {
 		appCtx = context.WithValue(appCtx, "no-color", true)
 	}
 	appCtx = context.WithValue(appCtx, "config-path", cli.ConfigFile)
+	if cli.RepoFlag != "" {
+		workspace, repository, err := shared.ParseRepoFlag(cli.RepoFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		appCtx = shared.WithRepoOverride(appCtx, workspace, repository)
+	}
 
 	// Check if version flag was set after Kong parsing
 	if cli.VersionFlag {
@@ -125,6 +135,8 @@ func main() {
 	}
 
 	// Execute the selected command
+	// Rebind: kong.BindTo above captured appCtx before the global flags were added to it.
+	ctx.BindTo(appCtx, (*context.Context)(nil))
 	err := ctx.Run(appCtx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -158,6 +170,7 @@ FLAGS
   -v, --verbose       Enable verbose output
   --config-file=PATH  Config file path
   --no-color          Disable colored output
+  -R, --repo=WS/REPO  Target repository instead of the current git remote
   --llm               Show LLM-optimized usage guide and examples
 
 EXAMPLES
@@ -218,6 +231,7 @@ FLAGS
 
 INHERITED FLAGS
   -o, --output=FORMAT   Output format (table, json, yaml)
+  -R, --repo=WS/REPO   Target repository (e.g. truora/api) instead of the git remote
   --no-color           Disable colored output
 
 EXAMPLES
@@ -276,6 +290,7 @@ FLAGS
 
 INHERITED FLAGS
   -o, --output=FORMAT   Output format (table, json, yaml)
+  -R, --repo=WS/REPO   Target repository (e.g. truora/api) instead of the git remote
   --no-color           Disable colored output
 
 ARGUMENTS

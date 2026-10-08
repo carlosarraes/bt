@@ -228,6 +228,7 @@ Use ` + "`bt pick --llm`" + ` for detailed LLM guidance on pick commands.
 ` + "```" + `
 -v, --verbose        Verbose output
 --no-color           Disable colored output
+-R, --repo WS/REPO   Target another repository from anywhere (e.g. -R truora/api); also accepts a bitbucket.org URL
 --config-file PATH   Config file (default ~/.config/bt/config.yml)
 --version            Show version
 --llm                This guide; ` + "`bt <command> --llm`" + ` for run, pr, auth, config, pick, skill, repo
@@ -562,6 +563,7 @@ Sessions expire; bt warns when expiry is near.
 bt pr list                                 # List pull requests
 bt pr list --state open                   # Filter by state
 bt pr list                                # Your PRs (default); --all for everyone
+bt pr list -R truora/api --state all      # Another repo, from any directory (works on every pr/run command)
 bt pr list --reviewer alice --state all   # Reviewer filter; state: open, merged, declined, all
 bt pr list --all --limit 50 --sort created
 bt pr list-all                            # Open PRs across every repo in the workspace
@@ -885,14 +887,15 @@ func GetLLMHelpContent() map[string]interface{} {
 			"bt run view <id> --step 'Step Name'",
 		},
 		"command_mapping": map[string]string{
-			"gh auth login": "bt auth login",
-			"gh pr list":    "bt pr list",
-			"gh run list":   "bt run list",
-			"gh run view":   "bt run view",
-			"gh pr create":  "bt pr create",
-			"gh pr view":    "bt pr view",
-			"gh pr checks":  "bt pr checks",
-			"gh config":     "bt config",
+			"gh auth login":    "bt auth login",
+			"gh pr list":       "bt pr list",
+			"gh -R owner/repo": "bt -R workspace/repo",
+			"gh run list":      "bt run list",
+			"gh run view":      "bt run view",
+			"gh pr create":     "bt pr create",
+			"gh pr view":       "bt pr view",
+			"gh pr checks":     "bt pr checks",
+			"gh config":        "bt config",
 		},
 		"output_formats": []string{"table", "json", "yaml"},
 		"auth_env_vars": []string{

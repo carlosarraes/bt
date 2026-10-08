@@ -77,3 +77,29 @@ func TestGroupHelpStillCustom(t *testing.T) {
 		}
 	}
 }
+
+func TestRepoFlag(t *testing.T) {
+	bin := buildBT(t)
+
+	out, err := runBT(t, bin, "pr", "list", "-R", "a/b/c")
+	if err == nil || !strings.Contains(out, "invalid --repo") {
+		t.Fatalf("expected invalid --repo error, err=%v:\n%s", err, out)
+	}
+
+	for _, args := range [][]string{
+		{"pr", "list", "-R", "truora/api", "-h"},
+		{"-R", "truora/api", "run", "list", "--help"},
+		{"pr", "comments", "1", "--repo", "truora/api", "-h"},
+	} {
+		if out, err := runBT(t, bin, args...); err != nil || !strings.Contains(out, "Usage:") {
+			t.Fatalf("bt %v: err=%v\n%s", args, err, out)
+		}
+	}
+
+	// Outside any git repo and with no config, -R must still pick the target
+	// instead of failing on remote detection; auth is what fails next.
+	out, _ = runBT(t, bin, "pr", "list", "-R", "truora/api")
+	if strings.Contains(out, "not in a git repository") || strings.Contains(out, "unable to detect") {
+		t.Fatalf("-R did not bypass git detection:\n%s", out)
+	}
+}

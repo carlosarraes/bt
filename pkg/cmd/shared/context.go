@@ -39,38 +39,9 @@ func NewCommandContext(ctx context.Context, outputFormat string, noColor bool, d
 		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
-	gitRepo, err := git.NewRepository("")
-	var workspace, repository string
-
+	workspace, repository, err := resolveWorkspaceRepo(ctx, cfg, debugEnabled)
 	if err != nil {
-		if debugEnabled {
-			fmt.Fprintf(os.Stderr, "DEBUG: Not in git repository, error: %v\n", err)
-		}
-		if cfg.Auth.DefaultWorkspace == "" {
-			return nil, fmt.Errorf("not in a git repository and no default workspace configured. Run 'bt auth login' or set default_workspace in config")
-		}
-		workspace = cfg.Auth.DefaultWorkspace
-		if debugEnabled {
-			fmt.Fprintf(os.Stderr, "DEBUG: Using default workspace from config: %s\n", workspace)
-		}
-	} else {
-		workspace = gitRepo.GetWorkspace()
-		repository = gitRepo.GetName()
-
-		if debugEnabled {
-			fmt.Fprintf(os.Stderr, "DEBUG: Git extracted workspace: %s\n", workspace)
-			fmt.Fprintf(os.Stderr, "DEBUG: Git extracted repository: %s\n", repository)
-
-			remotes := gitRepo.GetRemotes()
-			fmt.Fprintf(os.Stderr, "DEBUG: Git remotes found: %d\n", len(remotes))
-			for name, remote := range remotes {
-				fmt.Fprintf(os.Stderr, "DEBUG: Remote %s: %s (workspace: %s, repo: %s)\n", name, remote.URL, remote.Workspace, remote.RepoName)
-			}
-		}
-
-		if workspace == "" || repository == "" {
-			return nil, fmt.Errorf("unable to detect Bitbucket workspace and repository from git remotes")
-		}
+		return nil, err
 	}
 
 	authManager, err := CreateAuthManager()
@@ -145,7 +116,15 @@ func NewMinimalContext(ctx context.Context, opts MinimalContextOptions) (*Comman
 		return nil, fmt.Errorf("failed to create API client: %w", err)
 	}
 
-	workspace := opts.Workspace
+	workspace, repository := opts.Workspace, opts.Repository
+	if o, ok := getRepoOverride(ctx); ok {
+		if workspace == "" {
+			workspace = o.workspace
+		}
+		if repository == "" {
+			repository = o.repository
+		}
+	}
 	if workspace == "" {
 		workspace = cfg.Auth.DefaultWorkspace
 	}
@@ -165,8 +144,52 @@ func NewMinimalContext(ctx context.Context, opts MinimalContextOptions) (*Comman
 		Client:     client,
 		Config:     cfg,
 		Workspace:  workspace,
-		Repository: opts.Repository,
+		Repository: repository,
 		Formatter:  formatter,
 		Debug:      opts.Debug,
 	}, nil
+}
+
+// resolveWorkspaceRepo picks the target repository: the global -R/--repo override
+// if set, otherwise the current directory's git remote, then default_workspace.
+func resolveWorkspaceRepo(ctx context.Context, cfg *config.Config, debugEnabled bool) (string, string, error) {
+	if o, ok := getRepoOverride(ctx); ok {
+		return o.workspace, o.repository, nil
+	}
+
+	gitRepo, err := git.NewRepository("")
+	var workspace, repository string
+
+	if err != nil {
+		if debugEnabled {
+			fmt.Fprintf(os.Stderr, "DEBUG: Not in git repository, error: %v\n", err)
+		}
+		if cfg.Auth.DefaultWorkspace == "" {
+			return "", "", fmt.Errorf("not in a git repository and no default workspace configured. Run 'bt auth login' or set default_workspace in config")
+		}
+		workspace = cfg.Auth.DefaultWorkspace
+		if debugEnabled {
+			fmt.Fprintf(os.Stderr, "DEBUG: Using default workspace from config: %s\n", workspace)
+		}
+	} else {
+		workspace = gitRepo.GetWorkspace()
+		repository = gitRepo.GetName()
+
+		if debugEnabled {
+			fmt.Fprintf(os.Stderr, "DEBUG: Git extracted workspace: %s\n", workspace)
+			fmt.Fprintf(os.Stderr, "DEBUG: Git extracted repository: %s\n", repository)
+
+			remotes := gitRepo.GetRemotes()
+			fmt.Fprintf(os.Stderr, "DEBUG: Git remotes found: %d\n", len(remotes))
+			for name, remote := range remotes {
+				fmt.Fprintf(os.Stderr, "DEBUG: Remote %s: %s (workspace: %s, repo: %s)\n", name, remote.URL, remote.Workspace, remote.RepoName)
+			}
+		}
+
+		if workspace == "" || repository == "" {
+			return "", "", fmt.Errorf("unable to detect Bitbucket workspace and repository from git remotes")
+		}
+	}
+
+	return workspace, repository, nil
 }
