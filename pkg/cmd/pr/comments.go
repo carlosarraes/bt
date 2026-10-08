@@ -15,6 +15,8 @@ type CommentsCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Author     string `help:"Only show comments by this author (username, nickname, display name, account_id, or @me)"`
+	Resolved   bool   `help:"Only show resolved threads"`
+	Unresolved bool   `help:"Only show unresolved threads"`
 	NoColor    bool
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
@@ -48,6 +50,13 @@ func (cmd *CommentsCmd) Run(ctx context.Context) error {
 	}
 
 	comments = filterDeletedComments(comments)
+
+	if cmd.Resolved && cmd.Unresolved {
+		return fmt.Errorf("cannot use both --resolved and --unresolved")
+	}
+	if cmd.Resolved || cmd.Unresolved {
+		comments = filterThreadsByResolution(comments, cmd.Resolved)
+	}
 
 	if cmd.Author != "" {
 		author, err := ResolveAuthor(ctx, prCtx.Client, cmd.Author)
@@ -129,15 +138,65 @@ func FilterCommentsByAuthor(comments []api.PullRequestComment, author string) []
 	return filtered
 }
 
-// userMatches reports whether a user's identity fields match the selector.
+// userMatches reports whether a user matches the selector. Stable identifiers
+// (username, account_id, UUID) must match exactly; display name and nickname
+// match on a case-insensitive substring so "rafael" finds "Rafael Sakamoto".
 func userMatches(u *api.User, selector string) bool {
-	s := strings.ToLower(selector)
-	for _, field := range []string{u.Username, u.Nickname, u.DisplayName, u.AccountID, u.UUID} {
+	s := strings.ToLower(strings.TrimSpace(selector))
+	if s == "" {
+		return false
+	}
+	for _, field := range []string{u.Username, u.AccountID, u.UUID} {
 		if field != "" && strings.ToLower(field) == s {
 			return true
 		}
 	}
+	for _, field := range []string{u.DisplayName, u.Nickname} {
+		if field != "" && strings.Contains(strings.ToLower(field), s) {
+			return true
+		}
+	}
 	return false
+}
+
+// threadRoot walks parent links to the comment that starts the thread.
+func threadRoot(byID map[int]api.PullRequestComment, c api.PullRequestComment) api.PullRequestComment {
+	seen := map[int]bool{}
+	for c.Parent != nil && !seen[c.ID] {
+		seen[c.ID] = true
+		parent, ok := byID[c.Parent.ID]
+		if !ok {
+			break
+		}
+		c = parent
+	}
+	return c
+}
+
+// filterThreadsByResolution keeps whole threads whose root comment's resolved
+// state matches; Bitbucket only sets resolution on the root.
+func filterThreadsByResolution(comments []api.PullRequestComment, resolved bool) []api.PullRequestComment {
+	byID := make(map[int]api.PullRequestComment, len(comments))
+	for _, c := range comments {
+		byID[c.ID] = c
+	}
+	filtered := make([]api.PullRequestComment, 0, len(comments))
+	for _, c := range comments {
+		if (threadRoot(byID, c).Resolution != nil) == resolved {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
+}
+
+func resolutionLabel(c api.PullRequestComment) string {
+	if c.Resolution == nil {
+		return ""
+	}
+	if c.Resolution.User != nil && c.Resolution.User.DisplayName != "" {
+		return "✓ resolved by " + c.Resolution.User.DisplayName
+	}
+	return "✓ resolved"
 }
 
 // commentNode is one comment plus the replies threaded beneath it.
@@ -241,6 +300,9 @@ func renderCommentNode(node *commentNode, depth int) {
 	header := fmt.Sprintf("#%d %s (%s):", comment.ID, commentAuthor(comment), timeStr)
 
 	bodyIndent := indent + "  "
+	if label := resolutionLabel(comment); label != "" {
+		header += " " + label
+	}
 	if depth == 0 {
 		fmt.Printf("%s\n", header)
 	} else {

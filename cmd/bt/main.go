@@ -255,6 +255,8 @@ TARGETED COMMANDS
   close:         Close a pull request
   comment:       Add a comment to a pull request (or reply with --reply-to)
   comments:      List comments on a pull request, threaded
+  resolve:       Resolve comment threads (by ID or --all-from <author>)
+  unresolve:     Reopen resolved comment threads
   diff:          View changes in a pull request
   edit:          Edit a pull request
   files:         List files changed in a pull request

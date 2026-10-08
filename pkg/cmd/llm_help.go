@@ -587,7 +587,12 @@ bt pr checkout 42                         # Switch to PR branch
 # Reading and writing comments
 bt pr comments 42                         # Read all comment bodies, threaded, with IDs
 bt pr comments 42 --author @me            # Only your comments
-bt pr comments 42 -o json                 # Full comment objects (id, parent, inline)
+bt pr comments 42 -o json                 # Full comment objects (id, parent, inline, resolution)
+bt pr comments 42 --unresolved            # Only open threads (--resolved for closed ones)
+bt pr comments 42 --author rafael         # Author: name/nickname substring, or exact account_id/@me
+bt pr resolve 42 1001 1002                # Resolve threads by root comment ID
+bt pr resolve 42 --all-from rafael        # Resolve every open thread that author started
+bt pr unresolve 42 1001                   # Reopen a resolved thread
 bt pr comment 42 -b "Great work!"         # Add a top-level comment
 bt pr comment 42 --reply-to 12344 -b "Done"        # Reply in-thread to comment 12344
 bt pr comment 42 --file src/auth.go --line 15 -b "Extract this"  # Inline comment

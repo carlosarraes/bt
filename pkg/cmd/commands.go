@@ -313,6 +313,8 @@ type PRCmd struct {
 	Files         PRFilesCmd         `cmd:""`
 	Comment       PRCommentCmd       `cmd:""`
 	Comments      PRCommentsCmd      `cmd:""`
+	Resolve       PRResolveCmd       `cmd:"" help:"Resolve comment threads"`
+	Unresolve     PRUnresolveCmd     `cmd:"" help:"Reopen resolved comment threads"`
 	ReviewHistory PRReviewHistoryCmd `cmd:"review-history" help:"Collect an author's comments across all PRs in the repo"`
 	Merge         PRMergeCmd         `cmd:""`
 	Checkout      PRCheckoutCmd      `cmd:""`
@@ -636,10 +638,39 @@ func (p *PRCommentCmd) Run(ctx context.Context) error {
 	return cmd.Run(ctx)
 }
 
+type PRResolveCmd struct {
+	PRID       string   `arg:"" help:"Pull request ID (number)"`
+	CommentIDs []string `arg:"" optional:"" name:"comment-id" help:"IDs of the comments that start the threads"`
+	AllFrom    string   `name:"all-from" help:"Resolve every unresolved thread started by this author (name substring, account_id, or @me)"`
+	Workspace  string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string   `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRResolveCmd) Run(ctx context.Context) error {
+	cmd := &pr.ResolveCmd{PRID: p.PRID, CommentIDs: p.CommentIDs, AllFrom: p.AllFrom,
+		NoColor: shared.GetNoColor(ctx), Workspace: p.Workspace, Repository: p.Repository}
+	return cmd.Run(ctx)
+}
+
+type PRUnresolveCmd struct {
+	PRID       string   `arg:"" help:"Pull request ID (number)"`
+	CommentIDs []string `arg:"" name:"comment-id" help:"IDs of the comments that start the threads"`
+	Workspace  string   `help:"Bitbucket workspace (defaults to git remote or config)"`
+	Repository string   `help:"Repository name (defaults to git remote)"`
+}
+
+func (p *PRUnresolveCmd) Run(ctx context.Context) error {
+	cmd := &pr.ResolveCmd{PRID: p.PRID, CommentIDs: p.CommentIDs, Unresolve: true,
+		NoColor: shared.GetNoColor(ctx), Workspace: p.Workspace, Repository: p.Repository}
+	return cmd.Run(ctx)
+}
+
 type PRCommentsCmd struct {
 	PRID       string `arg:"" help:"Pull request ID (number)"`
 	Output     string `short:"o" help:"Output format (table, json, yaml)" enum:"table,json,yaml" default:"table"`
 	Author     string `help:"Only show comments by this author (username, nickname, display name, account_id, or @me)"`
+	Resolved   bool   `help:"Only show resolved threads"`
+	Unresolved bool   `help:"Only show unresolved threads"`
 	Workspace  string `help:"Bitbucket workspace (defaults to git remote or config)"`
 	Repository string `help:"Repository name (defaults to git remote)"`
 }
@@ -651,6 +682,8 @@ func (p *PRCommentsCmd) Run(ctx context.Context) error {
 		PRID:       p.PRID,
 		Output:     p.Output,
 		Author:     p.Author,
+		Resolved:   p.Resolved,
+		Unresolved: p.Unresolved,
 		NoColor:    noColor,
 		Workspace:  p.Workspace,
 		Repository: p.Repository,
